@@ -41,13 +41,13 @@ We want to make a few changes relative to the previous project:
 
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
+#include "config.c"
 #include "platform/platform.h"
+#include "renderer/renderer.c"
+#include "renderer/opengl/opengl.c"
 
 #include <GL/glx.h>
 typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
-
-// NOW: Put this in its own file somewhere.
-#define PROGRAM_NAME "Shiptastic"
 
 typedef struct {
 	Display* display;
@@ -56,7 +56,7 @@ typedef struct {
 
 i32 main(i32 argc, char** argv) {
 	Arena global_arena;
-	arena_init(&global_arena, MEGABYTE);
+	arena_init(&global_arena, GLOBAL_ARENA_SIZE, NULL);
 
 	Platform* platform = (Platform*)arena_alloc(&global_arena, sizeof(Platform));
 	XlibContext* xlib = (XlibContext*)arena_alloc(&global_arena, sizeof(XlibContext));
@@ -192,6 +192,32 @@ i32 main(i32 argc, char** argv) {
 	platform->input_buttons_len = 1;
 	for(u32 i = 0; i < PLATFORM_INPUT_KEYCODE_TO_BUTTON_LOOKUP_LEN; i++) {
 		platform->input_keycode_to_button_lookup[i] = PLATFORM_INPUT_KEYCODE_UNREGISTERED;
+	}
+
+	// Initialize open GL before getting window attributes.
+	Arena render_arena;
+	arena_init(&render_arena, RENDER_ARENA_SIZE, &global_arena);
+
+	Arena render_init_arena;
+	arena_init(&render_init_arena, RENDER_INIT_ARENA_SIZE, NULL);
+
+	RenderInitData* init_data = render_load_init_data(&render_init_arena);
+	opengl_init(init_data, &render_init_arena, &render_arena);
+
+	arena_destroy(&render_init_arena);
+
+	XWindowAttributes window_attributes;
+	XGetWindowAttributes(xlib->display, xlib->window, &window_attributes);
+	platform->window_width = window_attributes.width;
+	platform->window_height = window_attributes.height;
+
+	Arena game_arena;
+	arena_init(&game_arena, GAME_ARENA_SIZE, &global_arena);
+
+	//Game* game = game_init(game_arena);
+
+	while(true) {
+
 	}
 
 	return 0;

@@ -1,7 +1,7 @@
 #ifndef arena_h_INCLUDED
 #define arena_h_INCLUDED
 
-#define DEBUG_LOG_ALLOCATIONS false
+#define DEBUG_LOG_ALLOCATIONS true
 #define DEBUG_CAPACITY_WARNING true
 
 typedef struct {
@@ -11,7 +11,7 @@ typedef struct {
 	bool initialized;
 } Arena;
 
-void arena_init(Arena* arena, u64 capacity);
+void arena_init(Arena* arena, u64 capacity, Arena* parent);
 void arena_clear(Arena* arena);
 void arena_destroy(Arena* arena);
 void* arena_alloc(Arena* arena, u64 size);
@@ -19,9 +19,13 @@ void* arena_head(Arena* arena);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
-void arena_init(Arena* arena, u64 capacity)
+void arena_init(Arena* arena, u64 capacity, Arena* parent)
 {
-	arena->data = (char*)malloc(capacity);
+	if(parent == NULL) {
+		arena->data = (char*)calloc(1, capacity);
+	} else {
+		arena->data = (char*)arena_alloc(parent, capacity);
+	}
 	arena->index = 0;
 	arena->capacity = capacity;
 	arena->initialized = true;
@@ -60,7 +64,10 @@ void* arena_head(Arena* arena)
 void* arena_alloc(Arena* arena, u64 size)
 {
 	strict_assert(arena->data != NULL);
-	assert(arena->index + size < arena->capacity);
+	if(arena->index + size >= arena->capacity) {
+		printf("Arena overflow! Capacity: %u, Requested: %u\n", arena->index + size, arena->capacity);
+		panic();
+	}
 
 #if DEBUG_LOG_ALLOCATIONS
 	printf("Arena allocation from %u-%u (%u bytes)\n", arena->index, arena->index + size, size);
