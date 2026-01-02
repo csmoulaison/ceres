@@ -43,24 +43,27 @@ We want to make a few changes relative to the previous project:
 #include "core/core.h"
 #include "platform/platform.h"
 
+#include <GL/glx.h>
+typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+
 // NOW: Put this in its own file somewhere.
 #define PROGRAM_NAME "Shiptastic"
 
-typedef struct XlibContext {
+typedef struct {
 	Display* display;
 	Window window;
-};
+} XlibContext;
 
 i32 main(i32 argc, char** argv) {
 	Arena global_arena;
 	arena_init(&global_arena, MEGABYTE);
 
-	Platform* platform = (Platform*)arena_alloc(arena, sizeof(Platform));
-	XlibContext* xlib = (XlibContext*)arena_alloc(arena, sizeof(XlibContext));
+	Platform* platform = (Platform*)arena_alloc(&global_arena, sizeof(Platform));
+	XlibContext* xlib = (XlibContext*)arena_alloc(&global_arena, sizeof(XlibContext));
 	platform->backend = xlib;
 
 	xlib->display = XOpenDisplay(0);
-	if(xlib->display == nullptr) { panic(); }
+	if(!xlib->display) { panic(); }
 
 	// GLX (OpenGL+Xlib) specific stuff. The control flow for this can't really be
 	// abstracted now, only refactored to specifics if/when we get another API going.
@@ -95,7 +98,7 @@ i32 main(i32 argc, char** argv) {
 	// Find the best framebuffer configuration from those available. Our only
 	// criteria at the moment is sample count.
 	i32 framebuffer_configs_len;
-	GLXFBConfig* framebuffer_configs = GlXChooseGBConfig(xlib->display, DefaultScreen(xlib->display), desired_framebuffer_attributes, &framebuffer_configs_len);
+	GLXFBConfig* framebuffer_configs = glXChooseFBConfig(xlib->display, DefaultScreen(xlib->display), desired_framebuffer_attributes, &framebuffer_configs_len);
 	if(!framebuffer_configs) { panic(); }
 
 	i32 best_framebuffer_config = -1;
@@ -122,7 +125,7 @@ i32 main(i32 argc, char** argv) {
 
 	// Set up root window. This is somewhat mixed up with GLX stuff still, though
 	// it should survive the generic case with some things factored into variables.
-	Window root_window = RootWindow(xlib->display, glx_visual_info);
+	Window root_window = RootWindow(xlib->display, glx_visual_info->screen);
 	XSetWindowAttributes set_window_attributes = {};
 	set_window_attributes.colormap = XCreateColormap(xlib->display, root_window, glx_visual_info->visual, AllocNone);
 	set_window_attributes.background_pixmap = None;
@@ -141,16 +144,55 @@ i32 main(i32 argc, char** argv) {
 	XMapWindow(xlib->display, xlib->window);
 
 	/* NOW: Redo this from netpong
-	glx_init_post_window(xlib, glx_framebuffer_config);
+     */
 
-	context->viewport_update_requested = true;
-	context->backend = xlib;
+	// Validate existence of required GL extensions
+	glXCreateContextAttribsARBProc glXCreateContextAttribsARB;
+	char* gl_extensions = (char*)glXQueryExtensionsString(xlib->display, DefaultScreen(xlib->display));
+	glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
 
-	context->input_buttons_len = 1;
-	for(u32 i = 0; i < INPUT_KEYCODE_TO_BUTTON_LOOKUP_LEN; i++) {
-		context->input_keycode_to_button_lookup[i] = INPUT_KEYCODE_UNREGISTERED;
+	const char* extension = "GLX_ARB_create_context";
+	char* start;
+	char* where;
+	char* terminator;
+
+	// Extension names shouldn't have spaces
+	where = strchr((char*)extension, ' ');
+	if (where || *extension == '\0') { panic(); }
+
+	bool found_extension = true;
+	for (start = gl_extensions;;) {
+		where = strstr(start, extension);
+		if (!where)
+			break;
+
+		terminator = where + strlen(extension);
+		if (where == start || *(where - 1) == ' ') {
+			if (*terminator == ' ' || *terminator == '\0')
+				found_extension = true;
+			start = terminator;
+		}
 	}
-	*/
+	if(found_extension == false) { panic(); }
+
+	// Create GLX context and window
+	int32_t glx_attributes[] = {
+		GLX_CONTEXT_MAJOR_VERSION_ARB, 4,
+		GLX_CONTEXT_MINOR_VERSION_ARB, 6,
+		None
+	};
+
+	GLXContext glx = glXCreateContextAttribsARB(xlib->display, glx_framebuffer_config, 0, 1, glx_attributes);
+	if(glXIsDirect(xlib->display, glx) == false) { panic(); }
+
+	// Bind GLX to window
+	glXMakeCurrent(xlib->display, xlib->window, glx);
+
+	platform->viewport_update_requested = true;
+	platform->input_buttons_len = 1;
+	for(u32 i = 0; i < PLATFORM_INPUT_KEYCODE_TO_BUTTON_LOOKUP_LEN; i++) {
+		platform->input_keycode_to_button_lookup[i] = PLATFORM_INPUT_KEYCODE_UNREGISTERED;
+	}
 
 	return 0;
 }
