@@ -133,7 +133,6 @@ i32 main(i32 argc, char** argv) {
 	set_window_attributes.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask;
 
 	// Create our actual Xlib window.
-	// NOW: Does this need to start at a non zero value?
 	platform->window_width = 1;
 	platform->window_height = 1;
 	xlib->window = XCreateWindow(xlib->display, root_window, 0, 0, platform->window_width, platform->window_height, 0, glx_visual_info->depth, InputOutput, glx_visual_info->visual, CWBorderPixel | CWColormap | CWEventMask, &set_window_attributes);
@@ -142,9 +141,6 @@ i32 main(i32 argc, char** argv) {
 	XFree(glx_visual_info);
 	XStoreName(xlib->display, xlib->window, PROGRAM_NAME);
 	XMapWindow(xlib->display, xlib->window);
-
-	/* NOW: Redo this from netpong
-     */
 
 	// Validate existence of required GL extensions
 	glXCreateContextAttribsARBProc glXCreateContextAttribsARB;
@@ -202,7 +198,7 @@ i32 main(i32 argc, char** argv) {
 	arena_init(&render_init_arena, RENDER_INIT_ARENA_SIZE, NULL);
 
 	RenderInitData* init_data = render_load_init_data(&render_init_arena);
-	opengl_init(init_data, &render_init_arena, &render_arena);
+	Renderer* renderer = opengl_init(init_data, &render_init_arena, &render_arena);
 
 	arena_destroy(&render_init_arena);
 
@@ -216,8 +212,32 @@ i32 main(i32 argc, char** argv) {
 
 	//Game* game = game_init(game_arena);
 
-	while(true) {
+	bool quit = false;
+	while(!quit) {
+		while(XPending(xlib->display)) {
+			XEvent event;
+			XNextEvent(xlib->display, &event);
 
+			switch(event.type) {
+				case Expose:
+					break;
+				case ConfigureNotify: {
+					XWindowAttributes attribs;
+					XGetWindowAttributes(xlib->display, xlib->window, &attribs);
+					platform->window_width = attribs.width;
+					platform->window_height = attribs.height;
+					platform->viewport_update_requested = true;
+				} break;
+				case KeyPress: {
+					if(XLookupKeysym(&(event.xkey), 0) == XK_Escape) {
+						quit = true;
+					}
+				} break;
+				default: break;
+			}
+		}
+		opengl_update(renderer, platform);
+		glXSwapBuffers(xlib->display, xlib->window);
 	}
 
 	return 0;

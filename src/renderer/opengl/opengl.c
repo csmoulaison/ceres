@@ -114,6 +114,7 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	}
 	assert(renderer->ssbos_len == data->ssbos_len);
 
+	glViewport(0, 0, 1, 1);
 	return renderer;
 }
 
@@ -122,4 +123,7 @@ void opengl_update(Renderer* renderer, Platform* platform) {
 		glViewport(0, 0, platform->window_width, platform->window_height);
 		platform->viewport_update_requested = false;
 	}
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
