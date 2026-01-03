@@ -1,11 +1,11 @@
 #ifndef renderer_h_INCLUDED
 #define renderer_h_INCLUDED
 
-typedef u16 RenderProgram;
-typedef u16 RenderMesh;
-typedef u16 RenderTexture;
-typedef u16 RenderUbo;
-typedef u16 RenderSsbo;
+typedef u8 RenderProgram;
+typedef u8 RenderMesh;
+typedef u8 RenderTexture;
+typedef u8 RenderUbo;
+typedef u8 RenderSsbo;
 
 typedef enum {
 	GRAPHICS_API_OPENGL
@@ -16,7 +16,7 @@ typedef enum {
 // graph with dependencies and all of that.
 typedef enum {
 	RENDER_COMMAND_NULL,
-	RENDER_COMMAND_CLEAR_COLOR,
+	RENDER_COMMAND_CLEAR,
 	RENDER_COMMAND_USE_PROGRAM,
 	RENDER_COMMAND_USE_UBO,
 	RENDER_COMMAND_USE_SSBO,
@@ -33,6 +33,7 @@ typedef struct RenderCommand {
 
 typedef struct {
 	RenderCommand* root;
+	RenderCommand* tail;
 } RenderGraph;
 
 // Key here is the data oriented approach. The association between the index of
@@ -78,15 +79,19 @@ typedef struct RenderMeshInitData {
 
 typedef struct RenderTextureInitData {
 	struct RenderTextureInitData* next;
-	void* pixels;
+	u16 width;
+	u16 height;
+	u8* pixels;
 } RenderTextureInitData;
 
 typedef struct RenderUboInitData {
 	struct RenderUboInitData* next;
+	u64 size;
 } RenderUboInitData;
 
 typedef struct RenderSsboInitData {
 	struct RenderSsboInitData* next;
+	u64 size;
 } RenderSsboInitData;
 
 typedef struct {

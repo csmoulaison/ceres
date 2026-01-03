@@ -5,7 +5,7 @@ typedef struct {
 
 } OpenGl;
 
-u32 opengl_compile_shader(const char* filename, GLenum type) {
+u32 gl_compile_shader(const char* filename, GLenum type) {
 	// Read file
 	FILE* file = fopen(filename, "r");
 	if(file == NULL) { panic(); }
@@ -42,11 +42,11 @@ u32 opengl_compile_shader(const char* filename, GLenum type) {
 	return shader;
 }
 
-Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) {
+Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) {
 	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
-	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena);
-	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena);
-	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena);
+	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
+	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
+	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
 
 	renderer->backend = arena_alloc(&renderer->persistent_arena, sizeof(OpenGl));
 	OpenGl* gl = (OpenGl*)renderer->backend;
@@ -61,15 +61,14 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
 	RenderProgramInitData* program_data = data->programs;
 	while(program_data != NULL) {
-		u32 vert_shader = opengl_compile_shader(program_data->vertex_shader_filename, GL_VERTEX_SHADER);
-		u32 frag_shader = opengl_compile_shader(program_data->fragment_shader_filename, GL_FRAGMENT_SHADER);
+		u32 vert_shader = gl_compile_shader(program_data->vertex_shader_filename, GL_VERTEX_SHADER);
+		u32 frag_shader = gl_compile_shader(program_data->fragment_shader_filename, GL_FRAGMENT_SHADER);
 
 		RenderProgram* program = &renderer->programs[renderer->programs_len];
 		*program = glCreateProgram();
 		glAttachShader(*program, vert_shader);
 		glAttachShader(*program, frag_shader);
 		glLinkProgram(*program);
-
 		glDeleteShader(vert_shader);
 		glDeleteShader(frag_shader);
 
@@ -81,7 +80,18 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
 	RenderMeshInitData* mesh_data = data->meshes;
 	while(mesh_data != NULL) {
-		//renderer->meshes[renderer->meshes_len] = platform_render_create_mesh(renderer, mesh_data);
+		RenderMesh* mesh = &renderer->meshes[renderer->meshes_len];
+		glGenVertexArrays(1, (u32*)mesh);
+		glBindVertexArray(*mesh);
+
+		u32 vbo;
+		glGenBuffers(1, &vbo);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, mesh_data->vertices_len * mesh_data->vertex_size, mesh_data->vertex_data, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		// NOW: NULL instead of '(void*)0' works just as well here?
+		glVertexAttribPointer(0, mesh_data->vertex_size, GL_FLOAT, GL_FALSE, sizeof(f32) * mesh_data->vertex_size, (void*)0);
+		
 		renderer->meshes_len++;
 		mesh_data = mesh_data->next;
 	}
@@ -90,7 +100,15 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
 	RenderTextureInitData* texture_data = data->textures;
 	while(texture_data != NULL) {
-		//renderer->textures[renderer->textures_len] = platform_render_create_texture(renderer, texture_data);
+		RenderTexture* texture = &renderer->textures[renderer->textures_len];
+		glGenTextures(1, (u32*)texture);
+		glBindTexture(GL_TEXTURE_2D, *texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, texture_data->width, texture_data->height, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data->pixels);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
 		renderer->textures_len++;
 		texture_data = texture_data->next;
 	}
@@ -99,7 +117,12 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
 	RenderUboInitData* ubo_data = data->ubos;
 	while(ubo_data != NULL) {
-		//renderer->ubos[renderer->ubos_len] = platform_render_create_ubo(renderer, ubo_data);
+		RenderUbo* ubo = &renderer->ubos[renderer->ubos_len];
+		glGenBuffers(1, (u32*)ubo);
+		glBindBuffer(GL_UNIFORM_BUFFER, *ubo);
+		glBufferData(GL_UNIFORM_BUFFER, ubo_data->size, NULL, GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
 		renderer->ubos_len++;
 		ubo_data = ubo_data->next;
 	}
@@ -108,7 +131,12 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	renderer->ssbos = (RenderSsbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderSsbo) * data->ssbos_len);
 	RenderSsboInitData* ssbo_data = data->ssbos;
 	while(ssbo_data != NULL) {
-		//renderer->ssbos[renderer->ssbos_len] = platform_render_create_ssbo(renderer, ssbo_data);
+		RenderSsbo* ssbo = &renderer->ssbos[renderer->ssbos_len];
+		glGenBuffers(1, (u32*)ssbo);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, *ssbo);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, ssbo_data->size, NULL, GL_DYNAMIC_DRAW);
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, *ssbo);
+
 		renderer->ssbos_len++;
 		ssbo_data = ssbo_data->next;
 	}
@@ -118,12 +146,25 @@ Renderer* opengl_init(RenderInitData* data, Arena* render_arena, Arena* init_are
 	return renderer;
 }
 
-void opengl_update(Renderer* renderer, Platform* platform) {
+void gl_update(Renderer* renderer, Platform* platform) {
 	if(platform->viewport_update_requested) {
 		glViewport(0, 0, platform->window_width, platform->window_height);
 		platform->viewport_update_requested = false;
 	}
 
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	RenderCommand* cmd = renderer->graph.root;
+	while(cmd != NULL) {
+		switch(cmd->type) {
+			case RENDER_COMMAND_NULL:
+				break;
+			case RENDER_COMMAND_CLEAR: {
+				assert(cmd->data != NULL);
+				f32* comps = (f32*)cmd->data;
+				glClearColor(comps[0], comps[1], comps[2], comps[3]);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			} break;
+			default: break;
+		}
+		cmd = cmd->next;
+	}
 }

@@ -56,7 +56,13 @@ typedef struct {
 
 i32 main(i32 argc, char** argv) {
 	Arena global_arena;
-	arena_init(&global_arena, GLOBAL_ARENA_SIZE, NULL);
+	arena_init(&global_arena, GLOBAL_ARENA_SIZE, NULL, "Global");
+
+	Arena render_arena;
+	arena_init(&render_arena, RENDER_ARENA_SIZE, &global_arena, "Render");
+
+	Arena render_init_arena;
+	arena_init(&render_init_arena, RENDER_INIT_ARENA_SIZE, NULL, "RenderInit");
 
 	Platform* platform = (Platform*)arena_alloc(&global_arena, sizeof(Platform));
 	XlibContext* xlib = (XlibContext*)arena_alloc(&global_arena, sizeof(XlibContext));
@@ -191,14 +197,8 @@ i32 main(i32 argc, char** argv) {
 	}
 
 	// Initialize open GL before getting window attributes.
-	Arena render_arena;
-	arena_init(&render_arena, RENDER_ARENA_SIZE, &global_arena);
-
-	Arena render_init_arena;
-	arena_init(&render_init_arena, RENDER_INIT_ARENA_SIZE, NULL);
-
 	RenderInitData* init_data = render_load_init_data(&render_init_arena);
-	Renderer* renderer = opengl_init(init_data, &render_init_arena, &render_arena);
+	Renderer* renderer = gl_init(init_data, &render_arena, &render_init_arena);
 
 	arena_destroy(&render_init_arena);
 
@@ -208,7 +208,7 @@ i32 main(i32 argc, char** argv) {
 	platform->window_height = window_attributes.height;
 
 	Arena game_arena;
-	arena_init(&game_arena, GAME_ARENA_SIZE, &global_arena);
+	arena_init(&game_arena, GAME_ARENA_SIZE, &global_arena, "Game");
 
 	//Game* game = game_init(game_arena);
 
@@ -236,7 +236,10 @@ i32 main(i32 argc, char** argv) {
 				default: break;
 			}
 		}
-		opengl_update(renderer, platform);
+
+		render_load_frame_graph(renderer);
+		gl_update(renderer, platform);
+		arena_clear(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);
 	}
 

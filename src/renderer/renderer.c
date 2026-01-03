@@ -48,6 +48,23 @@ const f32 cube_vertex_data[RENDER_CUBE_VERTEX_DATA_LEN] = {
 
 #define RENDER_NO_INTERPOLATION false
 
+void render_push_command(Renderer* renderer, RenderCommandType type, void* data, u64 data_size) {
+	RenderCommand* cmd = (RenderCommand*)arena_alloc(&renderer->frame_arena, sizeof(RenderCommand));
+	cmd->type = type;
+	cmd->data = arena_alloc(&renderer->frame_arena, data_size);
+	memcpy(cmd->data, data, data_size);
+
+	if(renderer->graph.root == NULL) {
+		renderer->graph.root = cmd;
+		renderer->graph.tail = cmd;
+	} else {
+		renderer->graph.tail->next = cmd;
+		renderer->graph.tail = cmd;
+	}
+}
+
+
+// TODO: Replace this with a data format.
 RenderInitData* render_load_init_data(Arena* init_arena) {
 	RenderInitData* data = (RenderInitData*)arena_alloc(init_arena, sizeof(RenderInitData));
 
@@ -68,4 +85,10 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->textures_len = 0;
 	data->ubos_len = 0;
 	data->ssbos_len = 0;
+}
+
+// TODO: Replace this with a data format.
+void render_load_frame_graph(Renderer* renderer) {
+	f32 color[4] = { 0.0f, 0.0f, 0.5f, 1.0f };
+	render_push_command(renderer, RENDER_COMMAND_CLEAR, color, sizeof(color));
 }
