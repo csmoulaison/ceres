@@ -54,12 +54,12 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 	cmd->data = arena_alloc(&renderer->frame_arena, data_size);
 	memcpy(cmd->data, data, data_size);
 
-	if(renderer->graph.root == NULL) {
-		renderer->graph.root = cmd;
-		renderer->graph.tail = cmd;
+	if(renderer->graph->root == NULL) {
+		renderer->graph->root = cmd;
+		renderer->graph->tail = cmd;
 	} else {
-		renderer->graph.tail->next = cmd;
-		renderer->graph.tail = cmd;
+		renderer->graph->tail->next = cmd;
+		renderer->graph->tail = cmd;
 	}
 }
 
@@ -84,11 +84,16 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 	data->textures_len = 0;
 	data->ubos_len = 0;
-	data->ssbos_len = 0;
 }
 
 // TODO: Replace this with a data format.
 void render_load_frame_graph(Renderer* renderer) {
+	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
+
 	f32 color[4] = { 0.0f, 0.0f, 0.5f, 1.0f };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, color, sizeof(color));
+
+	u32 i = 0;
+	render_push_command(renderer, RENDER_COMMAND_BIND_PROGRAM, &i, sizeof(i));
+	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &i, sizeof(i));
 }

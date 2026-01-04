@@ -3,7 +3,7 @@
 
 #define DEBUG_ARENA true
 #if DEBUG_ARENA
-	#define DEBUG_LOG_ALLOCATIONS true
+	#define DEBUG_LOGGING true
 	#define DEBUG_CAPACITY_WARNING true
 #endif
 
@@ -38,16 +38,24 @@ void arena_init(Arena* arena, u64 capacity, Arena* parent, const char* debug_nam
 
 #if DEBUG_ARENA
 	sprintf(arena->debug_name, "%s", debug_name);
+#if DEBUG_LOGGING
 	printf("%s: Arena initialized with capacity %u.\n", debug_name, capacity);
+#endif
 #endif
 }
 
 void arena_clear(Arena* arena)
 {
 	arena->index = 0;
-#if DEBUG_LOG_ALLOCATIONS
+#if DEBUG_LOGGING
 	printf("%s: Arena cleared.\n", arena->debug_name);
 #endif
+}
+
+void arena_clear_to_zero(Arena* arena)
+{
+	memset(arena->data, 0, arena->index);
+	arena_clear(arena);
 }
 
 void arena_destroy(Arena* arena)
@@ -85,7 +93,7 @@ void* arena_alloc(Arena* arena, u64 size)
 		panic();
 	}
 
-#if DEBUG_LOG_ALLOCATIONS
+#if DEBUG_LOGGING
 	printf("%s: Arena allocation from %u-%u (%u bytes)\n", arena->debug_name, arena->index, arena->index + size, size);
 #endif
 

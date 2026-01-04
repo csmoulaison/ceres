@@ -1,11 +1,11 @@
 #ifndef renderer_h_INCLUDED
 #define renderer_h_INCLUDED
 
-typedef u8 RenderProgram;
-typedef u8 RenderMesh;
-typedef u8 RenderTexture;
-typedef u8 RenderUbo;
-typedef u8 RenderSsbo;
+typedef u32 RenderProgram;
+typedef u32 RenderMesh;
+typedef u32 RenderTexture;
+typedef u32 RenderUbo;
+typedef u32 RenderSsbo;
 
 typedef enum {
 	GRAPHICS_API_OPENGL
@@ -17,12 +17,9 @@ typedef enum {
 typedef enum {
 	RENDER_COMMAND_NULL,
 	RENDER_COMMAND_CLEAR,
-	RENDER_COMMAND_USE_PROGRAM,
-	RENDER_COMMAND_USE_UBO,
-	RENDER_COMMAND_USE_SSBO,
-	RENDER_COMMAND_USE_VERTEX_BUFFER,
-	RENDER_COMMAND_DRAW_ARRAYS,
-	RENDER_COMMAND_DRAW_ARRAYS_INSTANCED
+	RENDER_COMMAND_BIND_PROGRAM,
+	RENDER_COMMAND_BIND_UBO,
+	RENDER_COMMAND_DRAW_MESH
 } RenderCommandType;
 
 typedef struct RenderCommand {
@@ -42,8 +39,8 @@ typedef struct {
 typedef struct {
 	void* backend;
 	GraphicsApi graphics_api;
-	RenderGraph graph;
-	
+	RenderGraph* graph;
+
 	Arena persistent_arena;
 	Arena viewport_arena;
 	Arena frame_arena;
@@ -59,9 +56,6 @@ typedef struct {
 
 	RenderUbo* ubos;
 	u32 ubos_len;
-
-	RenderSsbo* ssbos;
-	u32 ssbos_len;
 } Renderer;
 
 typedef struct RenderProgramInitData {
@@ -89,11 +83,6 @@ typedef struct RenderUboInitData {
 	u64 size;
 } RenderUboInitData;
 
-typedef struct RenderSsboInitData {
-	struct RenderSsboInitData* next;
-	u64 size;
-} RenderSsboInitData;
-
 typedef struct {
 	RenderProgramInitData* programs;
 	u32 programs_len;
@@ -106,9 +95,6 @@ typedef struct {
 
 	RenderUboInitData* ubos;
 	u32 ubos_len;
-
-	RenderSsboInitData* ssbos;
-	u32 ssbos_len;
 } RenderInitData;
 
 #endif // renderer_h_INCLUDED

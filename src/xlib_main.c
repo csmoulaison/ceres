@@ -212,6 +212,7 @@ i32 main(i32 argc, char** argv) {
 
 	//Game* game = game_init(game_arena);
 
+	u64 frame_count = 0;
 	bool quit = false;
 	while(!quit) {
 		while(XPending(xlib->display)) {
@@ -239,8 +240,12 @@ i32 main(i32 argc, char** argv) {
 
 		render_load_frame_graph(renderer);
 		gl_update(renderer, platform);
-		arena_clear(&renderer->frame_arena);
+
+		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);
+
+		printf("end update (%u)\n", frame_count);
+		frame_count++;
 	}
 
 	return 0;
