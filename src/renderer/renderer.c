@@ -72,6 +72,7 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->programs = (RenderProgramInitData*)arena_alloc(init_arena, sizeof(RenderProgramInitData) * data->programs_len);
 	data->programs[0].vertex_shader_filename = "shaders/cube.vert";
 	data->programs[0].fragment_shader_filename = "shaders/cube.frag";
+	data->programs[0].next = NULL;
 
 	data->meshes_len = 1;
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
@@ -81,19 +82,39 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	for(i32 i = 0; i < RENDER_CUBE_VERTEX_DATA_LEN; i++) {
 		data->meshes[0].vertex_data[i] = cube_vertex_data[i];
 	}
+	data->meshes[0].next = NULL;
 
 	data->textures_len = 0;
-	data->ubos_len = 0;
+
+	data->ubos_len = 1;
+	data->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * data->ubos_len);
+	data->ubos[0].size = sizeof(f32) * 32;
+	data->ubos[0].binding = 0;
+	data->ubos[0].next = NULL;
+
+	data->host_buffers_len = 1;
+	data->host_buffers = (RenderHostBufferInitData*)arena_alloc(init_arena, sizeof(RenderHostBufferInitData) * data->host_buffers_len);
+	data->host_buffers[0].next = NULL;
+
+	return data;
 }
 
 // TODO: Replace this with a data format.
 void render_load_frame_graph(Renderer* renderer) {
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
-	f32 color[4] = { 0.0f, 0.0f, 0.5f, 1.0f };
-	render_push_command(renderer, RENDER_COMMAND_CLEAR, color, sizeof(color));
+	RenderCommandClear clear = { .color = { 0.0f, 0.0f, 0.5f, 1.0f } };
+	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
-	u32 i = 0;
-	render_push_command(renderer, RENDER_COMMAND_BIND_PROGRAM, &i, sizeof(i));
-	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &i, sizeof(i));
+	RenderCommandUseProgram use_program = { .program = 0 };
+	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program, sizeof(use_program));
+
+	RenderCommandUseUbo use_ubo = { .ubo = 0 };
+	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo, sizeof(use_ubo));
+
+	RenderCommandBufferUboData buffer_ubo_data = { .ubo = 0, .host_buffer_index = 0, .host_offset = 0 };
+	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data, sizeof(buffer_ubo_data));
+
+	RenderCommandDrawMesh draw_mesh = { .mesh = 0 };
+	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
 }

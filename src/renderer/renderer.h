@@ -5,7 +5,10 @@ typedef u32 RenderProgram;
 typedef u32 RenderMesh;
 typedef u32 RenderTexture;
 typedef u32 RenderUbo;
-typedef u32 RenderSsbo;
+typedef struct {
+	u32 id;
+	u8* data;
+} RenderHostBuffer;
 
 typedef enum {
 	GRAPHICS_API_OPENGL
@@ -17,8 +20,9 @@ typedef enum {
 typedef enum {
 	RENDER_COMMAND_NULL,
 	RENDER_COMMAND_CLEAR,
-	RENDER_COMMAND_BIND_PROGRAM,
-	RENDER_COMMAND_BIND_UBO,
+	RENDER_COMMAND_USE_PROGRAM,
+	RENDER_COMMAND_USE_UBO,
+	RENDER_COMMAND_BUFFER_UBO_DATA,
 	RENDER_COMMAND_DRAW_MESH
 } RenderCommandType;
 
@@ -32,6 +36,28 @@ typedef struct {
 	RenderCommand* root;
 	RenderCommand* tail;
 } RenderGraph;
+
+typedef struct {
+	float color[4];
+} RenderCommandClear;
+
+typedef struct {
+	RenderProgram program;
+} RenderCommandUseProgram;
+
+typedef struct {
+	RenderUbo ubo;
+} RenderCommandUseUbo;
+
+typedef struct {
+	RenderUbo ubo;
+	u32 host_buffer_index;
+	u64 host_offset;
+} RenderCommandBufferUboData;
+
+typedef struct {
+	RenderMesh mesh;
+} RenderCommandDrawMesh;
 
 // Key here is the data oriented approach. The association between the index of
 // a resource is known by the host of the renderer, either by hardcoded enums or
@@ -56,6 +82,9 @@ typedef struct {
 
 	RenderUbo* ubos;
 	u32 ubos_len;
+
+	RenderHostBuffer* host_buffers;
+	u32 host_buffers_len;
 } Renderer;
 
 typedef struct RenderProgramInitData {
@@ -81,7 +110,12 @@ typedef struct RenderTextureInitData {
 typedef struct RenderUboInitData {
 	struct RenderUboInitData* next;
 	u64 size;
+	u64 binding;
 } RenderUboInitData;
+
+typedef struct RenderHostBufferInitData {
+	struct RenderHostBufferInitData* next;
+} RenderHostBufferInitData;
 
 typedef struct {
 	RenderProgramInitData* programs;
@@ -95,6 +129,9 @@ typedef struct {
 
 	RenderUboInitData* ubos;
 	u32 ubos_len;
+
+	RenderHostBufferInitData* host_buffers;
+	u32 host_buffers_len;
 } RenderInitData;
 
 #endif // renderer_h_INCLUDED

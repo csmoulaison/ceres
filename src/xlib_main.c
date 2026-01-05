@@ -239,12 +239,33 @@ i32 main(i32 argc, char** argv) {
 		}
 
 		render_load_frame_graph(renderer);
+
+		f32 ubo[32];
+
+		f32* model = &ubo[16];
+		f32 pos[3] = { 0.0f, 0.0f, 0.0f };
+		gmath_mat4_translation(pos, model);
+		f32 rotation[16];
+		gmath_mat4_rotation(frame_count * 0.00f, frame_count * 0.01f, frame_count * 0.00f, rotation);
+		gmath_mat4_mul(model, rotation, model);
+
+		f32 perspective[16];
+		gmath_mat4_perspective(gmath_radians(75.0f), (f32)platform->window_width / (f32)platform->window_height, 0.05f, 100.0f, perspective);
+		f32 view[16] = {};
+		gmath_mat4_identity(view);
+		float up[3] = { 0.0f, 1.0f, 0.0f };
+		float cam_pos[3] = { 5.0f, 0.0f, 0.0f };
+		gmath_mat4_lookat(cam_pos, pos, up, view);
+
+		f32* projection = ubo;
+		gmath_mat4_mul(perspective, view, projection);
+
+		renderer->host_buffers[0].data = (u8*)projection;
 		gl_update(renderer, platform);
 
 		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);
 
-		printf("end update (%u)\n", frame_count);
 		frame_count++;
 	}
 

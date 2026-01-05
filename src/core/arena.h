@@ -3,7 +3,7 @@
 
 #define DEBUG_ARENA true
 #if DEBUG_ARENA
-	#define DEBUG_LOGGING true
+	#define DEBUG_LOGGING false
 	#define DEBUG_CAPACITY_WARNING true
 #endif
 
