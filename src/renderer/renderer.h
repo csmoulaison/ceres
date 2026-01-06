@@ -1,6 +1,11 @@
 #ifndef renderer_h_INCLUDED
 #define renderer_h_INCLUDED
 
+typedef enum {
+	GRAPHICS_API_OPENGL
+} GraphicsApi;
+
+// Renderer (not backend) side references to data
 typedef u32 RenderProgram;
 typedef u32 RenderMesh;
 typedef u32 RenderTexture;
@@ -9,10 +14,6 @@ typedef struct {
 	u32 id;
 	u8* data;
 } RenderHostBuffer;
-
-typedef enum {
-	GRAPHICS_API_OPENGL
-} GraphicsApi;
 
 // Render commands are populated by the host and read in sequential order by the
 // renderer implementation. Later, we might want to change this to a render
@@ -37,6 +38,7 @@ typedef struct {
 	RenderCommand* tail;
 } RenderGraph;
 
+// Render command types
 typedef struct {
 	float color[4];
 } RenderCommandClear;
@@ -66,6 +68,7 @@ typedef struct {
 	void* backend;
 	GraphicsApi graphics_api;
 	RenderGraph* graph;
+	i32 frames_since_init;
 
 	Arena persistent_arena;
 	Arena viewport_arena;
@@ -87,6 +90,9 @@ typedef struct {
 	u32 host_buffers_len;
 } Renderer;
 
+// Initialization data which is only used during renderer startup. Right now
+// these are being populated manually, but we want to move towards loading these
+// from a file at startup.
 typedef struct RenderProgramInitData {
 	struct RenderProgramInitData* next;
 	char* vertex_shader_filename;

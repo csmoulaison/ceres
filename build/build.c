@@ -10,6 +10,9 @@ void copy_directory(char* path) {
 int main(int argc, char** argv) {
 	system("mkdir ../bin");
 	copy_directory("../src/shaders");
-	system("gcc -g ../src/xlib_main.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
-	return 0;
+	int res = system("gcc -g ../src/xlib_main.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
+	if(res != 0) {
+		return 1;
+	}
+	return res;
 }

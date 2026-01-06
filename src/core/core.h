@@ -20,7 +20,6 @@
 #include "sizes.h"
 #include "interpolate.h"
 #include "random.h"
-#include "vec3.h"
-#include "glmath.h"
+#include "cmath.h"
 
 #endif

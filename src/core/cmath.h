@@ -1,19 +1,60 @@
-#ifndef glmath_h_INCLUDED
-#define glmath_h_INCLUDED
+#ifndef cmath_h_INCLUDED
+#define cmath_h_INCLUDED
 
-// This is all column major.
-
-void gmath_mat4_identity(f32* res);
-void gmath_mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
-void gmath_mat4_lookat(f32* origin, f32* target, f32* up, f32* res);
-void gmath_mat4_mul(f32* a, f32* b, f32* res);
-void gmath_mat4_translation(f32* v, f32* res);
-void gmath_mat4_rotation(f32 x, f32 y, f32 z, f32* res);
-f32 gmath_radians(f32 degrees);
+// Vectors
+void v3_normalize(f32* v, f32* res);
+void v3_cross(f32* a, f32* b, f32* res);
+f32 v3_dot(f32* a, f32* b);
+// Radians
+f32 radians_from_degrees(f32 degrees);
+// 4x4 matrices
+// These are all column major.
+void mat4_identity(f32* res);
+void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
+void mat4_lookat(f32* origin, f32* target, f32* up, f32* res);
+void mat4_mul(f32* a, f32* b, f32* res);
+void mat4_translation(f32* v, f32* res);
+void mat4_rotation(f32 x, f32 y, f32 z, f32* res);
+void mat4_from_quat(f32* q, f32* res);
+// Quaternions
+void quat_mult(f32* r, f32* s, f32* res);
+void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
-void gmath_mat4_identity(f32* res) {
+void v3_normalize(f32* v, f32* res) {
+	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
+	res[0] = v[0] / mag;
+	res[1] = v[1] / mag;
+	res[2] = v[2] / mag;
+}
+
+void v3_cross(f32* a, f32* b, f32* res) {
+	res[0] = a[1] * b[2] - a[2] * b[1];
+	res[1] = a[2] * b[0] - a[0] * b[2];
+	res[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+f32 v3_dot(f32* a, f32* b) {
+	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+f32 v3_distance_squared(f32* a, f32* b) {
+	f32 dx = a[0] - b[0];
+	f32 dy = a[1] - b[1];
+	f32 dz = a[2] - b[2];
+	return dx * dx + dy * dy + dz * dz;
+}
+
+f32 v3_distance(f32* a, f32* b) {
+	return sqrt(v3_distance_squared(a, b));
+}
+
+f32 radians_from_degrees(f32 degrees) {
+	return degrees * 0.0174533;
+}
+
+void mat4_identity(f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -23,7 +64,7 @@ void gmath_mat4_identity(f32* res) {
 	res[15] = 1.0f;
 }
 
-void gmath_mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
+void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
 	assert(zfar != znear);
 
 	f32 rad = fovy;
@@ -39,7 +80,7 @@ void gmath_mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res)
 	res[14] = - (2.0f * zfar * znear) / (zfar - znear);
 }
 
-void gmath_mat4_lookat(f32* origin, f32* target, f32* up, f32* res) {
+void mat4_lookat(f32* origin, f32* target, f32* up, f32* res) {
 	f32 dir[3] = { 
 		target[0] - origin[0],
 		target[1] - origin[1],
@@ -71,11 +112,7 @@ void gmath_mat4_lookat(f32* origin, f32* target, f32* up, f32* res) {
 	res[14] =  v3_dot(f, origin);
 }
 
-f32 gmath_radians(f32 degrees) {
-	return degrees * 0.0174533;
-}
-
-void gmath_mat4_mul(f32* a, f32* b, f32* res) {
+void mat4_mul(f32* a, f32* b, f32* res) {
 	f32 a00 = a[0];
 	f32 a01 = a[1];
 	f32 a02 = a[2]; 
@@ -128,7 +165,7 @@ void gmath_mat4_mul(f32* a, f32* b, f32* res) {
 	res[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
 }
 
-void gmath_mat4_translation(f32* v, f32* res) {
+void mat4_translation(f32* v, f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -142,7 +179,7 @@ void gmath_mat4_translation(f32* v, f32* res) {
 	res[14] = v[2];
 }
 
-void gmath_mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
+void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	f32 cosx = cos(x);
 	f32 cosy = cos(y);
 	f32 cosz = cos(z);
@@ -153,9 +190,9 @@ void gmath_mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	f32 xrot[16];
 	f32 yrot[16];
 	f32 zrot[16];
-	gmath_mat4_identity(xrot);
-	gmath_mat4_identity(yrot);
-	gmath_mat4_identity(zrot);
+	mat4_identity(xrot);
+	mat4_identity(yrot);
+	mat4_identity(zrot);
 
 	xrot[0] = 1.0f;
 	xrot[5] = cosx;
@@ -175,14 +212,14 @@ void gmath_mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	zrot[6] = cosz;
 	zrot[10] = 1.0f;
 
-	gmath_mat4_identity(res);
-	gmath_mat4_mul(res, yrot, res);
+	mat4_identity(res);
+	mat4_mul(res, yrot, res);
 	// NOW: this rotations not working. Why???
-	//gmath_mat4_mul(res, xrot, res);
-	//gmath_mat4_mul(res, zrot, res);
+	//mat4_mul(res, xrot, res);
+	//mat4_mul(res, zrot, res);
 }
 
-void gmath_mat4_from_quaternion(f32* q, f32* res) {
+void mat4_from_quat(f32* q, f32* res) {
 	res[0] = q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
 	res[1] = 2.0f * q[1] * q[2] + 2.0f * q[0] * q[3];
 	res[2] = 2.0f * q[1] * q[3] - 2.0f * q[0] * q[2];
@@ -204,7 +241,7 @@ void gmath_mat4_from_quaternion(f32* q, f32* res) {
 	res[15] = 1.0f;
 }
 
-void gmath_quaternion_mult(f32* r, f32* s, f32* res) {
+void quat_mult(f32* r, f32* s, f32* res) {
 	// w,x,y,z
 	res[0] = r[0] * s[0] - r[1] * s[1] - r[2] * s[2] - r[3] * s[3];
 	res[1] = r[0] * s[1] + r[1] * s[0] - r[2] * s[3] + r[3] * s[2];
@@ -212,15 +249,12 @@ void gmath_quaternion_mult(f32* r, f32* s, f32* res) {
 	res[3] = r[0] * s[3] - r[1] * s[2] + r[2] * s[1] + r[3] * s[0];
 }
 
-void gmath_rotate_quaternion_euler(f32* q, f32 x, f32 y, f32 z) {
-}
-
-void gmath_quaternion_inverse(f32* q, f32* res) {
+void quat_inverse(f32* q, f32* res) {
 	res[0] = q[0];
 	res[1] = -q[1];
 	res[2] = -q[2];
 	res[3] = -q[3];
 }
 
-#endif // CSM_BASE_IMPLEMENTATION
-#endif // glmath_h_INCLUDED
+#endif // CSM_CORE_IMPLEMENTATION
+#endif // cmath_h_INCLUDED

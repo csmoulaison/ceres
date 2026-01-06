@@ -28,15 +28,12 @@ typedef struct {
 } OpenGl;
 
 u32 gl_compile_shader(const char* filename, GLenum type) {
-	// Read file
 	FILE* file = fopen(filename, "r");
 	if(file == NULL) { panic(); }
-	
 	fseek(file, 0, SEEK_END);
 	u32 fsize = ftell(file);
 	fseek(file, 0, SEEK_SET);
 	char src[fsize];
-
 	char c;
 	u32 i = 0;
 	while((c = fgetc(file)) != EOF) {
@@ -46,7 +43,6 @@ u32 gl_compile_shader(const char* filename, GLenum type) {
 	src[i] = '\0';
 	fclose(file);
 
-	// Compile shader
 	u32 shader = glCreateShader(type);
 	const char* src_ptr = src;
 	glShaderSource(shader, 1, &src_ptr, 0);
@@ -60,12 +56,13 @@ u32 gl_compile_shader(const char* filename, GLenum type) {
 		printf(info);
 		panic();
 	}
-
 	return shader;
 }
 
 Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) {
 	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
+	renderer->frames_since_init = 0;
+
 	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
 	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
 	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
@@ -241,4 +238,5 @@ void gl_update(Renderer* renderer, Platform* platform) {
 		}
 		cmd = cmd->next;
 	}
+	renderer->frames_since_init++;
 }

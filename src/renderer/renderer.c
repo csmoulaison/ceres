@@ -1,6 +1,8 @@
 #include "renderer/renderer.h"
 
-// TODO: This should come from a file or whatever.
+#define RENDER_NO_INTERPOLATION false
+
+// TODO: This should come from a file
 #define RENDER_CUBE_VERTEX_DATA_LEN 108
 const f32 cube_vertex_data[RENDER_CUBE_VERTEX_DATA_LEN] = {
 	-1.0f, -1.0f, -1.0f,
@@ -45,8 +47,6 @@ const f32 cube_vertex_data[RENDER_CUBE_VERTEX_DATA_LEN] = {
 	-1.0f,  1.0f,  1.0f,
 	-1.0f,  1.0f, -1.0f,	
 };
-
-#define RENDER_NO_INTERPOLATION false
 
 void render_push_command(Renderer* renderer, RenderCommandType type, void* data, u64 data_size) {
 	RenderCommand* cmd = (RenderCommand*)arena_alloc(&renderer->frame_arena, sizeof(RenderCommand));
@@ -99,8 +99,9 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	return data;
 }
 
-// TODO: Replace this with a data format.
-void render_load_frame_graph(Renderer* renderer) {
+void render_prepare_frame_data(Renderer* renderer, Platform* platform) {
+	// Prepare the render graph.
+	// TODO: Replace this with a data format.
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
 	RenderCommandClear clear = { .color = { 0.0f, 0.0f, 0.5f, 1.0f } };
@@ -117,4 +118,27 @@ void render_load_frame_graph(Renderer* renderer) {
 
 	RenderCommandDrawMesh draw_mesh = { .mesh = 0 };
 	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
+
+	// Prepare the host data buffers.
+	f32* ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 32);
+	f32* projection = &ubo[0];
+	f32* model = &ubo[16];
+
+	f32 pos[3] = { 0.0f, 0.0f, 0.0f };
+	mat4_translation(pos, model);
+	f32 rotation[16];
+	mat4_rotation(renderer->frames_since_init * 0.00f, renderer->frames_since_init * 0.01f, renderer->frames_since_init * 0.00f, rotation);
+	mat4_mul(model, rotation, model);
+
+	f32 perspective[16];
+	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 0.05f, 100.0f, perspective);
+	f32 view[16] = {};
+	mat4_identity(view);
+	float up[3] = { 0.0f, 1.0f, 0.0f };
+	float cam_pos[3] = { 5.0f, 5.0f, 0.0f };
+	mat4_lookat(cam_pos, pos, up, view);
+
+	mat4_mul(perspective, view, projection);
+
+	renderer->host_buffers[0].data = (u8*)projection;
 }
