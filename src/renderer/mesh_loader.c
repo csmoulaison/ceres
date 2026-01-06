@@ -6,8 +6,14 @@
 #define LOAD_TEXTURE_UVS 4096
 
 typedef struct {
-	f32 position[3];
-	f32 texture_uv[2];
+	union {
+		struct {
+			f32 position[3];
+			f32 normal[3];
+			f32 texture_uv[2];
+		};
+		f32 data[8];
+	};
 } MeshVertex;
 
 typedef struct
@@ -36,6 +42,7 @@ void load_mesh(MeshData* data, char* mesh_filename)
 	struct {
 		u32 vertex_index;
 		u32 texture_uv_index;
+		u32 normal_index;
 	} tmp_face_elements[32000];
 	u32 tmp_face_elements_len = 0;
 
@@ -61,13 +68,13 @@ void load_mesh(MeshData* data, char* mesh_filename)
 			i32 values_len = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", 
 				&tmp_face_elements[tmp_face_elements_len + 0].vertex_index, 
 				&tmp_face_elements[tmp_face_elements_len + 0].texture_uv_index, 
-				&throwaways[0], 
+				&tmp_face_elements[tmp_face_elements_len + 0].normal_index, 
 				&tmp_face_elements[tmp_face_elements_len + 1].vertex_index, 
 				&tmp_face_elements[tmp_face_elements_len + 1].texture_uv_index, 
-				&throwaways[1], 
+				&tmp_face_elements[tmp_face_elements_len + 1].normal_index, 
 				&tmp_face_elements[tmp_face_elements_len + 2].vertex_index, 
 				&tmp_face_elements[tmp_face_elements_len + 2].texture_uv_index, 
-				&throwaways[2]);
+				&tmp_face_elements[tmp_face_elements_len + 2].normal_index);
 
 			if(values_len != 9) { panic(); }
 			tmp_face_elements_len += 3;
@@ -81,6 +88,9 @@ void load_mesh(MeshData* data, char* mesh_filename)
 		data->indices[element_index] = index;
 		data->vertices[index].texture_uv[0] = tmp_texture_uvs[tmp_face_elements[element_index].texture_uv_index - 1][0];
 		data->vertices[index].texture_uv[1] = tmp_texture_uvs[tmp_face_elements[element_index].texture_uv_index - 1][1];
+		data->vertices[index].normal[0] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][0];
+		data->vertices[index].normal[1] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][1];
+		data->vertices[index].normal[2] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][2];
 		data->indices_len++;
 	}
 }

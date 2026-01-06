@@ -67,10 +67,10 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 	OpenGl* gl = (OpenGl*)renderer->backend;
 
 	if(gl3wInit() != 0) { panic(); }
-	glEnable(GL_BLEND);
-	glDepthFunc(GL_LEQUAL);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_DEPTH_TEST);
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
 
 	if(data->programs_len > 0)
 		gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * data->programs_len);
@@ -109,22 +109,24 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		u32 vbo;
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * mesh_data->vertices_len * mesh_data->vertex_size, mesh_data->vertex_data, GL_STATIC_DRAW);
-		glEnableVertexAttribArray(0);
-		// NOW: NULL instead of '(void*)0' works just as well here?
-		glVertexAttribPointer(0, mesh_data->vertex_size, GL_FLOAT, GL_FALSE, sizeof(f32) * mesh_data->vertex_size, (void*)0);
+		u32 vertex_size = 0;
+		for(i32 i = 0; i < mesh_data->vertex_attributes_len; i++) {
+			vertex_size += mesh_data->vertex_attribute_sizes[i];
+		}
+		u32 cur_offset = 0;
+		for(i32 i = 0; i < mesh_data->vertex_attributes_len; i++) {
+			u32 attribute_size = mesh_data->vertex_attribute_sizes[i];
+			glVertexAttribPointer(i, attribute_size, GL_FLOAT, GL_FALSE, sizeof(f32) * vertex_size, (void*)(cur_offset * sizeof(f32))); 
+			glEnableVertexAttribArray(i);
+			cur_offset += attribute_size;
+		}
+		glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * mesh_data->vertices_len * vertex_size, mesh_data->vertex_data, GL_STATIC_DRAW);
 
 		glGenBuffers(1, &mesh->ebo);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
 		mesh->indices_len = mesh_data->indices_len;
-		printf("indices len %u\n", mesh_data->indices_len);
 
-		for(i32 i = 0; i < data->meshes[0].indices_len; i++) {
-			//printf("i%i:%u ", i, mesh_data->indices[i]);
-		}
-		printf("\n");
-		
 		renderer->meshes[renderer->meshes_len] = renderer->meshes_len;
 		renderer->meshes_len++;
 		mesh_data = mesh_data->next;

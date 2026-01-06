@@ -1,6 +1,8 @@
 #ifndef renderer_h_INCLUDED
 #define renderer_h_INCLUDED
 
+#define RENDER_MAX_VERTEX_ATTRIBUTES 16
+
 typedef enum {
 	GRAPHICS_API_OPENGL
 } GraphicsApi;
@@ -103,7 +105,8 @@ typedef struct RenderMeshInitData {
 	struct RenderMeshInitData* next;
 
 	f32* vertex_data;
-	u32 vertex_size;
+	u32 vertex_attribute_sizes[RENDER_MAX_VERTEX_ATTRIBUTES];
+	u32 vertex_attributes_len;
 	u32 vertices_len;
 
 	u32* indices;

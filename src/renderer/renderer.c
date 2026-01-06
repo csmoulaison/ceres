@@ -80,24 +80,30 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	load_mesh(&mesh_data, "meshes/ship.obj");
 	
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
-	data->meshes[0].vertex_size = 3;
-	data->meshes[0].vertices_len = mesh_data.vertices_len;
-	data->meshes[0].indices_len = mesh_data.indices_len;
-	data->meshes[0].vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * data->meshes[0].vertex_size * data->meshes[0].vertices_len);
-	data->meshes[0].indices = (u32*)arena_alloc(init_arena, sizeof(u32) * data->meshes[0].indices_len);
-	for(i32 i = 0; i < data->meshes[0].vertex_size * data->meshes[0].vertices_len; i++) {
-		data->meshes[0].vertex_data[i] = mesh_data.vertices[i / 3].position[i % 3];
+	RenderMeshInitData* mesh = data->meshes;
+	mesh->vertex_attributes_len = 2;
+	mesh->vertex_attribute_sizes[0] = 3;
+	mesh->vertex_attribute_sizes[1] = 3;
+	u32 total_vertex_size = 6;
+
+	mesh->vertices_len = mesh_data.vertices_len;
+	mesh->indices_len = mesh_data.indices_len;
+
+	mesh->vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * total_vertex_size * mesh->vertices_len);
+	for(i32 i = 0; i < total_vertex_size * mesh->vertices_len; i++) {
+		mesh->vertex_data[i] = mesh_data.vertices[i / total_vertex_size].data[i % total_vertex_size];
 	}
-	for(i32 i = 0; i < data->meshes[0].indices_len; i++) {
-		data->meshes[0].indices[i] = mesh_data.indices[i];
+	mesh->indices = (u32*)arena_alloc(init_arena, sizeof(u32) * mesh->indices_len);
+	for(i32 i = 0; i < mesh->indices_len; i++) {
+		mesh->indices[i] = mesh_data.indices[i];
 	}
-	data->meshes[0].next = NULL;
+	mesh->next = NULL;
 
 	data->textures_len = 0;
 
 	data->ubos_len = 1;
 	data->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * data->ubos_len);
-	data->ubos[0].size = sizeof(f32) * 32;
+	data->ubos[0].size = sizeof(f32) * 36;
 	data->ubos[0].binding = 0;
 	data->ubos[0].next = NULL;
 
@@ -151,25 +157,30 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform) {
 	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
 
 	// Prepare the host data buffers.
-	f32* ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 32);
+	f32* ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 36);
 	f32* projection = &ubo[0];
 	f32* model = &ubo[16];
+	f32* camera_position = &ubo[32];
 
 	f32 pos[3] = { 0.0f, 0.0f, 0.0f };
 	mat4_translation(pos, model);
 	f32 rotation[16];
-	mat4_rotation(renderer->frames_since_init * 0.00f, renderer->frames_since_init * 0.01f, renderer->frames_since_init * 0.00f, rotation);
+	mat4_rotation(renderer->frames_since_init * 0.00f, renderer->frames_since_init * 0.025f, renderer->frames_since_init * 0.00f, rotation);
 	mat4_mul(model, rotation, model);
 
 	f32 perspective[16];
-	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 0.05f, 100.0f, perspective);
+	mat4_perspective(radians_from_degrees(90.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
 	f32 view[16] = {};
 	mat4_identity(view);
 	float up[3] = { 0.0f, 1.0f, 0.0f };
-	float cam_pos[3] = { 5.0f, 5.0f, 0.0f };
+	float cam_pos[3] = { 2.5f, 2.5f, 0.0f };
 	mat4_lookat(cam_pos, pos, up, view);
 
 	mat4_mul(perspective, view, projection);
+
+	camera_position[0] = cam_pos[0];
+	camera_position[1] = cam_pos[1];
+	camera_position[2] = cam_pos[2];
 
 	renderer->host_buffers[0].data = (u8*)projection;
 }
