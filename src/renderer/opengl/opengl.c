@@ -7,7 +7,8 @@ typedef struct {
 
 typedef struct {
 	u32 vao;
-	u32 vertices_len;
+	u32 ebo;
+	u32 indices_len;
 } GlMesh;
 
 typedef struct {
@@ -60,37 +61,17 @@ u32 gl_compile_shader(const char* filename, GLenum type) {
 }
 
 Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) {
-	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
-	renderer->frames_since_init = 0;
+	Renderer* renderer = render_pre_init(data, render_arena);
 
-	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
-	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
-	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
-
-	printf("allocating opengl\n");
 	renderer->backend = arena_alloc(&renderer->persistent_arena, sizeof(OpenGl));
 	OpenGl* gl = (OpenGl*)renderer->backend;
 
 	if(gl3wInit() != 0) { panic(); }
-
 	glEnable(GL_BLEND);
 	glDepthFunc(GL_LEQUAL);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_DEPTH_TEST);
 
-	printf("allocating renderer resources\n");
-	if(data->programs_len > 0)
-		renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
-	if(data->meshes_len > 0)
-		renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
-	if(data->textures_len > 0)
-		renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
-	if(data->ubos_len > 0)
-		renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
-	if(data->host_buffers_len > 0)
-		renderer->host_buffers = (RenderHostBuffer*)arena_alloc(&renderer->persistent_arena, sizeof(RenderHostBuffer) * data->host_buffers_len);
-
-	printf("allocating gl resources\n");
 	if(data->programs_len > 0)
 		gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * data->programs_len);
 	if(data->meshes_len > 0)
@@ -99,8 +80,6 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		gl->textures = (GlTexture*)arena_alloc(&renderer->persistent_arena, sizeof(GlTexture) * data->textures_len);
 	if(data->ubos_len > 0)
 		gl->ubos = (GlUbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlUbo) * data->ubos_len);
-
-	printf("resources allocated\n");
 
 	RenderProgramInitData* program_data = data->programs;
 	while(program_data != NULL) {
@@ -126,7 +105,6 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		GlMesh* mesh = &gl->meshes[renderer->meshes_len];
 		glGenVertexArrays(1, &mesh->vao);
 		glBindVertexArray(mesh->vao);
-		mesh->vertices_len = mesh_data->vertices_len;
 
 		u32 vbo;
 		glGenBuffers(1, &vbo);
@@ -135,6 +113,17 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glEnableVertexAttribArray(0);
 		// NOW: NULL instead of '(void*)0' works just as well here?
 		glVertexAttribPointer(0, mesh_data->vertex_size, GL_FLOAT, GL_FALSE, sizeof(f32) * mesh_data->vertex_size, (void*)0);
+
+		glGenBuffers(1, &mesh->ebo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
+		mesh->indices_len = mesh_data->indices_len;
+		printf("indices len %u\n", mesh_data->indices_len);
+
+		for(i32 i = 0; i < data->meshes[0].indices_len; i++) {
+			//printf("i%i:%u ", i, mesh_data->indices[i]);
+		}
+		printf("\n");
 		
 		renderer->meshes[renderer->meshes_len] = renderer->meshes_len;
 		renderer->meshes_len++;
@@ -232,7 +221,8 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				RenderCommandDrawMesh* data = (RenderCommandDrawMesh*)cmd->data;
 				GlMesh* mesh = &gl->meshes[data->mesh];
 				glBindVertexArray(mesh->vao);
-				glDrawArrays(GL_TRIANGLES, 0, mesh->vertices_len);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+				glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
 			} break;
 			default: break;
 		}

@@ -1,4 +1,5 @@
 #include "renderer/renderer.h"
+#include "renderer/mesh_loader.c"
 
 #define RENDER_NO_INTERPOLATION false
 
@@ -75,12 +76,20 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->programs[0].next = NULL;
 
 	data->meshes_len = 1;
+	MeshData mesh_data;
+	load_mesh(&mesh_data, "meshes/ship.obj");
+	
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
 	data->meshes[0].vertex_size = 3;
-	data->meshes[0].vertices_len = 36;
+	data->meshes[0].vertices_len = mesh_data.vertices_len;
+	data->meshes[0].indices_len = mesh_data.indices_len;
 	data->meshes[0].vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * data->meshes[0].vertex_size * data->meshes[0].vertices_len);
-	for(i32 i = 0; i < RENDER_CUBE_VERTEX_DATA_LEN; i++) {
-		data->meshes[0].vertex_data[i] = cube_vertex_data[i];
+	data->meshes[0].indices = (u32*)arena_alloc(init_arena, sizeof(u32) * data->meshes[0].indices_len);
+	for(i32 i = 0; i < data->meshes[0].vertex_size * data->meshes[0].vertices_len; i++) {
+		data->meshes[0].vertex_data[i] = mesh_data.vertices[i / 3].position[i % 3];
+	}
+	for(i32 i = 0; i < data->meshes[0].indices_len; i++) {
+		data->meshes[0].indices[i] = mesh_data.indices[i];
 	}
 	data->meshes[0].next = NULL;
 
@@ -97,6 +106,28 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->host_buffers[0].next = NULL;
 
 	return data;
+}
+
+Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
+	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
+	renderer->frames_since_init = 0;
+
+	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
+	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
+	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
+
+	if(data->programs_len > 0)
+		renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
+	if(data->meshes_len > 0)
+		renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
+	if(data->textures_len > 0)
+		renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
+	if(data->ubos_len > 0)
+		renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
+	if(data->host_buffers_len > 0)
+		renderer->host_buffers = (RenderHostBuffer*)arena_alloc(&renderer->persistent_arena, sizeof(RenderHostBuffer) * data->host_buffers_len);
+
+	return renderer;
 }
 
 void render_prepare_frame_data(Renderer* renderer, Platform* platform) {

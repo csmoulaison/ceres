@@ -101,9 +101,13 @@ typedef struct RenderProgramInitData {
 
 typedef struct RenderMeshInitData {
 	struct RenderMeshInitData* next;
+
 	f32* vertex_data;
 	u32 vertex_size;
 	u32 vertices_len;
+
+	u32* indices;
+	u32 indices_len;
 } RenderMeshInitData;
 
 typedef struct RenderTextureInitData {
