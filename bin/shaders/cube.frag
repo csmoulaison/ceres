@@ -17,6 +17,6 @@ void main()
 	float diff = max(dot(norm, light_direction), 0.0f);
 	vec3 diffuse = diff * light_color;
 
-	vec3 result = diffuse * object_color;
+	vec3 result = (ambient + diffuse) * object_color;
 	frag_color = vec4(result, 1.0f);
 }

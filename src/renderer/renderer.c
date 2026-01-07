@@ -141,7 +141,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform) {
 	// TODO: Replace this with a data format.
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
-	RenderCommandClear clear = { .color = { 0.0f, 0.0f, 0.5f, 1.0f } };
+	RenderCommandClear clear = { .color = { 0.1f, 0.1f, 0.1f, 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
 	RenderCommandUseProgram use_program = { .program = 0 };
