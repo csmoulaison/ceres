@@ -24,6 +24,7 @@ typedef struct {
 	bool viewport_update_requested;
 	i32 window_width;
 	i32 window_height;
+	u64 frames_since_init;
 
 	PlatformEvent* events;
 	u32 input_buttons_len;

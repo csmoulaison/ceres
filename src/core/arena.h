@@ -13,7 +13,7 @@ typedef struct {
 	char* data;
 	bool initialized;
 #if DEBUG_ARENA
-	char debug_name[64];
+	char debug_name[32];
 #endif
 } Arena;
 

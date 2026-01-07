@@ -1,9 +1,11 @@
 // NOW: We are temporarily writing this into the engine to get it working, then
 // moving it out into its own executable as part of the build step.
 
-#define LOAD_VERTICES 4096
-#define LOAD_INDICES 4096
-#define LOAD_TEXTURE_UVS 4096
+#define LOAD_VERTICES 500000
+#define LOAD_INDICES 500000
+#define TMP_LOAD_UVS 500000
+#define TMP_LOAD_NORMALS 500000
+#define TMP_LOAD_FACE_ELEMENTS 500000
 
 typedef struct {
 	union {
@@ -24,26 +26,32 @@ typedef struct
 	u32 indices_len;
 } MeshData;
 
-void load_mesh(MeshData* data, char* mesh_filename)
+typedef struct {
+	u32 vertex_index;
+	u32 texture_uv_index;
+	u32 normal_index;
+} MeshFaceElement;
+
+typedef struct {
+	f32 uv[2];
+} TmpUv;
+
+typedef struct {
+	f32 normal[3];
+} TmpNormal;
+
+void load_mesh(MeshData* data, char* mesh_filename, Arena* init_arena)
 {
 	FILE* file = fopen(mesh_filename, "r");
 	if(file == NULL) { panic(); }
 
-	// The tricky thing about .obj is texture UVs being defined per index buffer vertex, as opposted
-	// to being defined per vertex buffer vertex, you see.
-	// 
-	// To fix this, we'll apply the proper UVs and whatnot to the vertex buffer vertices retroactively,
-	// as we are iterating our way through the faces.
-	f32 tmp_texture_uvs[LOAD_TEXTURE_UVS][2];
-	u32 tmp_texture_uvs_len = 0;
+	TmpUv* tmp_uvs = (TmpUv*)arena_alloc(init_arena, sizeof(TmpUv) * TMP_LOAD_UVS);
+	u32 tmp_uvs_len = 0;
 
-	// Note that tmp_face_elements do not correspond with "f" records, but rather with one of the
-	// elements in those records.
-	struct {
-		u32 vertex_index;
-		u32 texture_uv_index;
-		u32 normal_index;
-	} tmp_face_elements[32000];
+	TmpNormal* tmp_normals = (TmpNormal*)arena_alloc(init_arena, sizeof(TmpNormal) * TMP_LOAD_NORMALS);
+	u32 tmp_normals_len = 0;
+
+	MeshFaceElement* tmp_face_elements = (MeshFaceElement*)arena_alloc(init_arena, sizeof(MeshFaceElement) * TMP_LOAD_FACE_ELEMENTS);
 	u32 tmp_face_elements_len = 0;
 
 	data->vertices_len = 0;
@@ -59,10 +67,14 @@ void load_mesh(MeshData* data, char* mesh_filename)
 			fscanf(file, "%f %f %f", &pos[0], &pos[1], &pos[2]);
 			data->vertices_len++;
 		} else if(strcmp(keyword, "vt") == 0) {
-			f32* tmp_texture_uv = tmp_texture_uvs[tmp_texture_uvs_len];
-			fscanf(file, "%f %f", &tmp_texture_uv[0], &tmp_texture_uv[1]);
-			tmp_texture_uv[1] = 1 - tmp_texture_uv[1];
-			tmp_texture_uvs_len++;
+			TmpUv* tmp_uv = &tmp_uvs[tmp_uvs_len];
+			fscanf(file, "%f %f", &tmp_uv->uv[0], &tmp_uv->uv[1]);
+			tmp_uv->uv[1] = 1 - tmp_uv->uv[0];
+			tmp_uvs_len++;
+		} else if(strcmp(keyword, "vn") == 0) {
+			TmpNormal* tmp_normal = &tmp_normals[tmp_normals_len];
+			fscanf(file, "%f %f %f", &tmp_normal->normal[0], &tmp_normal->normal[1], &tmp_normal->normal[2]);
+			tmp_normals_len++;
 		} else if(strcmp(keyword, "f") == 0) {
 			i32 throwaways[3];
 			i32 values_len = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", 
@@ -84,13 +96,17 @@ void load_mesh(MeshData* data, char* mesh_filename)
 
 	data->indices_len  = 0;
 	for(u32 element_index = 0; element_index < tmp_face_elements_len; element_index++) {
-		u32 index = tmp_face_elements[element_index].vertex_index - 1;
+		MeshFaceElement* elem = &tmp_face_elements[element_index];
+		u32 index = elem->vertex_index - 1;
 		data->indices[element_index] = index;
-		data->vertices[index].texture_uv[0] = tmp_texture_uvs[tmp_face_elements[element_index].texture_uv_index - 1][0];
-		data->vertices[index].texture_uv[1] = tmp_texture_uvs[tmp_face_elements[element_index].texture_uv_index - 1][1];
-		data->vertices[index].normal[0] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][0];
-		data->vertices[index].normal[1] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][1];
-		data->vertices[index].normal[2] = tmp_texture_uvs[tmp_face_elements[element_index].normal_index - 1][2];
+
+		MeshVertex* vert = &data->vertices[index];
+		vert->texture_uv[0] = tmp_uvs[elem->texture_uv_index - 1].uv[0];
+		vert->texture_uv[1] = tmp_uvs[elem->texture_uv_index - 1].uv[1];
+
+		vert->normal[0] = tmp_normals[elem->normal_index - 1].normal[0];
+		vert->normal[1] = tmp_normals[elem->normal_index - 1].normal[1];
+		vert->normal[2] = tmp_normals[elem->normal_index - 1].normal[2];
 		data->indices_len++;
 	}
 }

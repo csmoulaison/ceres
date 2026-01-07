@@ -76,8 +76,8 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->programs[0].next = NULL;
 
 	data->meshes_len = 1;
-	MeshData mesh_data;
-	load_mesh(&mesh_data, "meshes/ship.obj");
+	MeshData* mesh_data = (MeshData*)arena_alloc(init_arena, sizeof(MeshData));
+	load_mesh(mesh_data, "meshes/ship.obj", init_arena);
 	
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
 	RenderMeshInitData* mesh = data->meshes;
@@ -86,16 +86,16 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	mesh->vertex_attribute_sizes[1] = 3;
 	u32 total_vertex_size = 6;
 
-	mesh->vertices_len = mesh_data.vertices_len;
-	mesh->indices_len = mesh_data.indices_len;
+	mesh->vertices_len = mesh_data->vertices_len;
+	mesh->indices_len = mesh_data->indices_len;
 
 	mesh->vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * total_vertex_size * mesh->vertices_len);
 	for(i32 i = 0; i < total_vertex_size * mesh->vertices_len; i++) {
-		mesh->vertex_data[i] = mesh_data.vertices[i / total_vertex_size].data[i % total_vertex_size];
+		mesh->vertex_data[i] = mesh_data->vertices[i / total_vertex_size].data[i % total_vertex_size];
 	}
 	mesh->indices = (u32*)arena_alloc(init_arena, sizeof(u32) * mesh->indices_len);
 	for(i32 i = 0; i < mesh->indices_len; i++) {
-		mesh->indices[i] = mesh_data.indices[i];
+		mesh->indices[i] = mesh_data->indices[i];
 	}
 	mesh->next = NULL;
 

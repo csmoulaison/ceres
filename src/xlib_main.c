@@ -54,21 +54,26 @@ typedef struct {
 	Window window;
 } XlibContext;
 
+typedef struct {
+	Arena global;
+	Arena render;
+	Arena render_init;
+} MemoryArenas;
+
+void xlib_init(Platform* platform, Renderer* renderer, MemoryArenas* arenas) {
+}
+
 i32 main(i32 argc, char** argv) {
-	Arena global_arena;
-	arena_init(&global_arena, GLOBAL_ARENA_SIZE, NULL, "Global");
+	MemoryArenas arenas;
+	arena_init(&arenas.global, GLOBAL_ARENA_SIZE, NULL, "Global");
+	arena_init(&arenas.render, RENDER_ARENA_SIZE, &arenas.global, "Render");
+	arena_init(&arenas.render_init, RENDER_INIT_ARENA_SIZE, NULL, "RenderInit");
 
-	Arena render_arena;
-	arena_init(&render_arena, RENDER_ARENA_SIZE, &global_arena, "Render");
-
-	Arena render_init_arena;
-	arena_init(&render_init_arena, RENDER_INIT_ARENA_SIZE, NULL, "RenderInit");
-
-	Platform* platform = (Platform*)arena_alloc(&global_arena, sizeof(Platform));
-	XlibContext* xlib = (XlibContext*)arena_alloc(&global_arena, sizeof(XlibContext));
+	Platform* platform = (Platform*)arena_alloc(&arenas.global, sizeof(Platform));
+	XlibContext* xlib = (XlibContext*)arena_alloc(&arenas.global, sizeof(XlibContext));
 	platform->backend = xlib;
 
-	xlib->display = XOpenDisplay(0);
+	xlib->display = XOpenDisplay("");
 	if(!xlib->display) { panic(); }
 
 	// GLX (OpenGL+Xlib) specific stuff. The control flow for this can't really be
@@ -197,10 +202,10 @@ i32 main(i32 argc, char** argv) {
 	}
 
 	// Initialize open GL before getting window attributes.
-	RenderInitData* init_data = render_load_init_data(&render_init_arena);
-	Renderer* renderer = gl_init(init_data, &render_arena, &render_init_arena);
+	RenderInitData* init_data = render_load_init_data(&arenas.render_init);
+	Renderer* renderer = gl_init(init_data, &arenas.render, &arenas.render_init);
 
-	arena_destroy(&render_init_arena);
+	arena_destroy(&arenas.render_init);
 
 	XWindowAttributes window_attributes;
 	XGetWindowAttributes(xlib->display, xlib->window, &window_attributes);
@@ -208,11 +213,11 @@ i32 main(i32 argc, char** argv) {
 	platform->window_height = window_attributes.height;
 
 	Arena game_arena;
-	arena_init(&game_arena, GAME_ARENA_SIZE, &global_arena, "Game");
+	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 
 	//Game* game = game_init(game_arena);
 
-	u64 frame_count = 0;
+	platform->frames_since_init = 0;
 	bool quit = false;
 	while(!quit) {
 		while(XPending(xlib->display)) {
@@ -242,7 +247,7 @@ i32 main(i32 argc, char** argv) {
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);
-		frame_count++;
+		platform->frames_since_init++;
 	}
 
 	return 0;

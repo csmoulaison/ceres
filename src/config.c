@@ -1,14 +1,14 @@
 #define PROGRAM_NAME "Shiptastic"
 
 // TODO: Check on the actual usage of these.
-#define GLOBAL_ARENA_SIZE MEGABYTE * 256
+#define GLOBAL_ARENA_SIZE MEGABYTE * 64
 
 #define RENDER_ARENA_SIZE MEGABYTE * 16
 #define RENDER_PERSISTENT_ARENA_SIZE MEGABYTE * 4
 #define RENDER_VIEWPORT_ARENA_SIZE MEGABYTE * 4
 #define RENDER_FRAME_ARENA_SIZE MEGABYTE * 4
 // The init arena is a separate allocation from the global arena.
-#define RENDER_INIT_ARENA_SIZE MEGABYTE * 16
+#define RENDER_INIT_ARENA_SIZE MEGABYTE * 128
 
 #define GAME_ARENA_SIZE MEGABYTE * 24
 #define GAME_PERSISTENT_ARENA_SIZE MEGABYTE
