@@ -219,7 +219,7 @@ void gl_update(Renderer* renderer, Platform* platform) {
 
 				glBindBuffer(GL_UNIFORM_BUFFER, ubo->id);
 				void* mapped_buffer = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-				memcpy(mapped_buffer, host_buffer->data, ubo->size);
+				memcpy(mapped_buffer, host_buffer->data + data->host_buffer_offset, ubo->size);
 				glUnmapBuffer(GL_UNIFORM_BUFFER);
 			} break;
 			case RENDER_COMMAND_DRAW_MESH: {

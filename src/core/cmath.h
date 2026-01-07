@@ -2,6 +2,7 @@
 #define cmath_h_INCLUDED
 
 // Vectors
+void v2_normalize(f32* v, f32* res);
 void v3_normalize(f32* v, f32* res);
 void v3_cross(f32* a, f32* b, f32* res);
 f32 v3_dot(f32* a, f32* b);
@@ -21,6 +22,12 @@ void quat_mult(f32* r, f32* s, f32* res);
 void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
+
+void v2_normalize(f32* v, f32* res) {
+	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]));
+	res[0] = v[0] / mag;
+	res[1] = v[1] / mag;
+}
 
 void v3_normalize(f32* v, f32* res) {
 	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));

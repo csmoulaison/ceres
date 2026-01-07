@@ -56,7 +56,7 @@ typedef struct {
 typedef struct {
 	RenderUbo ubo;
 	u32 host_buffer_index;
-	u64 host_offset;
+	u64 host_buffer_offset;
 } RenderCommandBufferUboData;
 
 typedef struct {

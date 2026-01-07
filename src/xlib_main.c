@@ -58,6 +58,7 @@ input mid loop.
 #include "platform/platform.h"
 #include "renderer/renderer.c"
 #include "renderer/opengl/opengl.c"
+#include "game.c"
 
 #include <GL/glx.h>
 typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
@@ -228,10 +229,16 @@ i32 main(i32 argc, char** argv) {
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 
-	//Game* game = game_init(game_arena);
+	Game* game = game_init(&game_arena);
 
 	platform->frames_since_init = 0;
 	bool quit = false;
+
+	
+	bool up = false;
+	bool down = false;
+	bool left = false;
+	bool right = false;
 	while(!quit) {
 		while(XPending(xlib->display)) {
 			XEvent event;
@@ -250,13 +257,33 @@ i32 main(i32 argc, char** argv) {
 				case KeyPress: {
 					if(XLookupKeysym(&(event.xkey), 0) == XK_Escape) {
 						quit = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+						up = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+						down = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
+						left = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
+						right = true;
+					}
+				} break;
+				case KeyRelease: {
+					if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+						up = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+						down = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
+						left = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
+						right = false;
 					}
 				} break;
 				default: break;
 			}
 		}
 
-		render_prepare_frame_data(renderer, platform);
+		game_update(game, up, down, left, right, 0.02f);
+		render_prepare_frame_data(renderer, platform, game->ship_position, game->ship_direction);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);
