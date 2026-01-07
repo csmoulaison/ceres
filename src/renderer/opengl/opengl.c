@@ -9,6 +9,7 @@ typedef struct {
 	u32 vao;
 	u32 ebo;
 	u32 indices_len;
+	bool flat_shading;
 } GlMesh;
 
 typedef struct {
@@ -127,6 +128,7 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
 		mesh->indices_len = mesh_data->indices_len;
+		mesh->flat_shading = mesh_data->flat_shading;
 
 		renderer->meshes[renderer->meshes_len] = renderer->meshes_len;
 		renderer->meshes_len++;
@@ -225,7 +227,11 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				GlMesh* mesh = &gl->meshes[data->mesh];
 				glBindVertexArray(mesh->vao);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-				glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
+				if(mesh->flat_shading) {
+					glDrawArrays(GL_TRIANGLES, 0, mesh->indices_len);
+				} else {
+					glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
+				}
 			} break;
 			default: break;
 		}

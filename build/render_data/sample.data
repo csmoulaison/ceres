@@ -1,0 +1,30 @@
+program mesh mesh.vert mesh.frag
+
+mesh ship ship.obj
+mesh floor floor.obj
+
+texture ship ship.bmp
+texture floor floor.bmp
+
+ubo model_instance
+	mat4 model
+
+ubo model_constant
+	mat4 projection
+
+entity world
+	mat4 projection
+
+entity model
+	mat4 model_projection
+	entity model
+
+task main
+	bind program mesh
+	bind ubo model_constant
+
+	update entity world
+	update list model
+
+	for model_instance
+		draw_arrays

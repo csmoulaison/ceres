@@ -31,4 +31,3 @@ typedef struct {
 	u8 input_button_states[PLATFORM_MAX_BUTTONS];
 	i16 input_keycode_to_button_lookup[PLATFORM_INPUT_KEYCODE_TO_BUTTON_LOOKUP_LEN];
 } Platform;
-

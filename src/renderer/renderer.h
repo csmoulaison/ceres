@@ -111,6 +111,8 @@ typedef struct RenderMeshInitData {
 
 	u32* indices;
 	u32 indices_len;
+
+	bool flat_shading;
 } RenderMeshInitData;
 
 typedef struct RenderTextureInitData {

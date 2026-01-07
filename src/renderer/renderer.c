@@ -77,13 +77,14 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 	data->meshes_len = 1;
 	MeshData* mesh_data = (MeshData*)arena_alloc(init_arena, sizeof(MeshData));
-	load_mesh(mesh_data, "meshes/ship.obj", init_arena);
+	load_mesh(mesh_data, "meshes/ship.obj", init_arena, true);
 	
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
 	RenderMeshInitData* mesh = data->meshes;
 	mesh->vertex_attributes_len = 2;
 	mesh->vertex_attribute_sizes[0] = 3;
 	mesh->vertex_attribute_sizes[1] = 3;
+	mesh->flat_shading = mesh_data->flat_shading;
 	u32 total_vertex_size = 6;
 
 	mesh->vertices_len = mesh_data->vertices_len;

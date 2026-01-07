@@ -1,41 +1,54 @@
 /*
-  
-Here we are, back in C.  
 
-We want to make a few changes relative to the previous project:
-- The platform layer becomes primal once more. It controls the top-level
-  control flow. Anything which is shared between the platforms is called by both.
-	- The platform layer knows which rendering API's it has available, allowing it
-      to fall back if one fails or even expose this information/control to the game
-      layer so the player can select these things.
-    - This time, try to actually put loads of code in the actual renderer layer.
-    - Create a single platform struct that has all the things we need. If there
-      are things that might have swappable implementations (if even?) then hide
-      them behind a pointer.
+RENDERER
+Everything specific to a game, besides core capabilities which abstract those of
+the underlying APIs, should be put into a data format. There are certain places
+where this interacts with the game layer, such as literally everywhere. 
 
-- Set up everything we can think of to be data driven. Finally create yourself
-  an engine here. This means data driven rendering layer stuff, data driven input
-  config, DLL for game logic layer.
-  - If we don't have serialization/deserialization for these yet, just hardcode
-    data into a struct that will eventually be populated by a data file.
+Arbitrating how this works is going to be fairly key to a well functioning 
+system. The quintessential example is how to structure the rendering of entities
+which have arbitrary meshes/textures/programs. 
 
-- Write subsystems in small chunks and do them well. First do a quick run, then
-  make them clean and good.
-  - Platform layer:
-	- Windowing
-	- Renderer
-	- Audio
-	- Network
-	- Time
-	- Input
+One easy way out of all of this trouble would be to have the host program be 
+able to register to specific callback points where things like buffering data 
+can be handled. This is pretty fucked, though, as it would necessitate, for 
+instance, that each individual entity type be given a different callback to 
+bind/buffer all of its particular resources in advance of the draw call.
 
-- Input system should just basically abstract the event loop. Pass the events
-  through if they've been registered and allow the game layer to process that
-  for gameplay. Game logic code should never just be asking the platform about
-  input mid loop.
+The key point here is that binding programs, meshes, and textures is a task
+which is common to all, or the great majority, of renderable entities, and as
+such, the concept of a renderable entity ought to make its way into the data 
+formats for the renderer.
 
-- Build system from executable file bootstrapped with nothing more than a call 
-  to "gcc build.c -o build"
+Let's imagine now that we are designing a render graph for this spaceship game.
+We will need to define:
+
+	- A program for rendering textured meshes, along with lighting information
+	- Ubos and other such buffers
+	- A set of meshes/textures, and the association between them and the program
+		(an entity type)
+
+Really, the primal subject here is entities, which may or may not be game 
+objects in the way we think of them, with a transform and such. Really, what we
+are dealing with in the general case is the following:
+
+	- Graph
+		- TaskIds[]: references the tasks used
+	- EntityTypes[]: some collection of data, i.e. mesh/programs/etc
+	- Tasks[]: i.e. render meshes, do shadow maps, idk, etc.
+		- EntityIds[]: references entity types
+		- ConstantData: constant to all the instances in the task
+			(THESE two ^ are written to by the host program)
+	- Resources // referencable by entities and constant data
+		- Meshes[]
+		- Textures[]
+		- Buffers[]
+
+INPUT  
+Input system should just basically abstract the event loop. Pass the events
+through if they've been registered and allow the game layer to process that
+for gameplay. Game logic code should never just be asking the platform about
+input mid loop.
 
 */
 
