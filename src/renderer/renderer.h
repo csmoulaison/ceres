@@ -2,18 +2,22 @@
 #define renderer_h_INCLUDED
 
 #define RENDER_MAX_VERTEX_ATTRIBUTES 16
+#define RENDER_MAX_HOST_BUFFERS 32
+
+#define RENDER_WORLD_UBO_BUFFER 0
+#define RENDER_INSTANCE_UBO_BUFFER 1
 
 typedef enum {
 	GRAPHICS_API_OPENGL
 } GraphicsApi;
 
 // Renderer (not backend) side references to data
-typedef u32 RenderProgram;
-typedef u32 RenderMesh;
-typedef u32 RenderTexture;
-typedef u32 RenderUbo;
+typedef u8 RenderProgram;
+typedef u8 RenderMesh;
+typedef u8 RenderTexture;
+typedef u8 RenderUbo;
 typedef struct {
-	u32 id;
+	u8 id;
 	u8* data;
 } RenderHostBuffer;
 

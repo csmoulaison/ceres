@@ -1,5 +1,6 @@
 #include "renderer/renderer.h"
 #include "renderer/mesh_loader.c"
+#include "renderer/render_list.c"
 
 #define RENDER_NO_INTERPOLATION false
 
@@ -63,7 +64,6 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 		renderer->graph->tail = cmd;
 	}
 }
-
 
 // TODO: Replace this with a data format.
 RenderInitData* render_load_init_data(Arena* init_arena) {
@@ -163,8 +163,53 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 }
 
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship_position, f32 ship_direction) {
-	// Prepare the render graph.
-	// TODO: Replace this with a data format.
+	// World ubo
+	f32 target[3] = { 0.0f, 0.0f, 0.0f };
+	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
+	f32* ubo_projection = &world_ubo[0];
+	f32* ubo_camera_position = &world_ubo[16];
+
+	f32 perspective[16];
+	mat4_perspective(radians_from_degrees(90.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
+	f32 view[16] = {};
+	mat4_identity(view);
+	float up[3] = { 0.0f, 1.0f, 0.0f };
+	float cam_pos[3] = {3.5f, 8.5f, 0.0f };
+	mat4_lookat(cam_pos, target, up, view);
+
+	mat4_mul(perspective, view, ubo_projection);
+
+	ubo_camera_position[0] = cam_pos[0];
+	ubo_camera_position[1] = cam_pos[1];
+	ubo_camera_position[2] = cam_pos[2];
+
+	renderer->host_buffers[RENDER_WORLD_UBO_BUFFER].data = (u8*)world_ubo;
+
+	// Model ubo
+	i32 floor_instances = 1024;
+	f32* instance_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * (1 + floor_instances));
+	f32* model_ship = &instance_ubo[0];
+
+	f32 ship_pos[3] = { ship_position[0], 0.5f, ship_position[1] };
+	mat4_translation(ship_pos, model_ship);
+	f32 ship_rotation[16];
+	mat4_rotation(0.00f, ship_direction, 0.00f, ship_rotation);
+	mat4_mul(model_ship, ship_rotation, model_ship);
+
+	for(i32 i = 0; i < floor_instances; i++) {
+		f32* model_floor = &instance_ubo[16 + i * 16];
+		f32 x = -15.5f + (i % 32);
+		f32 z = -15.5f + (i / 32);
+		f32 floor_pos[3] = { x, 0.0f, z };
+		mat4_translation(floor_pos, model_floor);
+		f32 floor_rotation[16];
+		mat4_rotation(0.0f, 0.0f, 0.0f, floor_rotation);
+		mat4_mul(model_floor, floor_rotation, model_floor);
+	}
+
+	renderer->host_buffers[RENDER_INSTANCE_UBO_BUFFER].data = (u8*)instance_ubo;
+
+	// Render graph: This part will be driven by the data format.
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
 	RenderCommandClear clear = { .color = { 0.05f, 0.05f, 0.05f, 1.0f } };
@@ -190,7 +235,6 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh_ship, sizeof(draw_mesh_ship));
 
 	// Draw floor
-	i32 floor_instances = 1024;
 	for(i32 i = 0; i < floor_instances; i++) {
 		RenderCommandBufferUboData buffer_ubo_data_floor_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = 64 + i * 64 };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_floor_instance, sizeof(buffer_ubo_data_floor_instance));
@@ -198,51 +242,4 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 		RenderCommandDrawMesh draw_mesh_floor = { .mesh = 1 };
 		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh_floor, sizeof(draw_mesh_floor));
 	}
-
-	// Prepare the host data buffers.
-	f32 target[3] = { 0.0f, 0.0f, 0.0f };
-
-	// World ubo
-	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
-	f32* projection = &world_ubo[0];
-	f32* camera_position = &world_ubo[16];
-
-	f32 perspective[16];
-	mat4_perspective(radians_from_degrees(90.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
-	f32 view[16] = {};
-	mat4_identity(view);
-	float up[3] = { 0.0f, 1.0f, 0.0f };
-	float cam_pos[3] = {3.5f, 8.5f, 0.0f };
-	mat4_lookat(cam_pos, target, up, view);
-
-	mat4_mul(perspective, view, projection);
-
-	camera_position[0] = cam_pos[0];
-	camera_position[1] = cam_pos[1];
-	camera_position[2] = cam_pos[2];
-
-	renderer->host_buffers[0].data = (u8*)projection;
-
-	// Model ubo
-	f32* instance_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * (1 + floor_instances));
-	f32* model_ship = &instance_ubo[0];
-
-	f32 ship_pos[3] = { ship_position[0], 0.5f, ship_position[1] };
-	mat4_translation(ship_pos, model_ship);
-	f32 ship_rotation[16];
-	mat4_rotation(0.00f, ship_direction, 0.00f, ship_rotation);
-	mat4_mul(model_ship, ship_rotation, model_ship);
-
-	for(i32 i = 0; i < floor_instances; i++) {
-		f32* model_floor = &instance_ubo[16 + i * 16];
-		f32 x = -15.5f + (i % 32);
-		f32 z = -15.5f + (i / 32);
-		f32 floor_pos[3] = { x, 0.0f, z };
-		mat4_translation(floor_pos, model_floor);
-		f32 floor_rotation[16];
-		mat4_rotation(0.0f, 0.0f, 0.0f, floor_rotation);
-		mat4_mul(model_floor, floor_rotation, model_floor);
-	}
-
-	renderer->host_buffers[1].data = (u8*)instance_ubo;
 }

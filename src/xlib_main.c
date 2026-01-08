@@ -32,18 +32,6 @@ Really, the primal subject here is entities, which may or may not be game
 objects in the way we think of them, with a transform and such. Really, what we
 are dealing with in the general case is the following:
 
-	- Graph
-		- TaskIds[]: references the tasks used
-	- EntityTypes[]: some collection of data, i.e. mesh/programs/etc
-	- Tasks[]: i.e. render meshes, do shadow maps, idk, etc.
-		- EntityIds[]: references entity types
-		- ConstantData: constant to all the instances in the task
-			(THESE two ^ are written to by the host program)
-	- Resources // referencable by entities and constant data
-		- Meshes[]
-		- Textures[]
-		- Buffers[]
-
 INPUT  
 Input system should just basically abstract the event loop. Pass the events
 through if they've been registered and allow the game layer to process that
@@ -54,6 +42,7 @@ input mid loop.
 
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
+
 #include "config.c"
 #include "platform/platform.h"
 #include "renderer/renderer.c"
