@@ -84,18 +84,21 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 		load_mesh(mesh_data, mesh_filenames[i], init_arena, true);
 
 		RenderMeshInitData* mesh = &data->meshes[i];
-		mesh->vertex_attributes_len = 2;
+		mesh->flat_shading = mesh_data->flat_shading;
+
+		mesh->vertex_attributes_len = 3;
 		mesh->vertex_attribute_sizes[0] = 3;
 		mesh->vertex_attribute_sizes[1] = 3;
-		mesh->flat_shading = mesh_data->flat_shading;
-		u32 total_vertex_size = 6;
-		mesh->vertices_len = mesh_data->vertices_len;
-		mesh->indices_len = mesh_data->indices_len;
+		mesh->vertex_attribute_sizes[2] = 2;
+		u32 total_vertex_size = 8;
 
+		mesh->vertices_len = mesh_data->vertices_len;
 		mesh->vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * total_vertex_size * mesh->vertices_len);
 		for(i32 i = 0; i < total_vertex_size * mesh->vertices_len; i++) {
 			mesh->vertex_data[i] = mesh_data->vertices[i / total_vertex_size].data[i % total_vertex_size];
 		}
+
+		mesh->indices_len = mesh_data->indices_len;
 		mesh->indices = (u32*)arena_alloc(init_arena, sizeof(u32) * mesh->indices_len);
 		for(i32 i = 0; i < mesh->indices_len; i++) {
 			mesh->indices[i] = mesh_data->indices[i];
@@ -108,11 +111,35 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 		}
 	}
 
-	data->textures_len = 0;
+	data->textures_len = 2;
+	data->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * data->textures_len);
+	char* texture_filenames[2] = { "textures/ship.tex", "textures/metal.tex" };
+
+	for(i32 i = 0; i < data->textures_len; i++) {
+		FILE* file = fopen(texture_filenames[i], "r");
+		assert(file != NULL);
+		u32 dimensions[2];
+		fread(dimensions, sizeof(u32), 2, file);
+
+		RenderTextureInitData* texture = &data->textures[i];
+		texture->width = dimensions[0];
+		texture->height = dimensions[1];
+
+		u64 pixel_data_size = sizeof(32) * texture->width * texture->height;
+		texture->pixel_data = (u8*)arena_alloc(init_arena, pixel_data_size);
+		assert(fread(texture->pixel_data, pixel_data_size, 1, file) == 1);
+
+		fclose(file);
+
+		if(i == data->textures_len - 1) {
+			texture->next = NULL;
+		} else {
+			texture->next = &data->textures[i + 1];
+		}
+	}
 
 	data->ubos_len = 2;
 	data->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * data->ubos_len);
-
 	struct {
 		u64 size;
 		u32 binding;
@@ -164,7 +191,7 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship_position, f32 ship_direction) {
 	// World ubo
-	f32 target[3] = { 0.0f, 0.0f, 0.0f };
+	f32 target[3] = { ship_position[0], 0.0f, ship_position[1] };
 	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
 	f32* ubo_projection = &world_ubo[0];
 	f32* ubo_camera_position = &world_ubo[16];
@@ -174,7 +201,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	f32 view[16] = {};
 	mat4_identity(view);
 	float up[3] = { 0.0f, 1.0f, 0.0f };
-	float cam_pos[3] = {3.5f, 8.5f, 0.0f };
+	float cam_pos[3] = {ship_position[0] + 2.5f, 6.0f, ship_position[1] };
 	mat4_lookat(cam_pos, target, up, view);
 
 	mat4_mul(perspective, view, ubo_projection);
@@ -224,6 +251,9 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	RenderCommandUseUbo use_ubo_instance = { .ubo = 1 };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
+	RenderCommandUseTexture use_texture = { .texture = 0 };
+	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
+
 	// Draw ship
 	RenderCommandBufferUboData buffer_ubo_data_ship_world = { .ubo = 0, .host_buffer_index = 0, .host_buffer_offset = 0 };
 	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_ship_world, sizeof(buffer_ubo_data_ship_world));
@@ -235,6 +265,9 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh_ship, sizeof(draw_mesh_ship));
 
 	// Draw floor
+	RenderCommandUseTexture use_texture_floor = { .texture = 1 };
+	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_floor, sizeof(use_texture_floor));
+
 	for(i32 i = 0; i < floor_instances; i++) {
 		RenderCommandBufferUboData buffer_ubo_data_floor_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = 64 + i * 64 };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_floor_instance, sizeof(buffer_ubo_data_floor_instance));

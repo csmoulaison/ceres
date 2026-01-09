@@ -29,6 +29,7 @@ typedef enum {
 	RENDER_COMMAND_CLEAR,
 	RENDER_COMMAND_USE_PROGRAM,
 	RENDER_COMMAND_USE_UBO,
+	RENDER_COMMAND_USE_TEXTURE,
 	RENDER_COMMAND_BUFFER_UBO_DATA,
 	RENDER_COMMAND_DRAW_MESH
 } RenderCommandType;
@@ -56,6 +57,10 @@ typedef struct {
 typedef struct {
 	RenderUbo ubo;
 } RenderCommandUseUbo;
+
+typedef struct {
+	RenderTexture texture;
+} RenderCommandUseTexture;
 
 typedef struct {
 	RenderUbo ubo;
@@ -123,7 +128,7 @@ typedef struct RenderTextureInitData {
 	struct RenderTextureInitData* next;
 	u16 width;
 	u16 height;
-	u8* pixels;
+	u8* pixel_data;
 } RenderTextureInitData;
 
 typedef struct RenderUboInitData {

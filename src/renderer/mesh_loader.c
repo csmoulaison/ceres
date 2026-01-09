@@ -82,7 +82,7 @@ void load_mesh(MeshData* data, char* mesh_filename, Arena* init_arena, bool flat
 		} else if(strcmp(keyword, "vt") == 0) {
 			TmpUv* tmp_uv = &tmp_uvs[tmp_uvs_len];
 			fscanf(file, "%f %f", &tmp_uv->uv[0], &tmp_uv->uv[1]);
-			tmp_uv->uv[1] = 1 - tmp_uv->uv[0];
+			tmp_uv->uv[1] = 1 - tmp_uv->uv[1];
 			tmp_uvs_len++;
 		} else if(strcmp(keyword, "vn") == 0) {
 			TmpNormal* tmp_normal = &tmp_normals[tmp_normals_len];

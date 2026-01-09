@@ -23,17 +23,8 @@ void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
-f32 v2_magnitude(f32* v) {
-	return sqrt((v[0] * v[0]) + (v[1] * v[1]));
-}
-
 void v2_normalize(f32* v, f32* res) {
-	f32 mag = v2_magnitude(v);
-	if(mag == 0.0f) {
-		res[0] = 0.0f;
-		res[1] = 0.0f;
-		return;
-	}
+	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]));
 	res[0] = v[0] / mag;
 	res[1] = v[1] / mag;
 }

@@ -141,11 +141,13 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		GlTexture* texture = &gl->textures[renderer->textures_len];
 		glGenTextures(1, &texture->id);
 		glBindTexture(GL_TEXTURE_2D, texture->id);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, texture_data->width, texture_data->height, 0, GL_RED, GL_UNSIGNED_BYTE, texture_data->pixels);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		printf("tex w %u, h %u\n", texture_data->width, texture_data->height);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_data->width, texture_data->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data->pixel_data);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		renderer->textures[renderer->textures_len] = renderer->textures_len;
 		renderer->textures_len++;
@@ -210,6 +212,10 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				RenderCommandUseUbo* data = (RenderCommandUseUbo*)cmd->data;
 				GlUbo* ubo = &gl->ubos[data->ubo];
 				glBindBufferBase(GL_UNIFORM_BUFFER, ubo->binding, ubo->id);
+			} break;
+			case RENDER_COMMAND_USE_TEXTURE: {
+				RenderCommandUseTexture* data = (RenderCommandUseTexture*)cmd->data;
+				glBindTexture(GL_TEXTURE_2D, gl->textures[data->texture].id);
 			} break;
 			case RENDER_COMMAND_BUFFER_UBO_DATA: {
 				RenderCommandBufferUboData* data = (RenderCommandBufferUboData*)cmd->data;
