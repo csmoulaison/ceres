@@ -3,8 +3,7 @@ typedef struct {
 	f32 ship_position[2];
 	f32 ship_velocity[2];
 	f32 ship_rotation_velocity;
-	f32 camera_position[2];
-	f32 camera_lookahead_direction;
+	f32 camera_offset[2];
 } Game;
 
 Game* game_init(Arena* arena) {
@@ -16,9 +15,11 @@ Game* game_init(Arena* arena) {
 	game->ship_velocity[1] = 0.0f;
 	game->ship_rotation_velocity = 0.0f;
 
-	game->camera_position[0] = 0.0f;
-	game->camera_position[1] = 0.0f;
-	game->camera_lookahead_direction = game->ship_direction;
+	//game->camera_position[0] = 0.0f;
+	//game->camera_position[1] = 0.0f;
+	game->camera_offset[0] = 0.0f;
+	game->camera_offset[1] = 0.0f;
+	//game->camera_lookahead_direction = game->ship_direction;
 }
 
 f32 apply_friction(f32 v, f32 f, f32 dt) {
@@ -91,30 +92,31 @@ void game_update(Game* game, bool up, bool down, bool left, bool right, f32 dt) 
 		game->ship_velocity[1] = 0.0f;
 	}
 
-	f32 camera_lookahead = 5.0f;
+	f32 camera_lookahead = 4.0f;
 	f32 camera_target_position[2];
 
-	//camera_target_position[0] = game->ship_position[0] + direction_vector[0] * camera_lookahead;
-	//camera_target_position[1] = game->ship_position[1] + direction_vector[1] * camera_lookahead;
+	//f32 camera_direction_speed = 8.0f;
+	//game->camera_lookahead_direction = lerp(game->camera_lookahead_direction, game->ship_direction, camera_direction_speed * dt);
+	//v2_normalize(camera_direction_vector, camera_direction_vector);
+	//f32 camera_direction_vector[2];
+	//camera_direction_vector[0] = sin(game->camera_lookahead_direction);
+	//camera_direction_vector[1] = cos(game->camera_lookahead_direction);
 
-	f32 camera_direction_speed = 8.0f;
-	game->camera_lookahead_direction = lerp(game->camera_lookahead_direction, game->ship_direction, camera_direction_speed * dt);
-	f32 camera_direction_vector[2];
-	camera_direction_vector[0] = sin(game->camera_lookahead_direction);
-	camera_direction_vector[1] = cos(game->camera_lookahead_direction);
-	v2_normalize(camera_direction_vector, camera_direction_vector);
+	//camera_target_position[0] = game->ship_position[0] + camera_direction_vector[0] * camera_lookahead;
+	//camera_target_position[1] = game->ship_position[1] + camera_direction_vector[1] * camera_lookahead;
 
-	camera_target_position[0] = game->ship_position[0] + camera_direction_vector[0] * camera_lookahead;
-	camera_target_position[1] = game->ship_position[1] + camera_direction_vector[1] * camera_lookahead;
+	f32 camera_target_offset[2];
+	camera_target_offset[0] = direction_vector[0] * camera_lookahead;
+	camera_target_offset[1] = direction_vector[1] * camera_lookahead;
 
 	f32 camera_target_delta[2];	
-	f32 camera_delta_pronouncement = 2.0f;
-	camera_target_delta[0] = (camera_target_position[0] - game->camera_position[0]) * camera_delta_pronouncement;
-	camera_target_delta[1] = (camera_target_position[1] - game->camera_position[1]) * camera_delta_pronouncement;
+	f32 camera_delta_pronouncement = 1.0f;
+	camera_target_delta[0] = (camera_target_offset[0] - game->camera_offset[0]) * camera_delta_pronouncement;
+	camera_target_delta[1] = (camera_target_offset[1] - game->camera_offset[1]) * camera_delta_pronouncement;
 
-	f32 camera_speed_mod = 3.0f;
-	game->camera_position[0] += camera_target_delta[0] * camera_speed_mod * dt;
-	game->camera_position[1] += camera_target_delta[1] * camera_speed_mod * dt;
+	f32 camera_speed_mod = 2.0f;
+	game->camera_offset[0] += camera_target_delta[0] * camera_speed_mod * dt;
+	game->camera_offset[1] += camera_target_delta[1] * camera_speed_mod * dt;
 
 	game->ship_position[0] += game->ship_velocity[0] * dt;
 	game->ship_position[1] += game->ship_velocity[1] * dt;

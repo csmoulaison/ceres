@@ -1,6 +1,8 @@
 #ifndef cmath_h_INCLUDED
 #define cmath_h_INCLUDED
 
+// Numbers
+f32 clamp(f32 v, f32 min, f32 max);
 // Vectors
 void v2_normalize(f32* v, f32* res);
 void v3_normalize(f32* v, f32* res);
@@ -22,6 +24,12 @@ void quat_mult(f32* r, f32* s, f32* res);
 void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
+
+f32 clamp(f32 v, f32 min, f32 max) {
+	if(v < min) return min;
+	if(v > max) return max;
+	return v;
+}
 
 f32 v2_magnitude(f32* v) {
 	return sqrt((v[0] * v[0]) + (v[1] * v[1]));
@@ -203,36 +211,22 @@ void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	f32 siny = sin(y);
 	f32 sinz = sin(z);
 
-	f32 xrot[16];
-	f32 yrot[16];
-	f32 zrot[16];
-	mat4_identity(xrot);
-	mat4_identity(yrot);
-	mat4_identity(zrot);
-
-	xrot[0] = 1.0f;
-	xrot[5] = cosx;
-	xrot[6] = sinx;
-	xrot[9] = -sinx;
-	xrot[10] = cosx;
-
-	yrot[0] = cosy;
-	yrot[2] = -siny;
-	yrot[5] = 1.0f;
-	yrot[8] = siny;
-	yrot[10] = cosy;
-
-	zrot[0] = cosz;
-	zrot[2] = sinz;
-	zrot[5] = -sinz;
-	zrot[6] = cosz;
-	zrot[10] = 1.0f;
-
-	mat4_identity(res);
-	mat4_mul(res, yrot, res);
-	// NOW: this rotations not working. Why???
-	//mat4_mul(res, xrot, res);
-	//mat4_mul(res, zrot, res);
+    res[0] = cos(y) * cos(x);
+    res[1] = cos(z) * sin(x) + sin(z) * sin(y) * cos(x);
+    res[2] = sin(z) * sin(x) - cos(z) * sin(y) * cos(x);
+    res[3] = 0;
+    res[4] = -cos(y) * sin(x);
+    res[5] = cos(z)* cos(x) - sin(z)* sin(y) * sin(x);
+    res[6] = sin(z)* cos(x) + cos(z)* sin(y) * sin(x);
+    res[7] = 0;
+    res[8] = sin(y);
+    res[9] = -sin(z) * cos(y);
+    res[10] = cos(z) * cos(y);
+    res[11] = 0;
+    res[12] = 0;
+    res[13] = 0;
+    res[14] = 0;
+    res[15] = 1;
 }
 
 void mat4_from_quat(f32* q, f32* res) {
