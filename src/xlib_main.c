@@ -63,9 +63,6 @@ typedef struct {
 	Arena render_init;
 } MemoryArenas;
 
-void xlib_init(Platform* platform, Renderer* renderer, MemoryArenas* arenas) {
-}
-
 i32 main(i32 argc, char** argv) {
 	MemoryArenas arenas;
 	arena_init(&arenas.global, GLOBAL_ARENA_SIZE, NULL, "Global");
@@ -160,7 +157,6 @@ i32 main(i32 argc, char** argv) {
 	glXCreateContextAttribsARBProc glXCreateContextAttribsARB;
 	char* gl_extensions = (char*)glXQueryExtensionsString(xlib->display, DefaultScreen(xlib->display));
 	glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
-
 	const char* extension = "GLX_ARB_create_context";
 	char* start;
 	char* where;
@@ -223,7 +219,6 @@ i32 main(i32 argc, char** argv) {
 	platform->frames_since_init = 0;
 	bool quit = false;
 
-	
 	bool up = false;
 	bool down = false;
 	bool left = false;
@@ -276,7 +271,8 @@ i32 main(i32 argc, char** argv) {
 			game->ship_position, 
 			game->ship_direction, 
 			clamp(game->ship_rotation_velocity, -8.0f, 8.0f), 
-			game->camera_offset);
+			game->camera_offset,
+			game->camera_position);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);

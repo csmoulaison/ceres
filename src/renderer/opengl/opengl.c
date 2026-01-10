@@ -72,7 +72,7 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
-	glDisable(GL_CULL_FACE);
+	//glDisable(GL_CULL_FACE);
 
 	if(data->programs_len > 0)
 		gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * data->programs_len);

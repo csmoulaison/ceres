@@ -189,7 +189,7 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 	return renderer;
 }
 
-void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship_position, f32 ship_direction, f32 ship_tilt, f32* camera_offset) {
+void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship_position, f32 ship_direction, f32 ship_tilt, f32* camera_offset, f32* camera_position) {
 	// World ubo
 	f32 target[3] = { ship_position[0] + camera_offset[0], 0.0f, ship_position[1] + camera_offset[1] };
 	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
@@ -197,11 +197,11 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	f32* ubo_camera_position = &world_ubo[16];
 
 	f32 perspective[16];
-	mat4_perspective(radians_from_degrees(90.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
+	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
 	f32 view[16] = {};
 	mat4_identity(view);
 	float up[3] = { 0.0f, 1.0f, 0.0f };
-	float cam_pos[3] = { target[0] + 2.5f, 6.0f, target[2] };
+	float cam_pos[3] = { target[0] + 4.0f, 8.0f, target[2] };
 	mat4_lookat(cam_pos, target, up, view);
 
 	mat4_mul(perspective, view, ubo_projection);
