@@ -221,8 +221,10 @@ i32 main(i32 argc, char** argv) {
 
 	bool up = false;
 	bool down = false;
-	bool left = false;
-	bool right = false;
+	bool turn_left = false;
+	bool turn_right = false;
+	bool strafe_left = false;
+	bool strafe_right = false;
 	while(!quit) {
 		while(XPending(xlib->display)) {
 			XEvent event;
@@ -241,32 +243,40 @@ i32 main(i32 argc, char** argv) {
 				case KeyPress: {
 					if(XLookupKeysym(&(event.xkey), 0) == XK_Escape) {
 						quit = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
 						up = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
 						down = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
-						left = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
-						right = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
+						turn_left = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
+						turn_right = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
+						strafe_left = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
+						strafe_right = true;
 					}
 				} break;
 				case KeyRelease: {
-					if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+					if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
 						up = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
 						down = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
-						left = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
-						right = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
+						turn_left = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
+						turn_right = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
+						strafe_left = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
+						strafe_right = false;
 					}
 				} break;
 				default: break;
 			}
 		}
 
-		game_update(game, up, down, left, right, 0.02f);
+		game_update(game, up, down, turn_left, turn_right, strafe_left, strafe_right, 0.02f);
 		render_prepare_frame_data(renderer, platform, 
 			game->ship_position, 
 			game->ship_direction, 

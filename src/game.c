@@ -37,11 +37,11 @@ f32 apply_friction(f32 v, f32 f, f32 dt) {
 	return v;
 }
 
-void game_update(Game* game, bool up, bool down, bool left, bool right, f32 dt) {
+void game_update(Game* game, bool up, bool down, bool turn_left, bool turn_right, bool strafe_left, bool strafe_right, f32 dt) {
 	f32 rotate_speed = 32.0f;
-	if(left)
+	if(turn_left)
 		game->ship_rotation_velocity += rotate_speed * dt;
-	if(right)
+	if(turn_right)
 		game->ship_rotation_velocity -= rotate_speed * dt;
 
 	f32 rotate_max_speed = 12.0f;
@@ -70,6 +70,20 @@ void game_update(Game* game, bool up, bool down, bool left, bool right, f32 dt) 
 		f32 back_speed = 0.15f;
 		game->ship_velocity[0] -= direction_vector[0] * back_speed;
 		game->ship_velocity[1] -= direction_vector[1] * back_speed;
+	}
+
+	f32 side_vector[2];
+	side_vector[0] = -direction_vector[1];
+	side_vector[1] = direction_vector[0];
+
+	f32 strafe_speed = 0.3f;
+	if(strafe_left) {
+		game->ship_velocity[0] -= side_vector[0] * strafe_speed;
+		game->ship_velocity[1] -= side_vector[1] * strafe_speed;
+	}
+	if(strafe_right) {
+		game->ship_velocity[0] += side_vector[0] * strafe_speed;
+		game->ship_velocity[1] += side_vector[1] * strafe_speed;
 	}
 
 	f32 velocity_normalized[2];
@@ -109,9 +123,6 @@ void game_update(Game* game, bool up, bool down, bool left, bool right, f32 dt) 
 
 	game->camera_position[0] = game->ship_position[0] + game->camera_offset[0] + 2.5f;
 	game->camera_position[1] = game->ship_position[1] + game->camera_offset[1];
-
-	//game->camera_position[0] = game->ship_position[0] + game->camera_offset[0] * -0.5f;
-	//game->camera_position[1] = game->ship_position[1] + game->camera_offset[1] * -0.5f;
 
 	game->ship_position[0] += game->ship_velocity[0] * dt;
 	game->ship_position[1] += game->ship_velocity[1] * dt;
