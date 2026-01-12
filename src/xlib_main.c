@@ -219,12 +219,6 @@ i32 main(i32 argc, char** argv) {
 	platform->frames_since_init = 0;
 	bool quit = false;
 
-	bool up = false;
-	bool down = false;
-	bool turn_left = false;
-	bool turn_right = false;
-	bool strafe_left = false;
-	bool strafe_right = false;
 	while(!quit) {
 		while(XPending(xlib->display)) {
 			XEvent event;
@@ -244,39 +238,63 @@ i32 main(i32 argc, char** argv) {
 					if(XLookupKeysym(&(event.xkey), 0) == XK_Escape) {
 						quit = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
-						up = true;
+						game->players[0].up = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
-						down = true;
+						game->players[0].down = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
-						turn_left = true;
+						game->players[0].turn_left = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
-						turn_right = true;
+						game->players[0].turn_right = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
-						strafe_left = true;
+						game->players[0].strafe_left = true;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
-						strafe_right = true;
+						game->players[0].strafe_right = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+						game->players[1].up = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+						game->players[1].down = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
+						game->players[1].turn_left = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
+						game->players[1].turn_right = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Up) {
+						game->players[1].strafe_left = true;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Down) {
+						game->players[1].strafe_right = true;
 					}
 				} break;
 				case KeyRelease: {
 					if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
-						up = false;
+						game->players[0].up = false;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
-						down = false;
+						game->players[0].down = false;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
-						turn_left = false;
+						game->players[0].turn_left = false;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
-						turn_right = false;
+						game->players[0].turn_right = false;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
-						strafe_left = false;
+						game->players[0].strafe_left = false;
 					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
-						strafe_right = false;
+						game->players[0].strafe_right = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
+						game->players[1].up = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
+						game->players[1].down = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
+						game->players[1].turn_left = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
+						game->players[1].turn_right = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Up) {
+						game->players[1].strafe_left = false;
+					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Down) {
+						game->players[1].strafe_right = false;
 					}
 				} break;
 				default: break;
 			}
 		}
 
-		RenderList render_list = game_update(game, up, down, turn_left, turn_right, strafe_left, strafe_right, 0.02f);
+		RenderList render_list = game_update(game, 0.02f);
 		render_prepare_frame_data(renderer, platform, &render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
