@@ -276,13 +276,8 @@ i32 main(i32 argc, char** argv) {
 			}
 		}
 
-		game_update(game, up, down, turn_left, turn_right, strafe_left, strafe_right, 0.02f);
-		render_prepare_frame_data(renderer, platform, 
-			game->ship_position, 
-			game->ship_direction, 
-			clamp(game->ship_rotation_velocity, -8.0f, 8.0f), 
-			game->camera_offset,
-			game->camera_position);
+		RenderList render_list = game_update(game, up, down, turn_left, turn_right, strafe_left, strafe_right, 0.02f);
+		render_prepare_frame_data(renderer, platform, &render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		glXSwapBuffers(xlib->display, xlib->window);

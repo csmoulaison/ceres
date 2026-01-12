@@ -189,52 +189,41 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 	return renderer;
 }
 
-void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship_position, f32 ship_direction, f32 ship_tilt, f32* camera_offset, f32* camera_position) {
+void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderList* list) {
 	// World ubo
-	f32 target[3] = { ship_position[0] + camera_offset[0], 0.0f, ship_position[1] + camera_offset[1] };
 	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
 	f32* ubo_projection = &world_ubo[0];
 	f32* ubo_camera_position = &world_ubo[16];
 
 	f32 perspective[16];
 	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
-	f32 view[16] = {};
+	f32 view[16];
 	mat4_identity(view);
-	float up[3] = { 0.0f, 1.0f, 0.0f };
-	float cam_pos[3] = { target[0] + 4.0f, 8.0f, target[2] };
-	mat4_lookat(cam_pos, target, up, view);
-
+	float up[3];
+	v3_init(up, 0.0f, 1.0f, 0.0f);
+	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
 	mat4_mul(perspective, view, ubo_projection);
-
-	ubo_camera_position[0] = cam_pos[0];
-	ubo_camera_position[1] = cam_pos[1];
-	ubo_camera_position[2] = cam_pos[2];
+	v3_copy(list->world.camera_position, ubo_camera_position);
 
 	renderer->host_buffers[RENDER_WORLD_UBO_BUFFER].data = (u8*)world_ubo;
 
 	// Model ubo
-	i32 floor_instances = 1024;
-	f32* instance_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * (1 + floor_instances));
-	f32* model_ship = &instance_ubo[0];
+	f32* instances_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * list->models_len);
+	for(i32 i = 0; i < list->models_len; i++) {
+		RenderListModel* model = &list->models[i];
+		f32* instance = &instances_ubo[i * 16];
+		mat4_translation(model->position, instance);
 
-	f32 ship_pos[3] = { ship_position[0], 0.5f, ship_position[1] };
-	mat4_translation(ship_pos, model_ship);
-	f32 ship_rotation[16];
-	mat4_rotation(ship_tilt * -0.1, ship_direction, 0, ship_rotation);
-	mat4_mul(model_ship, ship_rotation, model_ship);
-
-	for(i32 i = 0; i < floor_instances; i++) {
-		f32* model_floor = &instance_ubo[16 + i * 16];
-		f32 x = -15.5f + (i % 32);
-		f32 z = -15.5f + (i / 32);
-		f32 floor_pos[3] = { x, 0.0f, z };
-		mat4_translation(floor_pos, model_floor);
-		f32 floor_rotation[16];
-		mat4_rotation(0.0f, 0.0f, 0.0f, floor_rotation);
-		mat4_mul(model_floor, floor_rotation, model_floor);
+		f32 rotation[16];
+		mat4_rotation(
+			model->orientation[0], 
+			model->orientation[1], 
+			model->orientation[2], 
+			rotation);
+		mat4_mul(instance, rotation, instance);
 	}
 
-	renderer->host_buffers[RENDER_INSTANCE_UBO_BUFFER].data = (u8*)instance_ubo;
+	renderer->host_buffers[RENDER_INSTANCE_UBO_BUFFER].data = (u8*)instances_ubo;
 
 	// Render graph: This part will be driven by the data format.
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
@@ -251,28 +240,19 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, f32* ship
 	RenderCommandUseUbo use_ubo_instance = { .ubo = 1 };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
-	RenderCommandUseTexture use_texture = { .texture = 0 };
-	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
+	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = 0, .host_buffer_index = 0, .host_buffer_offset = 0 };
+	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_world, sizeof(buffer_ubo_data_world));
 
-	// Draw ship
-	RenderCommandBufferUboData buffer_ubo_data_ship_world = { .ubo = 0, .host_buffer_index = 0, .host_buffer_offset = 0 };
-	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_ship_world, sizeof(buffer_ubo_data_ship_world));
+	// Draw models
+	for(i32 i = 0; i < list->models_len; i++) {
+		RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = i * 64 };
+		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
 
-	RenderCommandBufferUboData buffer_ubo_data_ship_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = 0 };
-	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_ship_instance, sizeof(buffer_ubo_data_ship_instance));
+		RenderListModel* model = &list->models[i];
+		RenderCommandUseTexture use_texture_floor = { .texture = model->texture };
+		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_floor, sizeof(use_texture_floor));
 
-	RenderCommandDrawMesh draw_mesh_ship = { .mesh = 0 };
-	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh_ship, sizeof(draw_mesh_ship));
-
-	// Draw floor
-	RenderCommandUseTexture use_texture_floor = { .texture = 1 };
-	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_floor, sizeof(use_texture_floor));
-
-	for(i32 i = 0; i < floor_instances; i++) {
-		RenderCommandBufferUboData buffer_ubo_data_floor_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = 64 + i * 64 };
-		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_floor_instance, sizeof(buffer_ubo_data_floor_instance));
-
-		RenderCommandDrawMesh draw_mesh_floor = { .mesh = 1 };
-		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh_floor, sizeof(draw_mesh_floor));
+		RenderCommandDrawMesh draw_mesh = { .mesh = model->mesh };
+		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
 	}
 }

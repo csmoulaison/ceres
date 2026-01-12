@@ -13,9 +13,9 @@ agnostic to particular instances, it only knows how to encode data into
 commands, which is still specific to a set of capabilities provided by the game.
 
 It's hard to strictly delineate this split in my head, but here's the pragmatic
-explanation: the render list is the API which allows us the programmer to work 
-on the game layer whenever we want, in a way that isn't brittle to inevitable 
-changes made to the render layer. This is ALWAYS the point of an API boundary.
+heuristic: the render list is the API which allows us the programmer to work on
+the game layer whenever we want, in a way that isn't brittle to inevitable
+changes made to the render layer.
 */
 
 #define RENDER_LIST_MAX_MODEL_INSTANCES 4096
@@ -47,16 +47,17 @@ void render_list_init(RenderList* list) {
 
 void render_list_update_world(RenderList* list, f32* clear_color, f32* camera_position, f32* camera_target) {
 	RenderListWorld* world = &list->world;
-	memcpy(world->clear_color, clear_color, sizeof(f32) * 3);
-	memcpy(world->camera_position, camera_position, sizeof(f32) * 3);
-	memcpy(world->camera_target, camera_target, sizeof(f32) * 3);
+	v3_copy(world->clear_color, clear_color);
+	v3_copy(world->camera_position, camera_position);
+	v3_copy(world->camera_target, camera_target);
 }
 
+// TODO: RenderTexture becomes RenderMaterial.
 void render_list_draw_model(RenderList* list, RenderMesh mesh, RenderTexture texture, f32* position, f32* orientation) {
 	RenderListModel* model = &list->models[list->models_len];
 	model->mesh = mesh;
 	model->texture = texture;
-	memcpy(model->position, position, sizeof(f32) * 3);
-	memcpy(model->orientation, orientation, sizeof(f32) * 3);
+	v3_copy(model->position, position);
+	v3_copy(model->orientation, orientation);
 	list->models_len++;
 }

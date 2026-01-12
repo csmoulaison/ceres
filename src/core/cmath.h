@@ -4,8 +4,20 @@
 // Numbers
 f32 clamp(f32 v, f32 min, f32 max);
 // Vectors
-void v2_normalize(f32* v, f32* res);
+void v2_zero(f32* dst);
+void v2_init(f32* dst, f32 x, f32 y);
+void v2_copy(f32* dst, f32* src);
+void v2_normalize(f32* dst, f32* res);
+void v2_scale(f32* dst, f32 s);
+void v2_add(f32* dst, f32* a, f32* b);
+void v2_sub(f32* dst, f32* a, f32* b);
+void v2_zero(f32* dst);
+void v3_init(f32* dst, f32 x, f32 y, f32 z);
+void v3_copy(f32* dst, f32* src);
+// NOW: change res at end to dst at beginning
 void v3_normalize(f32* v, f32* res);
+void v3_scale(f32* dst, f32 s);
+void v3_add(f32* dst, f32* a, f32* b);
 void v3_cross(f32* a, f32* b, f32* res);
 f32 v3_dot(f32* a, f32* b);
 // Radians
@@ -25,14 +37,35 @@ void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
+
 f32 clamp(f32 v, f32 min, f32 max) {
 	if(v < min) return min;
 	if(v > max) return max;
 	return v;
 }
 
+void v2_zero(f32* dst) {
+	dst[0] = 0.0f;
+	dst[1] = 0.0f;
+}
+
+void v2_init(f32* v, f32 x, f32 y) {
+	v[0] = x;
+	v[1] = y;
+}
+
+void v2_copy(f32* dst, f32* src) {
+	dst[0] = src[0];
+	dst[1] = src[1];
+}
+
 f32 v2_magnitude(f32* v) {
 	return sqrt((v[0] * v[0]) + (v[1] * v[1]));
+}
+
+void v2_scale(f32* v, f32 s) {
+	v[0] = v[0] * s;
+	v[1] = v[1] * s;
 }
 
 void v2_normalize(f32* v, f32* res) {
@@ -46,11 +79,51 @@ void v2_normalize(f32* v, f32* res) {
 	res[1] = v[1] / mag;
 }
 
+void v2_add(f32* dst, f32* a, f32* b) {
+	dst[0] = a[0] + b[0];
+	dst[1] = a[1] + b[1];
+}
+
+void v2_sub(f32* dst, f32* a, f32* b) {
+	dst[0] = a[0] - b[0];
+	dst[1] = a[1] - b[1];
+}
+
+void v3_zero(f32* dst) {
+	dst[0] = 0.0f;
+	dst[1] = 0.0f;
+	dst[2] = 0.0f;
+}
+
+void v3_init(f32* v, f32 x, f32 y, f32 z) {
+	v[0] = x;
+	v[1] = y;
+	v[2] = z;
+}
+
+void v3_copy(f32* dst, f32* src) {
+	dst[0] = src[0];
+	dst[1] = src[1];
+	dst[2] = src[2];
+}
+
+void v3_scale(f32* v, f32 s) {
+	v[0] = v[0] * s;
+	v[1] = v[1] * s;
+	v[2] = v[2] * s;
+}
+
 void v3_normalize(f32* v, f32* res) {
 	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
 	res[0] = v[0] / mag;
 	res[1] = v[1] / mag;
 	res[2] = v[2] / mag;
+}
+
+void v3_add(f32* dst, f32* a, f32* b) {
+	dst[0] = a[0] + b[0];
+	dst[1] = a[1] + b[1];
+	dst[2] = a[2] + b[2];
 }
 
 void v3_cross(f32* a, f32* b, f32* res) {
