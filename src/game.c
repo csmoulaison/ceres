@@ -109,6 +109,11 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	PlatformEvent* event;
 	while((event = platform_poll_next_event(platform)) != NULL) {
 		switch(event->type) {
+			// Issue3 - NOW: Put these into a format associating buttons with
+			// (multiple) keysyms, then load that format from a file, then create a
+			// simple tool for editing that file by capturing button presses.
+			// 
+			// Eventually we need to support controller input.
 			case PLATFORM_EVENT_BUTTON_DOWN: {
 				switch(*((u64*)event->data)) {
 					// quit

@@ -1,4 +1,4 @@
-// NOW: We are temporarily writing this into the engine to get it working, then
+// Issue8 - TODO: We are temporarily writing this into the engine to get it working, then
 // moving it out into its own executable as part of the build step.
 
 #define LOAD_VERTICES 500000
