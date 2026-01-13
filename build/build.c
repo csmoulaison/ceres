@@ -21,6 +21,6 @@ int main(int argc, char** argv) {
 	scall("bmpp/bmpp textures/ship.bmp ../bin/textures/ship.tex");
 	scall("bmpp/bmpp textures/metal.bmp ../bin/textures/metal.tex");
 	
-	scall("gcc -g ../src/xlib_main.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
+	scall("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
 	return scall_result;
 }

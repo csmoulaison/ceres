@@ -1,42 +1,25 @@
 /*
 
-RENDERER
-Everything specific to a game, besides core capabilities which abstract those of
-the underlying APIs, should be put into a data format. There are certain places
-where this interacts with the game layer, such as literally everywhere. 
-
-Arbitrating how this works is going to be fairly key to a well functioning 
-system. The quintessential example is how to structure the rendering of entities
-which have arbitrary meshes/textures/programs. 
-
-One easy way out of all of this trouble would be to have the host program be 
-able to register to specific callback points where things like buffering data 
-can be handled. This is pretty fucked, though, as it would necessitate, for 
-instance, that each individual entity type be given a different callback to 
-bind/buffer all of its particular resources in advance of the draw call.
-
-The key point here is that binding programs, meshes, and textures is a task
-which is common to all, or the great majority, of renderable entities, and as
-such, the concept of a renderable entity ought to make its way into the data 
-formats for the renderer.
-
-Let's imagine now that we are designing a render graph for this spaceship game.
-We will need to define:
-
-	- A program for rendering textured meshes, along with lighting information
-	- Ubos and other such buffers
-	- A set of meshes/textures, and the association between them and the program
-		(an entity type)
-
-Really, the primal subject here is entities, which may or may not be game 
-objects in the way we think of them, with a transform and such. Really, what we
-are dealing with in the general case is the following:
-
 INPUT  
 Input system should just basically abstract the event loop. Pass the events
 through if they've been registered and allow the game layer to process that
 for gameplay. Game logic code should never just be asking the platform about
 input mid loop.
+
+For platform specific input events, just bake defaults for these into the game
+data based on the specifics and allow remapping via the following platform 
+calls:
+	void platform_capture_button_start(platform)
+	u64 platform_capture_button_result(platform)
+
+Calling platform_capture_button_start() causes the platform to wait for the next
+pressed button and store it when it receives one. platform_capture_button_result() 
+returns the last stored value.
+
+The game is free to use these and the data files to register buttons to populate
+game controllers. The platform specific event loop is abstracted and the input
+system polls this event loop just as if it were the platform event loop, 
+comparing the received button events with those it has registered.
 
 */
 
@@ -59,13 +42,39 @@ typedef struct {
 
 typedef struct {
 	Arena global;
+	Arena frame;
 	Arena render;
 	Arena render_init;
 } MemoryArenas;
 
+void push_platform_event(Platform* platform, PlatformEventType type, void* data, u64 data_bytes, Arena* arena) {
+	PlatformEvent* event = (PlatformEvent*)arena_alloc(arena, sizeof(PlatformEvent));
+	event->next == NULL;
+	event->type = type;
+	event->data = arena_alloc(arena, sizeof(data_bytes));
+	memcpy(event->data, data, data_bytes);
+
+	if(platform->head_event == NULL) {
+		platform->head_event = event;
+	} else {
+		platform->current_event->next = event;
+	}
+	platform->current_event = event;
+}
+
+PlatformEvent* platform_poll_next_event(Platform* platform) {
+	PlatformEvent* event = platform->current_event;
+	if(event == NULL) {
+		return event;
+	}
+	platform->current_event = event->next;
+	return event;
+}
+
 i32 main(i32 argc, char** argv) {
 	MemoryArenas arenas;
 	arena_init(&arenas.global, GLOBAL_ARENA_SIZE, NULL, "Global");
+	arena_init(&arenas.frame, GLOBAL_FRAME_ARENA_SIZE, &arenas.global, "GlobalFrame");
 	arena_init(&arenas.render, RENDER_ARENA_SIZE, &arenas.global, "Render");
 	arena_init(&arenas.render_init, RENDER_INIT_ARENA_SIZE, NULL, "RenderInit");
 
@@ -195,10 +204,6 @@ i32 main(i32 argc, char** argv) {
 	glXMakeCurrent(xlib->display, xlib->window, glx);
 
 	platform->viewport_update_requested = true;
-	platform->input_buttons_len = 1;
-	for(u32 i = 0; i < PLATFORM_INPUT_KEYCODE_TO_BUTTON_LOOKUP_LEN; i++) {
-		platform->input_keycode_to_button_lookup[i] = PLATFORM_INPUT_KEYCODE_UNREGISTERED;
-	}
 
 	// Initialize open GL before getting window attributes.
 	RenderInitData* init_data = render_load_init_data(&arenas.render_init);
@@ -213,13 +218,13 @@ i32 main(i32 argc, char** argv) {
 
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
-
 	Game* game = game_init(&game_arena);
 
 	platform->frames_since_init = 0;
-	bool quit = false;
+	while(!game->close_requested) {
+		platform->head_event = NULL;
+		platform->current_event = NULL;
 
-	while(!quit) {
 		while(XPending(xlib->display)) {
 			XEvent event;
 			XNextEvent(xlib->display, &event);
@@ -228,76 +233,46 @@ i32 main(i32 argc, char** argv) {
 				case Expose:
 					break;
 				case ConfigureNotify: {
-					XWindowAttributes attribs;
-					XGetWindowAttributes(xlib->display, xlib->window, &attribs);
-					platform->window_width = attribs.width;
-					platform->window_height = attribs.height;
+					XWindowAttributes attributes;
+					XGetWindowAttributes(xlib->display, xlib->window, &attributes);
+					platform->window_width = attributes.width;
+					platform->window_height = attributes.height;
 					platform->viewport_update_requested = true;
 				} break;
 				case KeyPress: {
-					if(XLookupKeysym(&(event.xkey), 0) == XK_Escape) {
-						quit = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
-						game->players[0].up = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
-						game->players[0].down = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
-						game->players[0].turn_left = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
-						game->players[0].turn_right = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
-						game->players[0].strafe_left = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
-						game->players[0].strafe_right = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
-						game->players[1].up = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
-						game->players[1].down = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
-						game->players[1].turn_left = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
-						game->players[1].turn_right = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Up) {
-						game->players[1].strafe_left = true;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Down) {
-						game->players[1].strafe_right = true;
-					}
+					u64 keysym = XLookupKeysym(&(event.xkey), 0);
+					push_platform_event(platform, PLATFORM_EVENT_BUTTON_DOWN, &keysym, sizeof(u64), &arenas.frame);
 				} break;
 				case KeyRelease: {
-					if(XLookupKeysym(&(event.xkey), 0) == XK_w) {
-						game->players[0].up = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_s) {
-						game->players[0].down = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_a) {
-						game->players[0].turn_left = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_d) {
-						game->players[0].turn_right = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_q) {
-						game->players[0].strafe_left = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_e) {
-						game->players[0].strafe_right = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Up) {
-						game->players[1].up = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Down) {
-						game->players[1].down = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Left) {
-						game->players[1].turn_left = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Right) {
-						game->players[1].turn_right = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Up) {
-						game->players[1].strafe_left = false;
-					} else if(XLookupKeysym(&(event.xkey), 0) == XK_Page_Down) {
-						game->players[1].strafe_right = false;
+					// X11 natively repeats key events when the key is held down. We could turn
+					// that off, but it turns it off globally for the user's X11 session, which
+					// is unacceptable of course.
+					bool is_repeat_key = false;
+		            if (XPending(xlib->display)) {
+						XEvent next_event;
+		                XPeekEvent(xlib->display, &next_event);
+		                if (next_event.type == KeyPress && next_event.xkey.time == event.xkey.time 
+		                && next_event.xkey.keycode == event.xkey.keycode) {
+							XNextEvent(xlib->display, &next_event);
+							is_repeat_key = true;
+		                }
+		            }
+
+					if(!is_repeat_key) {
+						u64 keysym = XLookupKeysym(&(event.xkey), 0);
+						push_platform_event(platform, PLATFORM_EVENT_BUTTON_UP, &keysym, sizeof(u64), &arenas.frame);
 					}
 				} break;
 				default: break;
 			}
 		}
+		platform->current_event = platform->head_event;
 
-		RenderList render_list = game_update(game, 0.02f);
+		RenderList render_list = game_update(game, platform, 0.02f);
 		render_prepare_frame_data(renderer, platform, &render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
+		arena_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);
 		platform->frames_since_init++;
 	}

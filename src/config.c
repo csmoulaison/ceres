@@ -2,6 +2,7 @@
 
 // TODO: Check on the actual usage of these.
 #define GLOBAL_ARENA_SIZE MEGABYTE * 64
+#define GLOBAL_FRAME_ARENA_SIZE MEGABYTE * 16
 
 #define RENDER_ARENA_SIZE MEGABYTE * 16
 #define RENDER_PERSISTENT_ARENA_SIZE MEGABYTE * 4

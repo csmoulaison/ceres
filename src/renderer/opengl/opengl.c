@@ -142,7 +142,6 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glGenTextures(1, &texture->id);
 		glBindTexture(GL_TEXTURE_2D, texture->id);
 
-		printf("tex w %u, h %u\n", texture_data->width, texture_data->height);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_data->width, texture_data->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data->pixel_data);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);

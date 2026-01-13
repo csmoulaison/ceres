@@ -1,24 +1,43 @@
+#define INPUT_MAX_PLAYERS 2
+// NOTE: PLAYER_INPUT_BUTTONS_LEN must match the amount of buttons in the
+// GamePlayer struct.
+#define PLAYER_INPUT_BUTTONS_LEN 6
+
+#define INPUT_DOWN_BIT 0b00000001
+#define INPUT_PRESSED_BIT 0b00000010
+#define INPUT_RELEASED_BIT 0b00000100
+
+typedef u8 ButtonState;
+
 typedef struct {
 	f32 ship_direction;
 	f32 ship_rotation_velocity;
 	f32 ship_position[2];
 	f32 ship_velocity[2];
 
-	bool up;
-	bool down;
-	bool turn_left;
-	bool turn_right;
-	bool strafe_left;
-	bool strafe_right;
+	// NOTE: The number of buttons here must match PLAYER_INPUT_BUTTONS_LEN.
+	union {
+		struct {
+			ButtonState up;
+			ButtonState down;
+			ButtonState turn_left;
+			ButtonState turn_right;
+			ButtonState strafe_left;
+			ButtonState strafe_right;
+		};
+		ButtonState button_states[PLAYER_INPUT_BUTTONS_LEN];
+	};
 } GamePlayer;
 
 typedef struct {
+	bool close_requested;
 	GamePlayer players[2];
 	f32 camera_offset[2];
 } Game;
 
 Game* game_init(Arena* arena) {
 	Game* game = (Game*)arena_alloc(arena, sizeof(Game));
+	game->close_requested = false;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		player->ship_direction = 0.0f;
@@ -52,19 +71,169 @@ f32 apply_friction(f32 v, f32 f, f32 dt) {
 	return v;
 }
 
+void handle_button_down_event(ButtonState* button) {
+	if((*button) & INPUT_DOWN_BIT) {
+		return;
+	}
+	*button = (*button) | INPUT_DOWN_BIT | INPUT_PRESSED_BIT;
+}
+
+void handle_button_up_event(ButtonState* button) {
+	if((*button) & INPUT_DOWN_BIT) {
+		*button = INPUT_RELEASED_BIT;
+	}
+}
+
+bool input_button_down(ButtonState button) {
+	return button & INPUT_DOWN_BIT;
+}
+
+bool input_button_pressed(ButtonState button) {
+	return button & INPUT_PRESSED_BIT;
+}
+
+bool input_button_released(ButtonState button) {
+	return button & INPUT_RELEASED_BIT;
+}
+
 void player_direction_vector(f32* dst, GamePlayer* player) {
 	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
 	v2_normalize(dst, dst);
 }
 
-RenderList game_update(Game* game, f32 dt) {
+RenderList game_update(Game* game, Platform* platform, f32 dt) {
+	for(u32 i = 0; i < PLAYER_INPUT_BUTTONS_LEN; i++) {
+		game->players[0].button_states[i] = game->players[0].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
+		game->players[1].button_states[i] = game->players[1].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
+	}
+	PlatformEvent* event;
+	while((event = platform_poll_next_event(platform)) != NULL) {
+		switch(event->type) {
+			case PLATFORM_EVENT_BUTTON_DOWN: {
+				switch(*((u64*)event->data)) {
+					// quit
+					case 0xff1b: { 
+						game->close_requested = true;
+					} break;
+					// up
+					case 0xff52: {
+						handle_button_down_event(&game->players[1].up);
+					} break;
+					// down
+					case 0xff54: {
+						handle_button_down_event(&game->players[1].down);
+					} break;
+					// left
+					case 0xff51: {
+						handle_button_down_event(&game->players[1].turn_left);
+					} break;
+					// right
+					case 0xff53: {
+						handle_button_down_event(&game->players[1].turn_right);
+					} break;
+					// pageUp
+					case 0xff55: {
+						handle_button_down_event(&game->players[1].strafe_left);
+					} break;
+					// pageDown
+					case 0xff56: {
+						handle_button_down_event(&game->players[1].strafe_right);
+					} break;
+					// w
+					case 0x0077: {
+						handle_button_down_event(&game->players[0].up);
+					} break;
+					// s
+					case 0x0073: {
+						handle_button_down_event(&game->players[0].down);
+					} break;
+					// a
+					case 0x0061: {
+						handle_button_down_event(&game->players[0].turn_left);
+					} break;
+					// d
+					case 0x0064: {
+						handle_button_down_event(&game->players[0].turn_right);
+					} break;
+					// q
+					case 0x0071: {
+						handle_button_down_event(&game->players[0].strafe_left);
+					} break;
+					// e
+					case 0x0065: {
+						handle_button_down_event(&game->players[0].strafe_right);
+					} break;
+					default: break;
+				}
+			} break;
+			case PLATFORM_EVENT_BUTTON_UP: {
+				switch(*((u64*)event->data)) {
+					// quit
+					case 0xff1b: { 
+						game->close_requested = true;
+					} break;
+					// up
+					case 0xff52: {
+						handle_button_up_event(&game->players[1].up);
+					} break;
+					// down
+					case 0xff54: {
+						handle_button_up_event(&game->players[1].down);
+					} break;
+					// left
+					case 0xff51: {
+						handle_button_up_event(&game->players[1].turn_left);
+					} break;
+					// right
+					case 0xff53: {
+						handle_button_up_event(&game->players[1].turn_right);
+					} break;
+					// pageUp
+					case 0xff55: {
+						handle_button_up_event(&game->players[1].strafe_left);
+					} break;
+					// pageDown
+					case 0xff56: {
+						handle_button_up_event(&game->players[1].strafe_right);
+					} break;
+					// w
+					case 0x0077: {
+						handle_button_up_event(&game->players[0].up);
+					} break;
+					// s
+					case 0x0073: {
+						handle_button_up_event(&game->players[0].down);
+					} break;
+					// a
+					case 0x0061: {
+						handle_button_up_event(&game->players[0].turn_left);
+					} break;
+					// d
+					case 0x0064: {
+						handle_button_up_event(&game->players[0].turn_right);
+					} break;
+					// q
+					case 0x0071: {
+						handle_button_up_event(&game->players[0].strafe_left);
+					} break;
+					// e
+					case 0x0065: {
+						handle_button_up_event(&game->players[0].strafe_right);
+					} break;
+					default: break;
+				}
+			} break;
+			default: break;
+		}
+	}
+	
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 
 		f32 rotate_speed = 32.0f;
-		if(player->turn_left)
+		if(input_button_down(player->turn_left))
 			player->ship_rotation_velocity += rotate_speed * dt;
-		if(player->turn_right)
+		if(input_button_down(player->turn_right))
 			player->ship_rotation_velocity -= rotate_speed * dt;
 
 		f32 rotate_max_speed = 12.0f;
@@ -80,9 +249,9 @@ RenderList game_update(Game* game, f32 dt) {
 		player_direction_vector(direction_vector, player);
 
 		f32 forward_mod = 0.0f;
-		if(player->up)
+		if(input_button_down(player->up))
 			forward_mod += 0.3f;
-		if(player->down)
+		if(input_button_down(player->down))
 			forward_mod -= 0.2f;
 		f32 forward[2];
 		v2_copy(forward, direction_vector);
@@ -94,9 +263,9 @@ RenderList game_update(Game* game, f32 dt) {
 
 		f32 strafe_speed = 0.3f;
 		f32 strafe_mod = 0.0f;
-		if(player->strafe_left)
+		if(input_button_down(player->strafe_left))
 			strafe_mod -= 1.0f;
-		if(player->strafe_right)
+		if(input_button_down(player->strafe_right))
 			strafe_mod += 1.0f;
 		f32 strafe[2];
 		v2_copy(strafe, side_vector);
@@ -163,7 +332,7 @@ RenderList game_update(Game* game, f32 dt) {
 		f32 ship_pos[3];
 		v3_init(ship_pos, player->ship_position[0], 0.5f, player->ship_position[1]);
 		f32 ship_rot[3];
-		f32 ship_tilt = clamp(player->ship_rotation_velocity, -8.0f, 8.0f);
+		f32 ship_tilt = clamp(player->ship_rotation_velocity, -12.0f, 12.0f);
 		v3_init(ship_rot, ship_tilt * -0.1f, player->ship_direction, 0.0f);
 		render_list_draw_model(&list, 0, 0, ship_pos, ship_rot);
 	}
