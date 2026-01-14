@@ -1,11 +1,20 @@
 #define INPUT_MAX_PLAYERS 2
-// NOTE: PLAYER_INPUT_BUTTONS_LEN must match the amount of buttons in the
-// GamePlayer struct.
-#define PLAYER_INPUT_BUTTONS_LEN 6
+#define MAX_KEY_MAPPINGS NUM_BUTTONS * 8
 
 #define INPUT_DOWN_BIT 0b00000001
 #define INPUT_PRESSED_BIT 0b00000010
 #define INPUT_RELEASED_BIT 0b00000100
+
+typedef enum {
+	BUTTON_FORWARD = 0,
+	BUTTON_BACK,
+	BUTTON_TURN_LEFT,
+	BUTTON_TURN_RIGHT,
+	BUTTON_STRAFE_LEFT,
+	BUTTON_STRAFE_RIGHT,
+	BUTTON_QUIT,
+	NUM_BUTTONS
+} ButtonType;
 
 typedef u8 ButtonState;
 
@@ -14,25 +23,21 @@ typedef struct {
 	f32 ship_rotation_velocity;
 	f32 ship_position[2];
 	f32 ship_velocity[2];
-
-	// NOTE: The number of buttons here must match PLAYER_INPUT_BUTTONS_LEN.
-	union {
-		struct {
-			ButtonState up;
-			ButtonState down;
-			ButtonState turn_left;
-			ButtonState turn_right;
-			ButtonState strafe_left;
-			ButtonState strafe_right;
-		};
-		ButtonState button_states[PLAYER_INPUT_BUTTONS_LEN];
-	};
+	ButtonState button_states[NUM_BUTTONS];
 } GamePlayer;
+
+typedef struct {
+	u64 key_id;
+	u8 player_index;
+	ButtonType button_type;
+} GameKeyMapping;
 
 typedef struct {
 	bool close_requested;
 	GamePlayer players[2];
 	f32 camera_offset[2];
+	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
+	u32 key_mappings_len;
 } Game;
 
 Game* game_init(Arena* arena) {
@@ -45,14 +50,30 @@ Game* game_init(Arena* arena) {
 		v2_zero(player->ship_position);
 		v2_zero(player->ship_velocity);
 
-		player->up = false;
-		player->down = false;
-		player->turn_left = false;
-		player->turn_right = false;
-		player->strafe_left = false;
-		player->strafe_right = false;
+		for(i32 i = 0; i < NUM_BUTTONS; i++) {
+			player->button_states[i] = 0;
+		}
 	}
+
+	game->key_mappings[0] = (GameKeyMapping){ .key_id = 0xff52, .player_index = 0, .button_type = BUTTON_FORWARD };
+	game->key_mappings[1] = (GameKeyMapping){ .key_id = 0xff54, .player_index = 0, .button_type = BUTTON_BACK };
+	game->key_mappings[2] = (GameKeyMapping){ .key_id = 0xff51, .player_index = 0, .button_type = BUTTON_TURN_LEFT };
+	game->key_mappings[3] = (GameKeyMapping){ .key_id = 0xff53, .player_index = 0, .button_type = BUTTON_TURN_RIGHT };
+	game->key_mappings[4] = (GameKeyMapping){ .key_id = 0xff55, .player_index = 0, .button_type = BUTTON_STRAFE_LEFT };
+	game->key_mappings[5] = (GameKeyMapping){ .key_id = 0xff56, .player_index = 0, .button_type = BUTTON_STRAFE_RIGHT };
+	game->key_mappings[6] = (GameKeyMapping){ .key_id = 0xff1b, .player_index = 0, .button_type = BUTTON_QUIT };
+	game->key_mappings[7] = (GameKeyMapping){ .key_id = 0x0077, .player_index = 1, .button_type = BUTTON_FORWARD };
+	game->key_mappings[8] = (GameKeyMapping){ .key_id = 0x0073, .player_index = 1, .button_type = BUTTON_BACK };
+	game->key_mappings[9] = (GameKeyMapping){ .key_id = 0x0061, .player_index = 1, .button_type = BUTTON_TURN_LEFT };
+	game->key_mappings[10] = (GameKeyMapping){ .key_id = 0x0064, .player_index = 1, .button_type = BUTTON_TURN_RIGHT };
+	game->key_mappings[11] = (GameKeyMapping){ .key_id = 0x0071, .player_index = 1, .button_type = BUTTON_STRAFE_LEFT };
+	game->key_mappings[12] = (GameKeyMapping){ .key_id = 0x0065, .player_index = 1, .button_type = BUTTON_STRAFE_RIGHT };
+	game->key_mappings[13] = (GameKeyMapping){ .key_id = 0xff1b, .player_index = 1, .button_type = BUTTON_QUIT };
+	game->key_mappings_len = 14;
+
 	v2_zero(game->camera_offset);
+
+	return game;
 }
 
 f32 apply_friction(f32 v, f32 f, f32 dt) {
@@ -69,19 +90,6 @@ f32 apply_friction(f32 v, f32 f, f32 dt) {
 		}
 	}
 	return v;
-}
-
-void handle_button_down_event(ButtonState* button) {
-	if((*button) & INPUT_DOWN_BIT) {
-		return;
-	}
-	*button = (*button) | INPUT_DOWN_BIT | INPUT_PRESSED_BIT;
-}
-
-void handle_button_up_event(ButtonState* button) {
-	if((*button) & INPUT_DOWN_BIT) {
-		*button = INPUT_RELEASED_BIT;
-	}
 }
 
 bool input_button_down(ButtonState button) {
@@ -102,7 +110,7 @@ void player_direction_vector(f32* dst, GamePlayer* player) {
 }
 
 RenderList game_update(Game* game, Platform* platform, f32 dt) {
-	for(u32 i = 0; i < PLAYER_INPUT_BUTTONS_LEN; i++) {
+	for(u32 i = 0; i < NUM_BUTTONS; i++) {
 		game->players[0].button_states[i] = game->players[0].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
 		game->players[1].button_states[i] = game->players[1].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
 	}
@@ -114,118 +122,31 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 			// simple tool for editing that file by capturing button presses.
 			// 
 			// Eventually we need to support controller input.
-			case PLATFORM_EVENT_BUTTON_DOWN: {
-				switch(*((u64*)event->data)) {
-					// quit
-					case 0xff1b: { 
-						game->close_requested = true;
-					} break;
-					// up
-					case 0xff52: {
-						handle_button_down_event(&game->players[1].up);
-					} break;
-					// down
-					case 0xff54: {
-						handle_button_down_event(&game->players[1].down);
-					} break;
-					// left
-					case 0xff51: {
-						handle_button_down_event(&game->players[1].turn_left);
-					} break;
-					// right
-					case 0xff53: {
-						handle_button_down_event(&game->players[1].turn_right);
-					} break;
-					// pageUp
-					case 0xff55: {
-						handle_button_down_event(&game->players[1].strafe_left);
-					} break;
-					// pageDown
-					case 0xff56: {
-						handle_button_down_event(&game->players[1].strafe_right);
-					} break;
-					// w
-					case 0x0077: {
-						handle_button_down_event(&game->players[0].up);
-					} break;
-					// s
-					case 0x0073: {
-						handle_button_down_event(&game->players[0].down);
-					} break;
-					// a
-					case 0x0061: {
-						handle_button_down_event(&game->players[0].turn_left);
-					} break;
-					// d
-					case 0x0064: {
-						handle_button_down_event(&game->players[0].turn_right);
-					} break;
-					// q
-					case 0x0071: {
-						handle_button_down_event(&game->players[0].strafe_left);
-					} break;
-					// e
-					case 0x0065: {
-						handle_button_down_event(&game->players[0].strafe_right);
-					} break;
-					default: break;
+			case PLATFORM_EVENT_KEY_DOWN: {
+				// TODO: Replace this and the KEY_RELEASE case with a hash table or some
+				// other fast solution.
+				for(i32 i = 0; i < game->key_mappings_len; i++) {
+					GameKeyMapping* mapping = &game->key_mappings[i];
+					if(mapping->key_id == *((u64*)event->data)) {
+						ButtonState* button = &game->players[mapping->player_index].button_states[mapping->button_type];
+						if((*button) & INPUT_DOWN_BIT) {
+							break;
+						}
+						*button = (*button) | INPUT_DOWN_BIT | INPUT_PRESSED_BIT;
+						break;
+					}
 				}
 			} break;
-			case PLATFORM_EVENT_BUTTON_UP: {
-				switch(*((u64*)event->data)) {
-					// quit
-					case 0xff1b: { 
-						game->close_requested = true;
-					} break;
-					// up
-					case 0xff52: {
-						handle_button_up_event(&game->players[1].up);
-					} break;
-					// down
-					case 0xff54: {
-						handle_button_up_event(&game->players[1].down);
-					} break;
-					// left
-					case 0xff51: {
-						handle_button_up_event(&game->players[1].turn_left);
-					} break;
-					// right
-					case 0xff53: {
-						handle_button_up_event(&game->players[1].turn_right);
-					} break;
-					// pageUp
-					case 0xff55: {
-						handle_button_up_event(&game->players[1].strafe_left);
-					} break;
-					// pageDown
-					case 0xff56: {
-						handle_button_up_event(&game->players[1].strafe_right);
-					} break;
-					// w
-					case 0x0077: {
-						handle_button_up_event(&game->players[0].up);
-					} break;
-					// s
-					case 0x0073: {
-						handle_button_up_event(&game->players[0].down);
-					} break;
-					// a
-					case 0x0061: {
-						handle_button_up_event(&game->players[0].turn_left);
-					} break;
-					// d
-					case 0x0064: {
-						handle_button_up_event(&game->players[0].turn_right);
-					} break;
-					// q
-					case 0x0071: {
-						handle_button_up_event(&game->players[0].strafe_left);
-					} break;
-					// e
-					case 0x0065: {
-						handle_button_up_event(&game->players[0].strafe_right);
-					} break;
-					default: break;
+			case PLATFORM_EVENT_KEY_UP: {
+				for(i32 i = 0; i < game->key_mappings_len; i++) {
+					GameKeyMapping* mapping = &game->key_mappings[i];
+					if(mapping->key_id == *((u64*)event->data)) {
+						ButtonState* button = &game->players[mapping->player_index].button_states[mapping->button_type];
+						if((*button) & INPUT_DOWN_BIT) {
+							*button = INPUT_RELEASED_BIT;
+						}
+						break;
+					}
 				}
 			} break;
 			default: break;
@@ -235,10 +156,11 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 
+		// Rotation thruster control
 		f32 rotate_speed = 32.0f;
-		if(input_button_down(player->turn_left))
+		if(input_button_down(player->button_states[BUTTON_TURN_LEFT]))
 			player->ship_rotation_velocity += rotate_speed * dt;
-		if(input_button_down(player->turn_right))
+		if(input_button_down(player->button_states[BUTTON_TURN_RIGHT]))
 			player->ship_rotation_velocity -= rotate_speed * dt;
 
 		f32 rotate_max_speed = 12.0f;
@@ -250,43 +172,47 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 			player->ship_rotation_velocity = -rotate_max_speed;
 		player->ship_direction += player->ship_rotation_velocity * dt;
 
+		// Forward/back thruster control
 		f32 direction_vector[2];
 		player_direction_vector(direction_vector, player);
 
 		f32 forward_mod = 0.0f;
-		if(input_button_down(player->up))
+		if(input_button_down(player->button_states[BUTTON_FORWARD]))
 			forward_mod += 0.3f;
-		if(input_button_down(player->down))
+		if(input_button_down(player->button_states[BUTTON_BACK]))
 			forward_mod -= 0.2f;
 		f32 forward[2];
 		v2_copy(forward, direction_vector);
 		v2_scale(forward, forward_mod);
 		v2_add(player->ship_velocity, player->ship_velocity, forward);
 
+		// Side thruster control
 		f32 side_vector[2];
 		v2_init(side_vector, -direction_vector[1], direction_vector[0]);
 
 		f32 strafe_speed = 0.3f;
 		f32 strafe_mod = 0.0f;
-		if(input_button_down(player->strafe_left))
+		if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT]))
 			strafe_mod -= 1.0f;
-		if(input_button_down(player->strafe_right))
+		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT]))
 			strafe_mod += 1.0f;
 		f32 strafe[2];
 		v2_copy(strafe, side_vector);
 		v2_scale(strafe, strafe_mod * strafe_speed);
 		v2_add(player->ship_velocity, player->ship_velocity, strafe);
 
+		// Normalize to max veloity and apply friction.
 		f32 velocity_normalized[2];
 		v2_normalize(player->ship_velocity, velocity_normalized);
 
-		f32 max_speed = 14.0f;
 		f32 velocity_mag = v2_magnitude(player->ship_velocity);
+		f32 max_speed = 14.0f;
 		if(velocity_mag > max_speed) {
 			v2_copy(player->ship_velocity, velocity_normalized);
 			v2_scale(player->ship_velocity, max_speed);
 		}
 
+		// NOW: Move this above normalization?
 		f32 movement_friction = 6.0f;
 		if(velocity_mag > 0.02f) {
 			f32 friction[2];

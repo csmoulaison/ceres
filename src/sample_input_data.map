@@ -1,0 +1,8 @@
+// This is just a visualization of what's really just a binary format.
+BUTTON_FORWARD      keys 0xff52 0x0000 buttons 0x0000
+BUTTON_BACK         keys 0xff52 0x0000 buttons 0x0000 0x0000
+BUTTON_TURN_LEFT    keys 0xff52        buttons 0x0000
+BUTTON_TURN_RIGHT   keys 0xff52 0x0000
+BUTTON_STRAFE_LEFT  keys 0xff52 0x0000 
+BUTTON_STRAFE_RIGHT keys 0xff52 0x0000 buttons 0x0000
+

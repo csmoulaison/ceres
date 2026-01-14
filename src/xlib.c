@@ -241,7 +241,7 @@ i32 main(i32 argc, char** argv) {
 				} break;
 				case KeyPress: {
 					u64 keysym = XLookupKeysym(&(event.xkey), 0);
-					push_platform_event(platform, PLATFORM_EVENT_BUTTON_DOWN, &keysym, sizeof(u64), &arenas.frame);
+					push_platform_event(platform, PLATFORM_EVENT_KEY_DOWN, &keysym, sizeof(u64), &arenas.frame);
 				} break;
 				case KeyRelease: {
 					// X11 natively repeats key events when the key is held down. We could turn
@@ -260,7 +260,7 @@ i32 main(i32 argc, char** argv) {
 
 					if(!is_repeat_key) {
 						u64 keysym = XLookupKeysym(&(event.xkey), 0);
-						push_platform_event(platform, PLATFORM_EVENT_BUTTON_UP, &keysym, sizeof(u64), &arenas.frame);
+						push_platform_event(platform, PLATFORM_EVENT_KEY_UP, &keysym, sizeof(u64), &arenas.frame);
 					}
 				} break;
 				default: break;
