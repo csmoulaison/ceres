@@ -156,6 +156,11 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 
+		// Quit control
+		if(input_button_down(player->button_states[BUTTON_QUIT])) {
+			game->close_requested = true;
+		}
+
 		// Rotation thruster control
 		f32 rotate_speed = 32.0f;
 		if(input_button_down(player->button_states[BUTTON_TURN_LEFT]))
