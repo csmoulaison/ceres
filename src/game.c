@@ -1,22 +1,5 @@
-#define INPUT_MAX_PLAYERS 2
-#define MAX_KEY_MAPPINGS NUM_BUTTONS * 8
-
-#define INPUT_DOWN_BIT 0b00000001
-#define INPUT_PRESSED_BIT 0b00000010
-#define INPUT_RELEASED_BIT 0b00000100
-
-typedef enum {
-	BUTTON_FORWARD = 0,
-	BUTTON_BACK,
-	BUTTON_TURN_LEFT,
-	BUTTON_TURN_RIGHT,
-	BUTTON_STRAFE_LEFT,
-	BUTTON_STRAFE_RIGHT,
-	BUTTON_QUIT,
-	NUM_BUTTONS
-} ButtonType;
-
-typedef u8 ButtonState;
+#include "input.c"
+#include "environment.h"
 
 typedef struct {
 	f32 ship_direction;
@@ -25,12 +8,6 @@ typedef struct {
 	f32 ship_velocity[2];
 	ButtonState button_states[NUM_BUTTONS];
 } GamePlayer;
-
-typedef struct {
-	u64 key_id;
-	u8 player_index;
-	ButtonType button_type;
-} GameKeyMapping;
 
 typedef struct {
 	bool close_requested;
@@ -55,21 +32,13 @@ Game* game_init(Arena* arena) {
 		}
 	}
 
-	game->key_mappings[0] = (GameKeyMapping){ .key_id = 0xff52, .player_index = 0, .button_type = BUTTON_FORWARD };
-	game->key_mappings[1] = (GameKeyMapping){ .key_id = 0xff54, .player_index = 0, .button_type = BUTTON_BACK };
-	game->key_mappings[2] = (GameKeyMapping){ .key_id = 0xff51, .player_index = 0, .button_type = BUTTON_TURN_LEFT };
-	game->key_mappings[3] = (GameKeyMapping){ .key_id = 0xff53, .player_index = 0, .button_type = BUTTON_TURN_RIGHT };
-	game->key_mappings[4] = (GameKeyMapping){ .key_id = 0xff55, .player_index = 0, .button_type = BUTTON_STRAFE_LEFT };
-	game->key_mappings[5] = (GameKeyMapping){ .key_id = 0xff56, .player_index = 0, .button_type = BUTTON_STRAFE_RIGHT };
-	game->key_mappings[6] = (GameKeyMapping){ .key_id = 0xff1b, .player_index = 0, .button_type = BUTTON_QUIT };
-	game->key_mappings[7] = (GameKeyMapping){ .key_id = 0x0077, .player_index = 1, .button_type = BUTTON_FORWARD };
-	game->key_mappings[8] = (GameKeyMapping){ .key_id = 0x0073, .player_index = 1, .button_type = BUTTON_BACK };
-	game->key_mappings[9] = (GameKeyMapping){ .key_id = 0x0061, .player_index = 1, .button_type = BUTTON_TURN_LEFT };
-	game->key_mappings[10] = (GameKeyMapping){ .key_id = 0x0064, .player_index = 1, .button_type = BUTTON_TURN_RIGHT };
-	game->key_mappings[11] = (GameKeyMapping){ .key_id = 0x0071, .player_index = 1, .button_type = BUTTON_STRAFE_LEFT };
-	game->key_mappings[12] = (GameKeyMapping){ .key_id = 0x0065, .player_index = 1, .button_type = BUTTON_STRAFE_RIGHT };
-	game->key_mappings[13] = (GameKeyMapping){ .key_id = 0xff1b, .player_index = 1, .button_type = BUTTON_QUIT };
-	game->key_mappings_len = 14;
+	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
+	assert(file != NULL);
+
+	fread(&game->key_mappings_len, sizeof(u32), 1, file);
+	for(i32 i = 0; i < game->key_mappings_len; i++) {
+		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
+	}
 
 	v2_zero(game->camera_offset);
 
@@ -117,11 +86,6 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	PlatformEvent* event;
 	while((event = platform_poll_next_event(platform)) != NULL) {
 		switch(event->type) {
-			// Issue3 - NOW: Put these into a format associating buttons with
-			// (multiple) keysyms, then load that format from a file, then create a
-			// simple tool for editing that file by capturing button presses.
-			// 
-			// Eventually we need to support controller input.
 			case PLATFORM_EVENT_KEY_DOWN: {
 				// TODO: Replace this and the KEY_RELEASE case with a hash table or some
 				// other fast solution.

@@ -1,28 +1,3 @@
-/*
-
-INPUT  
-Input system should just basically abstract the event loop. Pass the events
-through if they've been registered and allow the game layer to process that
-for gameplay. Game logic code should never just be asking the platform about
-input mid loop.
-
-For platform specific input events, just bake defaults for these into the game
-data based on the specifics and allow remapping via the following platform 
-calls:
-	void platform_capture_button_start(platform)
-	u64 platform_capture_button_result(platform)
-
-Calling platform_capture_button_start() causes the platform to wait for the next
-pressed button and store it when it receives one. platform_capture_button_result() 
-returns the last stored value.
-
-The game is free to use these and the data files to register buttons to populate
-game controllers. The platform specific event loop is abstracted and the input
-system polls this event loop just as if it were the platform event loop, 
-comparing the received button events with those it has registered.
-
-*/
-
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
