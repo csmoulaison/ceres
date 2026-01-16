@@ -6,7 +6,7 @@
 #define INPUT_RELEASED_BIT 0b00000100
 
 typedef enum {
-	BUTTON_FORWARD = 0,
+	BUTTON_FORWARD,
 	BUTTON_BACK,
 	BUTTON_TURN_LEFT,
 	BUTTON_TURN_RIGHT,
@@ -14,12 +14,12 @@ typedef enum {
 	BUTTON_STRAFE_RIGHT,
 	BUTTON_QUIT,
 	NUM_BUTTONS
-} ButtonType;
+} InputButtonType;
 
 typedef u8 ButtonState;
 
 typedef struct {
 	u64 key_id;
 	u8 player_index;
-	ButtonType button_type;
+	InputButtonType button_type;
 } GameKeyMapping;

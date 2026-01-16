@@ -41,7 +41,6 @@ Game* game_init(Arena* arena) {
 	}
 
 	v2_zero(game->camera_offset);
-
 	return game;
 }
 
@@ -156,8 +155,7 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 		v2_add(player->ship_velocity, player->ship_velocity, forward);
 
 		// Side thruster control
-		f32 side_vector[2];
-		v2_init(side_vector, -direction_vector[1], direction_vector[0]);
+		f32 side_vector[2] = { -direction_vector[1], direction_vector[0] };
 
 		f32 strafe_speed = 0.3f;
 		f32 strafe_mod = 0.0f;
@@ -170,18 +168,11 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 		v2_scale(strafe, strafe_mod * strafe_speed);
 		v2_add(player->ship_velocity, player->ship_velocity, strafe);
 
-		// Normalize to max veloity and apply friction.
+		// Normalize to max velocity and apply friction.
 		f32 velocity_normalized[2];
 		v2_normalize(player->ship_velocity, velocity_normalized);
-
 		f32 velocity_mag = v2_magnitude(player->ship_velocity);
-		f32 max_speed = 14.0f;
-		if(velocity_mag > max_speed) {
-			v2_copy(player->ship_velocity, velocity_normalized);
-			v2_scale(player->ship_velocity, max_speed);
-		}
 
-		// NOW: Move this above normalization?
 		f32 movement_friction = 6.0f;
 		if(velocity_mag > 0.02f) {
 			f32 friction[2];
@@ -190,6 +181,13 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 			v2_add(player->ship_velocity, player->ship_velocity, friction);
 		} else {
 			v2_zero(player->ship_velocity);
+		}
+
+
+		f32 max_speed = 14.0f;
+		if(velocity_mag > max_speed) {
+			v2_copy(player->ship_velocity, velocity_normalized);
+			v2_scale(player->ship_velocity, max_speed);
 		}
 
 		f32 delta_velocity[2];
@@ -219,30 +217,23 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	RenderList list;
 	render_list_init(&list);
 
-	f32 clear_color[3];
-	v3_init(clear_color, 0.1f, 0.1f, 0.2f);
-	f32 cam_target[3];
-	v3_init(cam_target, game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1]);
-	f32 cam_pos[3];
-	v3_init(cam_pos, cam_target[0] + 4.0f, 8.0f, cam_target[2]);
+	f32 clear_color[3] = { 0.1f, 0.1f, 0.2f };
+	f32 cam_target[3] = { game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1] };
+	f32 cam_pos[3] = { cam_target[0] + 4.0f, 8.0f, cam_target[2] };
 	render_list_update_world(&list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
-		f32 ship_pos[3];
-		v3_init(ship_pos, player->ship_position[0], 0.5f, player->ship_position[1]);
-		f32 ship_rot[3];
-		f32 ship_tilt = clamp(player->ship_rotation_velocity, -12.0f, 12.0f);
-		v3_init(ship_rot, ship_tilt * -0.1f, player->ship_direction, 0.0f);
+		f32 ship_pos[3] = { player->ship_position[0], 0.5f, player->ship_position[1] };
+		f32 ship_tilt = clamp(player->ship_rotation_velocity, -8.0f, 8.0f);
+		f32 ship_rot[3] = { ship_tilt * -0.1f, player->ship_direction, 0.0f };
 		render_list_draw_model(&list, 0, 0, ship_pos, ship_rot);
 	}
 
 	i32 floor_instances = 1024;
 	for(i32 i = 0; i < floor_instances; i++) {
-		f32 floor_pos[3];
-		v3_init(floor_pos, -15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
-		f32 floor_rot[3];
-		v3_zero(floor_rot);
+		f32 floor_pos[3] = { -15.5f + (i % 32), 0.0f, -15.5f + (i / 32) };
+		f32 floor_rot[3] = { 0.0f , 0.0f, 0.0f };
 		render_list_draw_model(&list, 1, 1, floor_pos, floor_rot);
 	}
 	return list;

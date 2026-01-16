@@ -1,8 +1,6 @@
 #include "stdlib.h"
 #include "stdio.h"
 
-#include "../src/environment.h"
-
 int system_call_result;
 char cmd[4096];
 
@@ -25,12 +23,8 @@ int main(int argc, char** argv) {
 
 	print_header("Creating input configuration file...");
 	system_call_ignore_result("mkdir config");
-	sprintf(cmd, "test -f %s", CONFIG_DEFAULT_INPUT_FILENAME);
-	system_call_save_result(cmd);
-	if(system_call_result != 0) {
-		sprintf(cmd, "tools/input_serializer/input_serializer %s", CONFIG_DEFAULT_INPUT_FILENAME);
-		system_call(cmd);
-	}
+	sprintf(cmd, "tools/input_builder/input_builder ../src/input.c InputButtonType config/def_input.conf");
+	system_call(cmd);
 
 	print_header("Copying asset directories to bin...");
 	copy_directory_to_bin("config");
