@@ -3,6 +3,7 @@
 
 // Numbers
 f32 clamp(f32 v, f32 min, f32 max);
+f32 move_to_zero(f32 value, f32 amount);
 // Vectors
 void v2_zero(f32* dst);
 void v2_init(f32* dst, f32 x, f32 y);
@@ -42,6 +43,18 @@ f32 clamp(f32 v, f32 min, f32 max) {
 	if(v < min) return min;
 	if(v > max) return max;
 	return v;
+}
+
+f32 move_to_zero(f32 value, f32 amount) {
+	if(value > 0.0f) {
+		value -= amount;
+		if(value < 0.0f) value = 0.0f;
+	}
+	if(value < 0.0f) {
+		value += amount;
+		if(value > 0.0f) value = 0.0f;
+	}
+	return value;
 }
 
 void v2_zero(f32* dst) {

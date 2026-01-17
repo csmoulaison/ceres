@@ -23,3 +23,15 @@ typedef struct {
 	u8 player_index;
 	InputButtonType button_type;
 } GameKeyMapping;
+
+bool input_button_down(ButtonState button) {
+	return button & INPUT_DOWN_BIT;
+}
+
+bool input_button_pressed(ButtonState button) {
+	return button & INPUT_PRESSED_BIT;
+}
+
+bool input_button_released(ButtonState button) {
+	return button & INPUT_RELEASED_BIT;
+}

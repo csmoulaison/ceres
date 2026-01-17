@@ -6,6 +6,8 @@ typedef struct {
 	f32 ship_rotation_velocity;
 	f32 ship_position[2];
 	f32 ship_velocity[2];
+	// TODO: Might we want to have this be part of an input handler which just has
+	// a list of button states per player?
 	ButtonState button_states[NUM_BUTTONS];
 } GamePlayer;
 
@@ -16,6 +18,11 @@ typedef struct {
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
 } Game;
+
+void player_direction_vector(f32* dst, GamePlayer* player) {
+	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
+	v2_normalize(dst, dst);
+}
 
 Game* game_init(Arena* arena) {
 	Game* game = (Game*)arena_alloc(arena, sizeof(Game));
@@ -44,40 +51,8 @@ Game* game_init(Arena* arena) {
 	return game;
 }
 
-f32 apply_friction(f32 v, f32 f, f32 dt) {
-	if(v > 0.0f) {
-		v -= f * dt;
-		if(v < 0.0f) {
-			v = 0.0f;
-		}
-	}
-	if(v < 0.0f) {
-		v += f * dt;
-		if(v > 0.0f) {
-			v = 0.0f;
-		}
-	}
-	return v;
-}
-
-bool input_button_down(ButtonState button) {
-	return button & INPUT_DOWN_BIT;
-}
-
-bool input_button_pressed(ButtonState button) {
-	return button & INPUT_PRESSED_BIT;
-}
-
-bool input_button_released(ButtonState button) {
-	return button & INPUT_RELEASED_BIT;
-}
-
-void player_direction_vector(f32* dst, GamePlayer* player) {
-	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
-	v2_normalize(dst, dst);
-}
-
 RenderList game_update(Game* game, Platform* platform, f32 dt) {
+	// Update input events
 	for(u32 i = 0; i < NUM_BUTTONS; i++) {
 		game->players[0].button_states[i] = game->players[0].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
 		game->players[1].button_states[i] = game->players[1].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
@@ -86,8 +61,6 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	while((event = platform_poll_next_event(platform)) != NULL) {
 		switch(event->type) {
 			case PLATFORM_EVENT_KEY_DOWN: {
-				// TODO: Replace this and the KEY_RELEASE case with a hash table or some
-				// other fast solution.
 				for(i32 i = 0; i < game->key_mappings_len; i++) {
 					GameKeyMapping* mapping = &game->key_mappings[i];
 					if(mapping->key_id == *((u64*)event->data)) {
@@ -133,7 +106,7 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 
 		f32 rotate_max_speed = 12.0f;
 		f32 rotate_friction = 8.0f;
-		player->ship_rotation_velocity = apply_friction(player->ship_rotation_velocity, rotate_friction, dt);
+		player->ship_rotation_velocity = move_to_zero(player->ship_rotation_velocity, rotate_friction * dt);
 		if(player->ship_rotation_velocity > rotate_max_speed)
 			player->ship_rotation_velocity = rotate_max_speed;
 		if(player->ship_rotation_velocity < -rotate_max_speed)

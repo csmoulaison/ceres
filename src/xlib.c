@@ -177,13 +177,11 @@ i32 main(i32 argc, char** argv) {
 
 	// Bind GLX to window
 	glXMakeCurrent(xlib->display, xlib->window, glx);
-
 	platform->viewport_update_requested = true;
 
 	// Initialize open GL before getting window attributes.
 	RenderInitData* init_data = render_load_init_data(&arenas.render_init);
 	Renderer* renderer = gl_init(init_data, &arenas.render, &arenas.render_init);
-
 	arena_destroy(&arenas.render_init);
 
 	XWindowAttributes window_attributes;
@@ -221,7 +219,7 @@ i32 main(i32 argc, char** argv) {
 				case KeyRelease: {
 					// X11 natively repeats key events when the key is held down. We could turn
 					// that off, but it turns it off globally for the user's X11 session, which
-					// is unacceptable of course.
+					// is unacceptable of course. Here we are ignoring them manually.
 					bool is_repeat_key = false;
 		            if (XPending(xlib->display)) {
 						XEvent next_event;
