@@ -1,6 +1,15 @@
 #include "renderer/renderer.h"
 #include "renderer/mesh_loader.c"
 #include "renderer/render_list.c"
+#include "generated/asset_handles.h"
+
+#define RENDER_PROGRAM_MODEL 0
+
+#define RENDER_UBO_WORLD 0
+#define RENDER_UBO_INSTANCE 1
+
+#define RENDER_HOST_BUFFER_WORLD 0
+#define RENDER_HOST_BUFFER_INSTANCE 1
 
 #define RENDER_NO_INTERPOLATION false
 
@@ -19,20 +28,41 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 	}
 }
 
-// TODO: Replace this with a data format.
+// TODO: Define what's being loaded from a data format.
+// - Programs (vert file, frag file)
+// - Meshes (file)
+// - Textures (file)
+// Ubos and host buffers, as well as some specifics of the other resources (mesh
+// vertex_attribute_len for instance) are still hardcoded here, though these
+// specifics remain data driven on graphics backend side. What's hardcoded in
+// load_init_data ought to match the program context which is known about by
+// prepare_frame_data.
 RenderInitData* render_load_init_data(Arena* init_arena) {
 	RenderInitData* data = (RenderInitData*)arena_alloc(init_arena, sizeof(RenderInitData));
 
 	data->programs_len = 1;
 	data->programs = (RenderProgramInitData*)arena_alloc(init_arena, sizeof(RenderProgramInitData) * data->programs_len);
-	data->programs[0].vertex_shader_filename = "shaders/cube.vert";
-	data->programs[0].fragment_shader_filename = "shaders/cube.frag";
-	data->programs[0].next = NULL;
+	for(i32 i = 0; i < data->programs_len; i++) {
+		RenderProgramInitData* program = &data->programs[i];
+
+		switch(i) {
+			case RENDER_PROGRAM_MODEL: {
+				program->vertex_shader_filename = "shaders/cube.vert";
+				program->fragment_shader_filename = "shaders/cube.frag";
+			} break;
+			default: break;
+		}
+
+		if(i == data->programs_len - 1) {
+			program->next = NULL;
+		} else {
+			program->next = &data->programs[i + 1];
+		}
+	}
 
 	data->meshes_len = 2;
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
 	char* mesh_filenames[2] = { "meshes/ship.obj", "meshes/floor.obj" };
-
 	for(i32 i = 0; i < data->meshes_len; i++) {
 		MeshData* mesh_data = (MeshData*)arena_alloc(init_arena, sizeof(MeshData));
 		load_mesh(mesh_data, mesh_filenames[i], init_arena, true);
@@ -68,7 +98,6 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->textures_len = 2;
 	data->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * data->textures_len);
 	char* texture_filenames[2] = { "textures/ship.tex", "textures/metal.tex" };
-
 	for(i32 i = 0; i < data->textures_len; i++) {
 		FILE* file = fopen(texture_filenames[i], "r");
 		assert(file != NULL);
@@ -94,18 +123,21 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 	data->ubos_len = 2;
 	data->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * data->ubos_len);
-	struct {
-		u64 size;
-		u32 binding;
-	} ubo_data[2] = {
-		{ .size = sizeof(f32) * 20, .binding = 0 },
-		{ .size = sizeof(f32) * 16, .binding = 1 }
-	};
-
 	for(i32 i = 0; i < data->ubos_len; i++) {
 		RenderUboInitData* ubo = &data->ubos[i];
-		ubo->size = ubo_data[i].size;
-		ubo->binding = ubo_data[i].binding;
+
+		switch(i) {
+			case RENDER_UBO_WORLD: {
+				ubo->size = sizeof(f32) * 20;
+				ubo->binding = 0;
+			} break;
+			case RENDER_UBO_INSTANCE: {
+				ubo->size = sizeof(f32) * 16;
+				ubo->binding = 1;
+			} break;
+			default: break;
+		}
+
 		if(i == data->ubos_len - 1) {
 			ubo->next = NULL;
 		} else {
@@ -158,7 +190,6 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
 	mat4_mul(perspective, view, ubo_projection);
 	v3_copy(list->world.camera_position, ubo_camera_position);
-
 	renderer->host_buffers[RENDER_WORLD_UBO_BUFFER].data = (u8*)world_ubo;
 
 	// Model ubo
@@ -176,22 +207,21 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			rotation);
 		mat4_mul(instance, rotation, instance);
 	}
-
 	renderer->host_buffers[RENDER_INSTANCE_UBO_BUFFER].data = (u8*)instances_ubo;
 
-	// Render graph: This part will be driven by the data format.
+	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
 	RenderCommandClear clear = { .color = { 0.05f, 0.05f, 0.05f, 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
-	RenderCommandUseProgram use_program = { .program = 0 };
+	RenderCommandUseProgram use_program = { .program = RENDER_PROGRAM_MODEL };
 	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program, sizeof(use_program));
 
-	RenderCommandUseUbo use_ubo_world = { .ubo = 0 };
+	RenderCommandUseUbo use_ubo_world = { .ubo = RENDER_UBO_WORLD };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_world, sizeof(use_ubo_world));
 
-	RenderCommandUseUbo use_ubo_instance = { .ubo = 1 };
+	RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_INSTANCE };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
 	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = 0, .host_buffer_index = 0, .host_buffer_offset = 0 };
@@ -203,8 +233,8 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
 
 		RenderListModel* model = &list->models[i];
-		RenderCommandUseTexture use_texture_floor = { .texture = model->texture };
-		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_floor, sizeof(use_texture_floor));
+		RenderCommandUseTexture use_texture= { .texture = model->texture };
+		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
 
 		RenderCommandDrawMesh draw_mesh = { .mesh = model->mesh };
 		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));

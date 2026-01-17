@@ -1,5 +1,4 @@
 #include "input.c"
-#include "environment.h"
 
 typedef struct {
 	f32 ship_direction;
@@ -200,14 +199,14 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 		f32 ship_pos[3] = { player->ship_position[0], 0.5f, player->ship_position[1] };
 		f32 ship_tilt = clamp(player->ship_rotation_velocity, -8.0f, 8.0f);
 		f32 ship_rot[3] = { ship_tilt * -0.1f, player->ship_direction, 0.0f };
-		render_list_draw_model(&list, 0, 0, ship_pos, ship_rot);
+		render_list_draw_model(&list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
 	}
 
 	i32 floor_instances = 1024;
 	for(i32 i = 0; i < floor_instances; i++) {
 		f32 floor_pos[3] = { -15.5f + (i % 32), 0.0f, -15.5f + (i / 32) };
 		f32 floor_rot[3] = { 0.0f , 0.0f, 0.0f };
-		render_list_draw_model(&list, 1, 1, floor_pos, floor_rot);
+		render_list_draw_model(&list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}
 	return list;
 }

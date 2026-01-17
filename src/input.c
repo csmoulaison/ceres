@@ -1,3 +1,5 @@
+#define CONFIG_DEFAULT_INPUT_FILENAME "config/def_input.conf"
+
 #define INPUT_MAX_PLAYERS 2
 #define MAX_KEY_MAPPINGS NUM_BUTTONS * 4
 
