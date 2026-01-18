@@ -1,0 +1,6 @@
+mesh MESH_SHIP meshes/ship.obj 
+mesh MESH_FLOOR meshes/floor.obj
+texture TEXTURE_SHIP texures/ship.bmp
+texture TEXTURE_FLOOR texures/metal.bmp
+render_program PROGRAM_MODEL shaders/cube.vert shaders/cube.frag
+input_config INPUT_CONFIG_DEFAULT config/def_input.conf

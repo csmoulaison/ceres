@@ -7,6 +7,8 @@
 #define TMP_LOAD_NORMALS 500000
 #define TMP_LOAD_FACE_ELEMENTS 500000
 
+#define FLAT_MESH_SHADING true
+
 typedef struct {
 	union {
 		struct {
@@ -20,12 +22,21 @@ typedef struct {
 
 typedef struct
 {
-	MeshVertex vertices[LOAD_VERTICES];
 	u32 vertices_len;
-	u32 indices[LOAD_INDICES];
 	u32 indices_len;
 	bool flat_shading;
+	MeshVertex* vertices;
+	u32* indices;
 } MeshData;
+
+typedef struct
+{
+	u32 vertices_len;
+	u32 indices_len;
+	MeshVertex vertices[LOAD_VERTICES];
+	u32 indices[LOAD_INDICES];
+	bool flat_shading;
+} oldMeshData;
 
 typedef struct {
 	u32 vertex_index;
@@ -41,103 +52,149 @@ typedef struct {
 	f32 normal[3];
 } TmpNormal;
 
-void load_mesh(MeshData* data, char* mesh_filename, Arena* init_arena, bool flat_shading)
-{
-	data->flat_shading = flat_shading;
+void remove_slashes_from_line(char* line) {
+	i32 i = 0;
+	while(line[i] != '\0' && line[i] != '\n') {
+		if(line[i] == '/') line[i] = ' ';
+		i++;
+	}
+}
 
-	FILE* file = fopen(mesh_filename, "r");
-	if(file == NULL) { panic(); }
+void consume_word(char* word, char* line, i32* line_i) {
+	i32 word_i = 0;
+	while(line[*line_i] != ' ' && line[*line_i] != '\0' && line[*line_i] != '\n') {
+		word[word_i] = line[*line_i];
+		*line_i += 1;
+		word_i++;
+	}
+	while(line[*line_i] == ' ' && line[*line_i] != '\0' && line[*line_i] != '\n') {
+		*line_i += 1;
+	}
+	word[word_i] = '\0';
+}
 
-	TmpUv* tmp_uvs = (TmpUv*)arena_alloc(init_arena, sizeof(TmpUv) * TMP_LOAD_UVS);
-	u32 tmp_uvs_len = 0;
+void consume_f32(f32* f, char* line, i32* line_i) {
+	char word[64];
+	consume_word(word, line, line_i);
+	*f = (f32)atof(word);
+}
 
-	TmpNormal* tmp_normals = (TmpNormal*)arena_alloc(init_arena, sizeof(TmpNormal) * TMP_LOAD_NORMALS);
-	u32 tmp_normals_len = 0;
+void consume_i32(i32* v, char* line, i32* line_i) {
+	char word[64];
+	consume_word(word, line, line_i);
+	*v = (i32)atoi(word);
+}
 
-	MeshFaceElement* tmp_face_elements = (MeshFaceElement*)arena_alloc(init_arena, sizeof(MeshFaceElement) * TMP_LOAD_FACE_ELEMENTS);
-	u32 tmp_face_elements_len = 0;
+void load_mesh(MeshData* data, char* filename, Arena* arena, bool flat_shading) {
+	FILE* file = fopen(filename, "r");
+	assert(file != NULL);
 
-	// tmp_vertices used in the flat shading case.
-	f32 tmp_vertices[LOAD_VERTICES][3];
+	// Count line types (vertices, uvs, normals, faces)
+	u32 vertex_lines = 0;
+	u32 uv_lines = 0;
+	u32 normal_lines = 0;
+	u32 face_lines = 0;
+	char line[512];
+	while(fgets(line, sizeof(line), file)) {
+		char key[32];
+		i32 i = 0;
+		consume_word(key, line, &i);
+		if(strcmp(key, "v") == 0) {
+			vertex_lines++;
+		} else if(strcmp(key, "vt") == 0) {
+			uv_lines++;
+		} else if(strcmp(key, "vn") == 0) {
+			normal_lines++;
+		} else if(strcmp(key, "f") == 0) {
+			face_lines++;
+		}
+	}
+
+	// Allocate temporary buffers and populate them with file data.
+	Arena tmp_arena;
+	arena_init(&tmp_arena, MEGABYTE * 64, NULL, "TmpMeshLoad");
+
+	// x, y, z | x, y, z | ...
+	f32* tmp_vertices = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 3 * vertex_lines);
 	u32 tmp_vertices_len = 0;
+	// u, v | u, v | ...
+	f32* tmp_uvs = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 2 * uv_lines);
+	u32 tmp_uvs_len = 0;
+	// x, y, z | x, y, z | ...
+	f32* tmp_normals = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 3 * normal_lines);
+	u32 tmp_normals_len = 0;
+	// v1: vert, uv, norm, v2: vert, uv, norm, v3: vert, uv, norm | v1: vert, uv ...
+	i32* tmp_faces = (i32*)arena_alloc(&tmp_arena, sizeof(i32) * 9 * face_lines);
+	u32 tmp_faces_len = 0;
 
-	data->vertices_len = 0;
-	while(true) {
-		char keyword[128];
-		i32 res = fscanf(file, "%s", keyword);
-
-		if(res == EOF)
-			break;
-
-		if(strcmp(keyword, "v") == 0) {
-			f32* pos;
-			if(flat_shading) {
-				pos = tmp_vertices[tmp_vertices_len];
-				tmp_vertices_len++;
-			} else {
-				pos = data->vertices[data->vertices_len].position;
-				data->vertices_len++;
+	//rewind(file);
+	fseek(file, 0, SEEK_SET);
+	while(fgets(line, sizeof(line), file)) {
+		char key[32];
+		u32 line_i = 0;
+		consume_word(key, line, &line_i);
+		if(strcmp(key, "v") == 0) {
+			f32* v = &tmp_vertices[tmp_vertices_len * 3];
+			for(i32 comp = 0; comp < 3; comp++) {
+				consume_f32(&v[comp], line, &line_i);
 			}
-			fscanf(file, "%f %f %f", &pos[0], &pos[1], &pos[2]);
-		} else if(strcmp(keyword, "vt") == 0) {
-			TmpUv* tmp_uv = &tmp_uvs[tmp_uvs_len];
-			fscanf(file, "%f %f", &tmp_uv->uv[0], &tmp_uv->uv[1]);
-			tmp_uv->uv[1] = 1 - tmp_uv->uv[1];
+			tmp_vertices_len++;
+		} else if(strcmp(key, "vt") == 0) {
+			f32* u = &tmp_uvs[tmp_uvs_len * 2];
+			for(i32 comp = 0; comp < 2; comp++) {
+				consume_f32(&u[comp], line, &line_i);
+			}
+			u[1] = 1.0f - u[1];
 			tmp_uvs_len++;
-		} else if(strcmp(keyword, "vn") == 0) {
-			TmpNormal* tmp_normal = &tmp_normals[tmp_normals_len];
-			fscanf(file, "%f %f %f", &tmp_normal->normal[0], &tmp_normal->normal[1], &tmp_normal->normal[2]);
+		} else if(strcmp(key, "vn") == 0) {
+			f32* n = &tmp_normals[tmp_normals_len * 3];
+			for(i32 comp = 0; comp < 3; comp++) {
+				consume_f32(&n[comp], line, &line_i);
+			}
 			tmp_normals_len++;
-		} else if(strcmp(keyword, "f") == 0) {
-			i32 throwaways[3];
-			i32 values_len = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", 
-				&tmp_face_elements[tmp_face_elements_len + 0].vertex_index, 
-				&tmp_face_elements[tmp_face_elements_len + 0].texture_uv_index, 
-				&tmp_face_elements[tmp_face_elements_len + 0].normal_index, 
-				&tmp_face_elements[tmp_face_elements_len + 1].vertex_index, 
-				&tmp_face_elements[tmp_face_elements_len + 1].texture_uv_index, 
-				&tmp_face_elements[tmp_face_elements_len + 1].normal_index, 
-				&tmp_face_elements[tmp_face_elements_len + 2].vertex_index, 
-				&tmp_face_elements[tmp_face_elements_len + 2].texture_uv_index, 
-				&tmp_face_elements[tmp_face_elements_len + 2].normal_index);
-
-			if(values_len != 9) { panic(); }
-			tmp_face_elements_len += 3;
+		} else if(strcmp(key, "f") == 0) {
+			remove_slashes_from_line(line);
+			i32* f = &tmp_faces[tmp_faces_len * 9];
+			for(i32 comp = 0; comp < 9; comp++) {
+				consume_i32(&f[comp], line, &line_i);
+			}
+			tmp_faces_len++;
 		}
 	}
 	fclose(file);
 
-	if(data->flat_shading)
-		data->vertices_len = 0; 
-	data->indices_len = 0;
+	// Allocate final vertex and index data
+	if(FLAT_MESH_SHADING) {
+		data->vertices_len = tmp_faces_len * 3;
+	} else {
+		data->vertices_len = tmp_vertices_len;
+	}
+	data->indices_len = tmp_faces_len * 3;
+	data->vertices = (MeshVertex*)arena_alloc(arena, sizeof(MeshVertex) * data->vertices_len);
+	data->indices = (u32*)arena_alloc(arena, sizeof(u32) * data->indices_len);
+	data->flat_shading = true;
+	MeshVertex* vertices = data->vertices;
+	u32* indices = data->indices;
 
-	for(u32 element_index = 0; element_index < tmp_face_elements_len; element_index++) {
-		MeshFaceElement* elem = &tmp_face_elements[element_index];
-		u32 index = elem->vertex_index - 1;
-		data->indices[element_index] = index;
+	// Iterate faces, filling index buffer with face data and associating
+	// verts/uvs/normals together at the same time.
+	for(i32 i = 0; i < tmp_faces_len * 3; i++) {
+		i32* face_element = &tmp_faces[i * 3];
+		i32 face_vert_idx = face_element[0] - 1;
+		i32 face_uv_idx = face_element[1] - 1;
+		i32 face_norm_idx = face_element[2] - 1;
+		indices[i] = face_vert_idx;
 
 		MeshVertex* vert;
-		if(data->flat_shading) {
-			vert = &data->vertices[element_index];
+		if(FLAT_MESH_SHADING) {
+			vert = &vertices[i];
+			v3_copy(vert->position, &tmp_vertices[face_vert_idx * 3]);
 		} else {
-			vert = &data->vertices[index];
+			vert = &vertices[face_vert_idx];
 		}
-
-		if(data->flat_shading) {
-			vert->position[0] = tmp_vertices[elem->vertex_index - 1][0]; // ONLY for the no index buffer case.
-			vert->position[1] = tmp_vertices[elem->vertex_index - 1][1]; // ONLY for the no index buffer case.
-			vert->position[2] = tmp_vertices[elem->vertex_index - 1][2]; // ONLY for the no index buffer case.
-		}
-		
-		vert->texture_uv[0] = tmp_uvs[elem->texture_uv_index - 1].uv[0];
-		vert->texture_uv[1] = tmp_uvs[elem->texture_uv_index - 1].uv[1];
-
-		vert->normal[0] = tmp_normals[elem->normal_index - 1].normal[0];
-		vert->normal[1] = tmp_normals[elem->normal_index - 1].normal[1];
-		vert->normal[2] = tmp_normals[elem->normal_index - 1].normal[2];
-
-		if(flat_shading)
-			data->vertices_len++;
-		data->indices_len++;
+		v2_copy(vert->texture_uv, &tmp_uvs[face_uv_idx * 2]);
+		v3_copy(vert->normal, &tmp_normals[face_norm_idx * 3]);
 	}
+
+	arena_destroy(&tmp_arena);
 }

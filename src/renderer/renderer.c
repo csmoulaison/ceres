@@ -3,14 +3,6 @@
 #include "renderer/render_list.c"
 #include "generated/asset_handles.h"
 
-#define RENDER_PROGRAM_MODEL 0
-
-#define RENDER_UBO_WORLD 0
-#define RENDER_UBO_INSTANCE 1
-
-#define RENDER_HOST_BUFFER_WORLD 0
-#define RENDER_HOST_BUFFER_INSTANCE 1
-
 #define RENDER_NO_INTERPOLATION false
 
 void render_push_command(Renderer* renderer, RenderCommandType type, void* data, u64 data_size) {
@@ -28,15 +20,28 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 	}
 }
 
-// TODO: Define what's being loaded from a data format.
-// - Programs (vert file, frag file)
-// - Meshes (file)
-// - Textures (file)
-// Ubos and host buffers, as well as some specifics of the other resources (mesh
-// vertex_attribute_len for instance) are still hardcoded here, though these
-// specifics remain data driven on graphics backend side. What's hardcoded in
-// load_init_data ought to match the program context which is known about by
-// prepare_frame_data.
+Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
+	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
+	renderer->frames_since_init = 0;
+
+	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
+	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
+	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
+
+	if(data->programs_len > 0)
+		renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
+	if(data->meshes_len > 0)
+		renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
+	if(data->textures_len > 0)
+		renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
+	if(data->ubos_len > 0)
+		renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
+	if(data->host_buffers_len > 0)
+		renderer->host_buffers = (RenderHostBuffer*)arena_alloc(&renderer->persistent_arena, sizeof(RenderHostBuffer) * data->host_buffers_len);
+
+	return renderer;
+}
+
 RenderInitData* render_load_init_data(Arena* init_arena) {
 	RenderInitData* data = (RenderInitData*)arena_alloc(init_arena, sizeof(RenderInitData));
 
@@ -149,30 +154,7 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 	data->host_buffers = (RenderHostBufferInitData*)arena_alloc(init_arena, sizeof(RenderHostBufferInitData) * data->host_buffers_len);
 	data->host_buffers[0].next = &data->host_buffers[1];
 	data->host_buffers[1].next = NULL;
-
 	return data;
-}
-
-Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
-	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
-	renderer->frames_since_init = 0;
-
-	arena_init(&renderer->persistent_arena, RENDER_PERSISTENT_ARENA_SIZE, render_arena, "RenderPersistent");
-	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
-	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
-
-	if(data->programs_len > 0)
-		renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
-	if(data->meshes_len > 0)
-		renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
-	if(data->textures_len > 0)
-		renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
-	if(data->ubos_len > 0)
-		renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
-	if(data->host_buffers_len > 0)
-		renderer->host_buffers = (RenderHostBuffer*)arena_alloc(&renderer->persistent_arena, sizeof(RenderHostBuffer) * data->host_buffers_len);
-
-	return renderer;
 }
 
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderList* list) {
@@ -190,7 +172,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
 	mat4_mul(perspective, view, ubo_projection);
 	v3_copy(list->world.camera_position, ubo_camera_position);
-	renderer->host_buffers[RENDER_WORLD_UBO_BUFFER].data = (u8*)world_ubo;
+	renderer->host_buffers[RENDER_HOST_BUFFER_WORLD].data = (u8*)world_ubo;
 
 	// Model ubo
 	f32* instances_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * list->models_len);
@@ -207,7 +189,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			rotation);
 		mat4_mul(instance, rotation, instance);
 	}
-	renderer->host_buffers[RENDER_INSTANCE_UBO_BUFFER].data = (u8*)instances_ubo;
+	renderer->host_buffers[RENDER_HOST_BUFFER_INSTANCE].data = (u8*)instances_ubo;
 
 	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));

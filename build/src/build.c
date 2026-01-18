@@ -1,8 +1,9 @@
-#define CSM_BASE_IMPLEMENTATION
+#define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
 #include "input_builder.c"
 #include "bitmap_processor.c"
+#include "asset_packing.c"
 
 i32 system_call_result;
 char cmd[4096];

@@ -21,5 +21,7 @@ void main()
 
 	vec3 result = ambient + diffuse;
     frag_color = vec4(result, 1.0f) * texture(tex, tex_uv);
+    //frag_color = vec4(result, 1.0f);
+	//frag_color = vec4(1.0f);
     //frag_color = texture(tex, tex_uv);
 }
