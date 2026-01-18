@@ -1,11 +1,13 @@
-#include "stdlib.h"
-#include "stdio.h"
-#include "string.h"
+#define CSM_BASE_IMPLEMENTATION
+#include "core/core.h"
 
-int system_call_result;
+#include "input_builder.c"
+#include "bitmap_processor.c"
+
+i32 system_call_result;
 char cmd[4096];
 
-#define system_call(call) { system_call_result = system(call); if(system_call_result != 0) { printf("bootstrapper error: sysystem_call failed on line %i\n", __LINE__); exit(1); } }
+#define system_call(call) { system_call_result = system(call); if(system_call_result != 0) { printf("build error: system_call failed on line %i\n", __LINE__); exit(1); } }
 #define system_call_save_result(call) { system_call_result = system(call); }
 #define system_call_ignore_result(call) { system(call); }
 
@@ -19,7 +21,7 @@ typedef struct {
 } AssetManifestEntry;
 
 void print_header(const char* s) {
-	printf("\n\033[1m\033[33m%s\033[0m\n", s);
+	printf("\033[1m\033[33m%s\033[0m\n", s);
 }
 
 void copy_manifest_asset_directly_to_bin(AssetManifestEntry* entry) {
@@ -28,23 +30,24 @@ void copy_manifest_asset_directly_to_bin(AssetManifestEntry* entry) {
 	printf("Copied %s to ../bin/%s.\n", entry->src_relative, entry->dst_relative);
 }
 
-int main(int argc, char** argv) {
+i32 main(i32 argc, char** argv) {
 	print_header("Creating input configuration file...");
 	system_call_ignore_result("mkdir config");
-	sprintf(cmd, "tools/input_builder/input_builder ../src/input.c InputButtonType config/def_input.conf");
-	system_call(cmd);
+	build_default_input_config_file("../src/input.c", "InputButtonType", "data/config/def_input.conf", false);
 
 	print_header("Creating bin and asset directories...");
 	system_call_ignore_result("mkdir ../bin");
-	system_call_ignore_result("mkdir ../bin/meshes");
-	system_call_ignore_result("mkdir ../bin/textures");
-	system_call_ignore_result("mkdir ../bin/config");
+	system_call_ignore_result("mkdir ../bin/data");
+	system_call_ignore_result("mkdir ../bin/data/meshes");
+	system_call_ignore_result("mkdir ../bin/data/textures");
+	system_call_ignore_result("mkdir ../bin/data/config");
+	system_call_ignore_result("mkdir ../bin/data/shaders");
 
 	print_header("Copying shaders from src...");
-	system_call("cp ../src/shaders ../bin/shaders -r");
+	system_call("cp ../src/shaders ../bin/data/ -r");
 
 	print_header("Processing assets from assets/manifest...");
-	FILE* manifest = fopen("assets.manifest", "r");
+	FILE* manifest = fopen("data/assets.manifest", "r");
 	if(manifest == NULL) {
 		printf("Asset manifest could not be opened. Does it exist?\n");
 		return 1;
@@ -54,21 +57,21 @@ int main(int argc, char** argv) {
 	char* texture_id_str = "texture";
 	char* config_id_str = "config";
 	int mesh_id_str_len = strlen(mesh_id_str);
-	int texture_id_str_len = strlen(texture_id_str);
-	int config_id_str_len = strlen(config_id_str);
+	i32 texture_id_str_len = strlen(texture_id_str);
+	i32 config_id_str_len = strlen(config_id_str);
 
 	char line[8196];
 	while(fgets(line, sizeof(line), manifest)) {
 		AssetManifestEntry entry;
-		int fields_len = 3;
+		i32 fields_len = 3;
 		char* fields[fields_len];
 		fields[0] = entry.manifest_prefix;
 		fields[1] = entry.src_file;
 		fields[2] = entry.dst_file;
-		int line_i = 0;
-		for(int current_field = 0; current_field < fields_len; current_field++) {
+		i32 line_i = 0;
+		for(i32 current_field = 0; current_field < fields_len; current_field++) {
 			char* field = fields[current_field];
-			int field_i = 0;
+			i32 field_i = 0;
 			while(line[line_i] != ' ' && line[line_i] != '\0' && line[line_i] != '\n') {
 				field[field_i] = line[line_i];
 				field_i++;
@@ -87,8 +90,8 @@ int main(int argc, char** argv) {
 		else if(strncmp(line, texture_id_str, texture_id_str_len) == 0) { strcpy(entry.asset_prefix, "textures"); }
 		else if(strncmp(line, config_id_str, config_id_str_len) == 0) { strcpy(entry.asset_prefix, "config"); }
 		else { printf("Entry type not recognized in asset manifest.\n"); }
-		sprintf(entry.src_relative, "%s/%s", entry.asset_prefix, entry.src_file);
-		sprintf(entry.dst_relative, "%s/%s", entry.asset_prefix, entry.dst_file);
+		sprintf(entry.src_relative, "data/%s/%s", entry.asset_prefix, entry.src_file);
+		sprintf(entry.dst_relative, "data/%s/%s", entry.asset_prefix, entry.dst_file);
 
 		FILE* test = fopen(entry.src_relative, "r");
 		if(test == NULL) {
@@ -100,9 +103,9 @@ int main(int argc, char** argv) {
 		if(strncmp(line, mesh_id_str, mesh_id_str_len) == 0) {
 			copy_manifest_asset_directly_to_bin(&entry);
 		} else if(strncmp(line, texture_id_str, texture_id_str_len) == 0) {
-			sprintf(cmd, "tools/bmpp/bmpp %s ../bin/%s", entry.src_relative, entry.dst_relative);
-			printf("%s\n", cmd);
-			system_call(cmd);
+			char dst_texture[4096];
+			sprintf(dst_texture, "../bin/%s", entry.dst_relative);
+			bitmap_to_texture(entry.src_relative, dst_texture);
 		} else if(strncmp(line, config_id_str, config_id_str_len) == 0) {
 			copy_manifest_asset_directly_to_bin(&entry);
 		}

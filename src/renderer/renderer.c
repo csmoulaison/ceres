@@ -47,8 +47,8 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 		switch(i) {
 			case RENDER_PROGRAM_MODEL: {
-				program->vertex_shader_filename = "shaders/cube.vert";
-				program->fragment_shader_filename = "shaders/cube.frag";
+				program->vertex_shader_filename = "data/shaders/cube.vert";
+				program->fragment_shader_filename = "data/shaders/cube.frag";
 			} break;
 			default: break;
 		}
@@ -62,7 +62,7 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 	data->meshes_len = 2;
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
-	char* mesh_filenames[2] = { "meshes/ship.obj", "meshes/floor.obj" };
+	char* mesh_filenames[2] = { "data/meshes/ship.obj", "data/meshes/floor.obj" };
 	for(i32 i = 0; i < data->meshes_len; i++) {
 		MeshData* mesh_data = (MeshData*)arena_alloc(init_arena, sizeof(MeshData));
 		load_mesh(mesh_data, mesh_filenames[i], init_arena, true);
@@ -97,7 +97,7 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 
 	data->textures_len = 2;
 	data->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * data->textures_len);
-	char* texture_filenames[2] = { "textures/ship.tex", "textures/metal.tex" };
+	char* texture_filenames[2] = { "data/textures/ship.tex", "data/textures/metal.tex" };
 	for(i32 i = 0; i < data->textures_len; i++) {
 		FILE* file = fopen(texture_filenames[i], "r");
 		assert(file != NULL);
