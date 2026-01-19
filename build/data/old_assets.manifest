@@ -1,0 +1,5 @@
+mesh ship.obj ship.obj
+mesh floor.obj floor.obj
+texture ship.bmp ship.tex
+texture metal.bmp floor.tex
+config def_input.conf def_input.conf

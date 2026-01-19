@@ -29,22 +29,7 @@ typedef struct {
 	GlUbo* ubos;
 } OpenGl;
 
-u32 gl_compile_shader(const char* filename, GLenum type) {
-	FILE* file = fopen(filename, "r");
-	if(file == NULL) { panic(); }
-	fseek(file, 0, SEEK_END);
-	u32 fsize = ftell(file);
-	fseek(file, 0, SEEK_SET);
-	char src[fsize];
-	char c;
-	u32 i = 0;
-	while((c = fgetc(file)) != EOF) {
-		src[i] = c;
-		i++;
-	}
-	src[i] = '\0';
-	fclose(file);
-
+u32 gl_compile_shader(const char* src, GLenum type) {
 	u32 shader = glCreateShader(type);
 	const char* src_ptr = src;
 	glShaderSource(shader, 1, &src_ptr, 0);
@@ -85,8 +70,11 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 
 	RenderProgramInitData* program_data = data->programs;
 	while(program_data != NULL) {
-		u32 vert_shader = gl_compile_shader(program_data->vertex_shader_filename, GL_VERTEX_SHADER);
-		u32 frag_shader = gl_compile_shader(program_data->fragment_shader_filename, GL_FRAGMENT_SHADER);
+		printf("VERT\n%s", program_data->vertex_shader_src);
+		printf("FRAG\n%s", program_data->fragment_shader_src);
+		
+		u32 vert_shader = gl_compile_shader(program_data->vertex_shader_src, GL_VERTEX_SHADER);
+		u32 frag_shader = gl_compile_shader(program_data->fragment_shader_src, GL_FRAGMENT_SHADER);
 
 		GlProgram* program = &gl->programs[renderer->programs_len];
 		program->id = glCreateProgram();

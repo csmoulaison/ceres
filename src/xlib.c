@@ -3,8 +3,13 @@
 
 #include "config.c"
 #include "platform/platform.h"
+
+#include "generated/asset_handles.h"
+#include "asset_format.h"
+#include "asset_loader.c"
 #include "renderer/renderer.c"
 #include "renderer/opengl/opengl.c"
+
 #include "game.c"
 
 #include <GL/glx.h>
@@ -179,8 +184,11 @@ i32 main(i32 argc, char** argv) {
 	glXMakeCurrent(xlib->display, xlib->window, glx);
 	platform->viewport_update_requested = true;
 
+	// Load asset pack file
+	AssetPack* asset_pack = asset_pack_load(&arenas.render_init);
+
 	// Initialize open GL before getting window attributes.
-	RenderInitData* init_data = render_load_init_data(&arenas.render_init);
+	RenderInitData* init_data = render_load_init_data(&arenas.render_init, asset_pack);
 	Renderer* renderer = gl_init(init_data, &arenas.render, &arenas.render_init);
 	arena_destroy(&arenas.render_init);
 

@@ -1,5 +1,5 @@
-mesh ship.obj ship.obj
-mesh floor.obj floor.obj
-texture ship.bmp ship.tex
-texture metal.bmp floor.tex
-config def_input.conf def_input.conf
+mesh SHIP data/meshes/ship.obj 
+mesh FLOOR data/meshes/floor.obj
+texture SHIP data/textures/ship.bmp
+texture FLOOR data/textures/metal.bmp
+render_program MODEL ../src/shaders/cube.vert ../src/shaders/cube.frag

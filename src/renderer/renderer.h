@@ -111,8 +111,8 @@ typedef struct {
 // from a file at startup.
 typedef struct RenderProgramInitData {
 	struct RenderProgramInitData* next;
-	char* vertex_shader_filename;
-	char* fragment_shader_filename;
+	char* vertex_shader_src;
+	char* fragment_shader_src;
 } RenderProgramInitData;
 
 typedef struct RenderMeshInitData {

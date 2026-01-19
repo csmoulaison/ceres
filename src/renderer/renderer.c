@@ -1,7 +1,6 @@
 #include "renderer/renderer.h"
 #include "renderer/mesh_loader.c"
 #include "renderer/render_list.c"
-#include "generated/asset_handles.h"
 
 #define RENDER_NO_INTERPOLATION false
 
@@ -42,21 +41,19 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 	return renderer;
 }
 
-RenderInitData* render_load_init_data(Arena* init_arena) {
+RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) {
 	RenderInitData* data = (RenderInitData*)arena_alloc(init_arena, sizeof(RenderInitData));
 
-	data->programs_len = 1;
+	data->programs_len = asset_pack->render_programs_len;
 	data->programs = (RenderProgramInitData*)arena_alloc(init_arena, sizeof(RenderProgramInitData) * data->programs_len);
 	for(i32 i = 0; i < data->programs_len; i++) {
+		RenderProgramAsset* asset = (RenderProgramAsset*)&asset_pack->buffer[asset_pack->render_program_buffer_offsets[i]];
 		RenderProgramInitData* program = &data->programs[i];
 
-		switch(i) {
-			case RENDER_PROGRAM_MODEL: {
-				program->vertex_shader_filename = "data/shaders/cube.vert";
-				program->fragment_shader_filename = "data/shaders/cube.frag";
-			} break;
-			default: break;
-		}
+		program->vertex_shader_src = (char*)arena_alloc(init_arena, asset->vertex_shader_src_len);
+		memcpy(program->vertex_shader_src, asset->buffer, sizeof(char) * asset->vertex_shader_src_len);
+		program->fragment_shader_src = (char*)arena_alloc(init_arena, asset->fragment_shader_src_len);
+		memcpy(program->fragment_shader_src, asset->buffer + asset->vertex_shader_src_len, sizeof(char) * asset->fragment_shader_src_len);
 
 		if(i == data->programs_len - 1) {
 			program->next = NULL;
@@ -65,33 +62,27 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 		}
 	}
 
-	data->meshes_len = 2;
+	data->meshes_len = asset_pack->meshes_len;
 	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
-	char* mesh_filenames[2] = { "data/meshes/ship.obj", "data/meshes/floor.obj" };
 	for(i32 i = 0; i < data->meshes_len; i++) {
-		MeshData* mesh_data = (MeshData*)arena_alloc(init_arena, sizeof(MeshData));
-		load_mesh(mesh_data, mesh_filenames[i], init_arena, true);
-
+		MeshAsset* asset = (MeshAsset*)&asset_pack->buffer[asset_pack->mesh_buffer_offsets[i]];
 		RenderMeshInitData* mesh = &data->meshes[i];
-		mesh->flat_shading = mesh_data->flat_shading;
-
+		mesh->flat_shading = true;
 		mesh->vertex_attributes_len = 3;
 		mesh->vertex_attribute_sizes[0] = 3;
 		mesh->vertex_attribute_sizes[1] = 3;
 		mesh->vertex_attribute_sizes[2] = 2;
 		u32 total_vertex_size = 8;
 
-		mesh->vertices_len = mesh_data->vertices_len;
-		mesh->vertex_data = (f32*)arena_alloc(init_arena, sizeof(f32) * total_vertex_size * mesh->vertices_len);
-		for(i32 i = 0; i < total_vertex_size * mesh->vertices_len; i++) {
-			mesh->vertex_data[i] = mesh_data->vertices[i / total_vertex_size].data[i % total_vertex_size];
-		}
+		mesh->vertices_len = asset->vertices_len;
+		u64 vertex_buffer_size = sizeof(MeshVertexData) * mesh->vertices_len;
+		mesh->vertex_data = (f32*)arena_alloc(init_arena, vertex_buffer_size);
+		memcpy(mesh->vertex_data, asset->buffer, vertex_buffer_size);
 
-		mesh->indices_len = mesh_data->indices_len;
-		mesh->indices = (u32*)arena_alloc(init_arena, sizeof(u32) * mesh->indices_len);
-		for(i32 i = 0; i < mesh->indices_len; i++) {
-			mesh->indices[i] = mesh_data->indices[i];
-		}
+		mesh->indices_len = asset->indices_len;
+		u64 index_buffer_size = sizeof(u32) * mesh->indices_len;
+		mesh->indices = (u32*)arena_alloc(init_arena, index_buffer_size);
+		memcpy(mesh->indices, asset->buffer + vertex_buffer_size, index_buffer_size);
 
 		if(i == data->meshes_len - 1) {
 			mesh->next = NULL;
@@ -100,24 +91,17 @@ RenderInitData* render_load_init_data(Arena* init_arena) {
 		}
 	}
 
-	data->textures_len = 2;
+	data->textures_len = asset_pack->textures_len;
 	data->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * data->textures_len);
-	char* texture_filenames[2] = { "data/textures/ship.tex", "data/textures/metal.tex" };
 	for(i32 i = 0; i < data->textures_len; i++) {
-		FILE* file = fopen(texture_filenames[i], "r");
-		assert(file != NULL);
-		u32 dimensions[2];
-		fread(dimensions, sizeof(u32), 2, file);
-
+		TextureAsset* asset = (TextureAsset*)&asset_pack->buffer[asset_pack->texture_buffer_offsets[i]];
 		RenderTextureInitData* texture = &data->textures[i];
-		texture->width = dimensions[0];
-		texture->height = dimensions[1];
+		texture->width = asset->width;
+		texture->height = asset->height;
 
-		u64 pixel_data_size = sizeof(32) * texture->width * texture->height;
+		u64 pixel_data_size = sizeof(u32) * texture->width * texture->height;
 		texture->pixel_data = (u8*)arena_alloc(init_arena, pixel_data_size);
-		assert(fread(texture->pixel_data, pixel_data_size, 1, file) == 1);
-
-		fclose(file);
+		memcpy(texture->pixel_data, asset->buffer, pixel_data_size);
 
 		if(i == data->textures_len - 1) {
 			texture->next = NULL;

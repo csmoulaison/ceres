@@ -1,4 +1,4 @@
-#define CONFIG_DEFAULT_INPUT_FILENAME "data/config/def_input.conf"
+#define CONFIG_DEFAULT_INPUT_FILENAME "data/def_input.conf"
 
 #define INPUT_MAX_PLAYERS 2
 #define MAX_KEY_MAPPINGS NUM_BUTTONS * 4

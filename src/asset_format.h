@@ -1,12 +1,20 @@
 #define TEXTURE_PIXEL_STRIDE_BYTES 4
+#define MAX_MESH_ASSETS 4
+#define MAX_TEXTURE_ASSETS 4
+#define MAX_RENDER_PROGRAM_ASSETS 1
 
 typedef struct {
 	u8 meshes_len;
+	u64 mesh_buffer_offsets[MAX_MESH_ASSETS];
+
 	u8 textures_len;
-	u64* mesh_buffer_offsets;
-	u64* texture_buffer_offsets;
-	u8* buffer;
-} AssetPackData;
+	u64 texture_buffer_offsets[MAX_TEXTURE_ASSETS];
+
+	u8 render_programs_len;
+	u64 render_program_buffer_offsets[MAX_RENDER_PROGRAM_ASSETS];
+
+	u8 buffer[];
+} AssetPack;
 
 typedef struct {
 	union {
@@ -22,9 +30,20 @@ typedef struct {
 typedef struct {
 	u32 vertices_len;
 	u32 indices_len;
-} MeshAssetHeader;
+	// MeshVertexData * vertices_len, u32 * indices_len
+	u8 buffer[];
+} MeshAsset;
 
 typedef struct {
 	u32 width;
 	u32 height;
-} TextureAssetHeader;
+	// (u8 r, g, b, a) * width * height
+	u8 buffer[];
+} TextureAsset;
+
+typedef struct {
+	u16 vertex_shader_src_len;
+	u16 fragment_shader_src_len;
+	// vertex_src, fragment_src
+	char buffer[];
+} RenderProgramAsset;
