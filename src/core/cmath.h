@@ -15,7 +15,7 @@ void v2_sub(f32* dst, f32* a, f32* b);
 void v2_zero(f32* dst);
 void v3_init(f32* dst, f32 x, f32 y, f32 z);
 void v3_copy(f32* dst, f32* src);
-// NOW: change res at end to dst at beginning
+// TODO: change res at end to dst at beginning
 void v3_normalize(f32* v, f32* res);
 void v3_scale(f32* dst, f32 s);
 void v3_add(f32* dst, f32* a, f32* b);

@@ -47,24 +47,6 @@ void consume_i32(i32* v, char* line, i32* line_i) {
 	*v = (i32)atoi(word);
 }
 
-// NOW: This code has been demonstrated to work when integrated into the main
-// codebase, but there are a couple differences in data here that still need to
-// be verified.
-//
-// Just as a reminder, what we are doing is packing all the data into an
-// AssetPackData struct, which for now will contain textures and meshes, but
-// should have input config and render programs added directly after that.
-//
-// The approach is to prepare all the different assets in an arena, keeping
-// of the assets and data buffers. After they are all prepared, we do a second
-// pass, writing the data directly into a file with the appropriate information
-// encoded into the AssetPackData struct.
-//
-// Once the first pass of meshes and textures has been done on the packing side,
-// we need to implement the game side loading of these assets as well. Do that
-// before doing the other asset types. That will also give us a good test run
-// regarding the friction of modifying this pipeline. That may in turn give us
-// ideas for improvements.
 void prepare_mesh_asset(char* filename, MeshAsset* asset, u8** data, Arena* arena) {
 	printf("Preparing mesh asset '%s'...\n", filename);
 	FILE* file = fopen(filename, "r");
@@ -150,10 +132,8 @@ void prepare_mesh_asset(char* filename, MeshAsset* asset, u8** data, Arena* aren
 		asset->vertices_len = tmp_vertices_len;
 	}
 	asset->indices_len = tmp_faces_len * 3;
-	// NOW: This?
 	*data = (u8*)arena_alloc(arena, sizeof(MeshVertexData) * asset->vertices_len + sizeof(u32) * asset->indices_len);
 	MeshVertexData* vertices = (MeshVertexData*)*data;
-	// NOW: This funkiness to verify?
 	u32* indices = (u32*)((*data) + sizeof(MeshVertexData) * asset->vertices_len);
 
 	// Iterate faces, filling index buffer with face data and associating

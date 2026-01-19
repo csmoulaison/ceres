@@ -70,9 +70,6 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 
 	RenderProgramInitData* program_data = data->programs;
 	while(program_data != NULL) {
-		printf("VERT\n%s", program_data->vertex_shader_src);
-		printf("FRAG\n%s", program_data->fragment_shader_src);
-		
 		u32 vert_shader = gl_compile_shader(program_data->vertex_shader_src, GL_VERTEX_SHADER);
 		u32 frag_shader = gl_compile_shader(program_data->fragment_shader_src, GL_FRAGMENT_SHADER);
 

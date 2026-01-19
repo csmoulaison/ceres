@@ -1,3 +1,16 @@
+// NOW: we are currently in a non working state as the game layer has been moved
+// to a shared library. As far as I can tell the build step is emitting a shared
+// library correctly, though I haven't verified that the actual code is set up
+// properly to be loaded here.
+//
+// Nevertheless, the next step is to load the library at runtime here and load
+// the init and update functions. Once this is working, we want to do the thing
+// where we check if the file has recently changed and reload the .so at that
+// point, making sure to copy it before use so that it isn't locked for updates.
+//
+// This will be pretty badass once it is working. Afterwards, doing hot
+// reloading of assets would be the icing on the cake.
+
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
@@ -11,7 +24,7 @@
 #include "renderer/opengl/opengl.c"
 
 #include "game.h"
-#include "game.c"
+// #include "game.c"
 
 #include <GL/glx.h>
 typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
@@ -192,7 +205,7 @@ i32 main(i32 argc, char** argv) {
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
-	game_init(game_memory);
+	//game_init(game_memory);
 
 	GameOutput game_output = {};
 
@@ -244,9 +257,9 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		game_update(game_memory, platform->current_event, &game_output, 0.02f);
-		render_prepare_frame_data(renderer, platform, &game_output.render_list);
-		gl_update(renderer, platform);
+		//game_update(game_memory, platform->current_event, &game_output, 0.02f);
+		//render_prepare_frame_data(renderer, platform, &game_output.render_list);
+		//gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		arena_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);

@@ -35,6 +35,7 @@ i32 main(i32 argc, char** argv) {
 	print_header("Creating bin and asset directories...");
 	system_call_ignore_result("mkdir ../bin");
 	system_call_ignore_result("mkdir ../bin/data");
+	system_call_ignore_result("mkdir intermediate");
 
 	print_header("Creating input configuration file...");
 	system_call_ignore_result("mkdir config");
@@ -44,10 +45,13 @@ i32 main(i32 argc, char** argv) {
 	print_header("Building asset pack from manifest...");
 	pack_assets("data/assets.manifest", "../bin/data/assets.pack", "../src/generated/asset_handles.h");
 
-	print_header("Compiling program...");
+	print_header("Compiling platform layer...");
 	system_call("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
-	if(system_call_result == 0) {
-		print_header("\033[32mProgram compilation succeeded!");
-	}
+
+	print_header("Compiling game layer...");
+	system_call("gcc -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
+	system_call("gcc -g -shared intermediate/shiptastic.o -o ../bin/shiptastic.so -I ../extern/ -I ../src/ -lm");
+
+	print_header("\033[32mProgram compilation succeeded!");
 	return system_call_result;
 }
