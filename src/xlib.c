@@ -10,6 +10,7 @@
 #include "renderer/renderer.c"
 #include "renderer/opengl/opengl.c"
 
+#include "game.h"
 #include "game.c"
 
 #include <GL/glx.h>
@@ -27,8 +28,8 @@ typedef struct {
 	Arena render_init;
 } MemoryArenas;
 
-void push_platform_event(Platform* platform, PlatformEventType type, void* data, u64 data_bytes, Arena* arena) {
-	PlatformEvent* event = (PlatformEvent*)arena_alloc(arena, sizeof(PlatformEvent));
+void push_game_event(Platform* platform, GameEventType type, void* data, u64 data_bytes, Arena* arena) {
+	GameEvent* event = (GameEvent*)arena_alloc(arena, sizeof(GameEvent));
 	event->next == NULL;
 	event->type = type;
 	event->data = arena_alloc(arena, sizeof(data_bytes));
@@ -40,15 +41,6 @@ void push_platform_event(Platform* platform, PlatformEventType type, void* data,
 		platform->current_event->next = event;
 	}
 	platform->current_event = event;
-}
-
-PlatformEvent* platform_poll_next_event(Platform* platform) {
-	PlatformEvent* event = platform->current_event;
-	if(event == NULL) {
-		return event;
-	}
-	platform->current_event = event->next;
-	return event;
 }
 
 i32 main(i32 argc, char** argv) {
@@ -199,10 +191,13 @@ i32 main(i32 argc, char** argv) {
 
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
-	Game* game = game_init(&game_arena);
+	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
+	game_init(game_memory);
+
+	GameOutput game_output = {};
 
 	platform->frames_since_init = 0;
-	while(!game->close_requested) {
+	while(!game_output.close_requested) {
 		platform->head_event = NULL;
 		platform->current_event = NULL;
 
@@ -222,7 +217,7 @@ i32 main(i32 argc, char** argv) {
 				} break;
 				case KeyPress: {
 					u64 keysym = XLookupKeysym(&(event.xkey), 0);
-					push_platform_event(platform, PLATFORM_EVENT_KEY_DOWN, &keysym, sizeof(u64), &arenas.frame);
+					push_game_event(platform, GAME_EVENT_KEY_DOWN, &keysym, sizeof(u64), &arenas.frame);
 				} break;
 				case KeyRelease: {
 					// X11 natively repeats key events when the key is held down. We could turn
@@ -241,7 +236,7 @@ i32 main(i32 argc, char** argv) {
 
 					if(!is_repeat_key) {
 						u64 keysym = XLookupKeysym(&(event.xkey), 0);
-						push_platform_event(platform, PLATFORM_EVENT_KEY_UP, &keysym, sizeof(u64), &arenas.frame);
+						push_game_event(platform, GAME_EVENT_KEY_UP, &keysym, sizeof(u64), &arenas.frame);
 					}
 				} break;
 				default: break;
@@ -249,8 +244,8 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		RenderList render_list = game_update(game, platform, 0.02f);
-		render_prepare_frame_data(renderer, platform, &render_list);
+		game_update(game_memory, platform->current_event, &game_output, 0.02f);
+		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		arena_clear_to_zero(&arenas.frame);

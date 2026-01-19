@@ -16,16 +16,6 @@ typedef enum {
 	GRAPHICS_API_OPENGL
 } GraphicsApi;
 
-// Renderer (not backend) side references to data
-typedef u8 RenderProgram;
-typedef u8 RenderMesh;
-typedef u8 RenderTexture;
-typedef u8 RenderUbo;
-typedef struct {
-	u8 id;
-	u8* data;
-} RenderHostBuffer;
-
 // Render commands are populated by the host and read in sequential order by the
 // renderer implementation. Later, we might want to change this to a render
 // graph with dependencies and all of that.

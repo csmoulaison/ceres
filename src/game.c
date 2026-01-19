@@ -1,4 +1,6 @@
 #include "input.c"
+#include "game.h"
+#include "renderer/render_list.c"
 
 typedef struct {
 	f32 ship_direction;
@@ -11,21 +13,28 @@ typedef struct {
 } GamePlayer;
 
 typedef struct {
-	bool close_requested;
 	GamePlayer players[2];
 	f32 camera_offset[2];
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
-} Game;
+} GameState;
+
+typedef struct {
+} GameScratch;
+
+typedef struct {
+	GameState state;
+	GameScratch scratch;
+} GameMemory;
 
 void player_direction_vector(f32* dst, GamePlayer* player) {
 	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
 	v2_normalize(dst, dst);
 }
 
-Game* game_init(Arena* arena) {
-	Game* game = (Game*)arena_alloc(arena, sizeof(Game));
-	game->close_requested = false;
+void game_init(GameMemory* memory) {
+	GameState* game = &memory->state;
+
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		player->ship_direction = 0.0f;
@@ -47,19 +56,20 @@ Game* game_init(Arena* arena) {
 	}
 
 	v2_zero(game->camera_offset);
-	return game;
 }
 
-RenderList game_update(Game* game, Platform* platform, f32 dt) {
+GameOutput game_update(GameMemory* memory, GameEvent* events_head, GameOutput* output, f32 dt) {
+	GameState* game = &memory->state;
+
 	// Update input events
 	for(u32 i = 0; i < NUM_BUTTONS; i++) {
 		game->players[0].button_states[i] = game->players[0].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
 		game->players[1].button_states[i] = game->players[1].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
 	}
-	PlatformEvent* event;
-	while((event = platform_poll_next_event(platform)) != NULL) {
+	GameEvent* event = events_head;
+	while(event != NULL) {
 		switch(event->type) {
-			case PLATFORM_EVENT_KEY_DOWN: {
+			case GAME_EVENT_KEY_DOWN: {
 				for(i32 i = 0; i < game->key_mappings_len; i++) {
 					GameKeyMapping* mapping = &game->key_mappings[i];
 					if(mapping->key_id == *((u64*)event->data)) {
@@ -72,7 +82,7 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 					}
 				}
 			} break;
-			case PLATFORM_EVENT_KEY_UP: {
+			case GAME_EVENT_KEY_UP: {
 				for(i32 i = 0; i < game->key_mappings_len; i++) {
 					GameKeyMapping* mapping = &game->key_mappings[i];
 					if(mapping->key_id == *((u64*)event->data)) {
@@ -86,6 +96,7 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 			} break;
 			default: break;
 		}
+		event = event->next;
 	}
 	
 	for(i32 i = 0; i < 2; i++) {
@@ -93,7 +104,7 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 
 		// Quit control
 		if(input_button_down(player->button_states[BUTTON_QUIT])) {
-			game->close_requested = true;
+			output->close_requested = true;
 		}
 
 		// Rotation thruster control
@@ -186,27 +197,26 @@ RenderList game_update(Game* game, Platform* platform, f32 dt) {
 	v2_add(game->camera_offset, game->camera_offset, camera_target_delta);
 
 	// Populate render list
-	RenderList list;
-	render_list_init(&list);
+	RenderList* list = &output->render_list;
+	render_list_init(list);
 
 	f32 clear_color[3] = { 0.1f, 0.1f, 0.2f };
 	f32 cam_target[3] = { game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1] };
 	f32 cam_pos[3] = { cam_target[0] + 4.0f, 8.0f, cam_target[2] };
-	render_list_update_world(&list, clear_color, cam_pos, cam_target);
+	render_list_update_world(list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		f32 ship_pos[3] = { player->ship_position[0], 0.5f, player->ship_position[1] };
 		f32 ship_tilt = clamp(player->ship_rotation_velocity, -8.0f, 8.0f);
 		f32 ship_rot[3] = { ship_tilt * -0.1f, player->ship_direction, 0.0f };
-		render_list_draw_model(&list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
+		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
 	}
 
 	i32 floor_instances = 1024;
 	for(i32 i = 0; i < floor_instances; i++) {
 		f32 floor_pos[3] = { -15.5f + (i % 32), 0.0f, -15.5f + (i / 32) };
 		f32 floor_rot[3] = { 0.0f , 0.0f, 0.0f };
-		render_list_draw_model(&list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
+		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}
-	return list;
 }

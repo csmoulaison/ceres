@@ -16,25 +16,40 @@ the game layer whenever we want, in a way that isn't brittle to inevitable
 changes made to the render layer.
 */
 
-#include "renderer/render_list.h"
+#ifndef render_list_h_INCLUDED
+#define render_list_h_INCLUDED
 
-void render_list_init(RenderList* list) {
-	*list = (RenderList){};
-}
+#define RENDER_LIST_MAX_MODEL_INSTANCES 4096
 
-void render_list_update_world(RenderList* list, f32* clear_color, f32* camera_position, f32* camera_target) {
-	RenderListWorld* world = &list->world;
-	v3_copy(world->clear_color, clear_color);
-	v3_copy(world->camera_position, camera_position);
-	v3_copy(world->camera_target, camera_target);
-}
+// Renderer (not backend) side references to data
+typedef u8 RenderProgram;
+typedef u8 RenderMesh;
+typedef u8 RenderTexture;
+typedef u8 RenderUbo;
+typedef struct {
+	u8 id;
+	u8* data;
+} RenderHostBuffer;
 
-// TODO: RenderTexture becomes RenderMaterial.
-void render_list_draw_model(RenderList* list, RenderMesh mesh, RenderTexture texture, f32* position, f32* orientation) {
-	RenderListModel* model = &list->models[list->models_len];
-	model->mesh = mesh;
-	model->texture = texture;
-	v3_copy(model->position, position);
-	v3_copy(model->orientation, orientation);
-	list->models_len++;
-}
+typedef struct {
+	f32 clear_color[3];
+	f32 camera_position[3];
+	f32 camera_target[3];
+} RenderListWorld;
+
+typedef struct {
+	f32 position[3];
+	f32 orientation[3];
+
+	RenderMesh mesh;
+	RenderTexture texture;
+} RenderListModel;
+
+typedef struct {
+	RenderListWorld world;
+
+	RenderListModel models[RENDER_LIST_MAX_MODEL_INSTANCES];
+	u32 models_len;
+} RenderList;
+
+#endif // render_list_h_INCLUDED
