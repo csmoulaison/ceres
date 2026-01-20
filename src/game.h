@@ -49,11 +49,11 @@ typedef struct GameEvent {
 } GameEvent;
 
 #define GAME_INIT(name) void name(GameMemory* memory)
-typedef GAME_INIT(GameInit);
+typedef GAME_INIT(GameInitFunction);
 GAME_INIT(game_init_stub) {}
 
 #define GAME_UPDATE(name) void name(GameMemory* memory, GameEvent* events_head, GameOutput* output, f32 dt)
-typedef GAME_UPDATE(GameUpdate);
+typedef GAME_UPDATE(GameUpdateFunction);
 GAME_UPDATE(game_update_stub) {}
 
 #endif // game_h_INCLUDED

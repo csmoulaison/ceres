@@ -11,6 +11,7 @@ void player_direction_vector(f32* dst, GamePlayer* player) {
 }
 
 GAME_INIT(game_init) {
+	printf("Game init from dynamic lib!\n");
 	GameState* game = &memory->state;
 
 	for(i32 i = 0; i < 2; i++) {

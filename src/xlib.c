@@ -19,6 +19,8 @@
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
+#include <dlfcn.h>
+
 #include "config.c"
 #include "platform/platform.h"
 
@@ -207,11 +209,24 @@ i32 main(i32 argc, char** argv) {
 	platform->window_width = window_attributes.width;
 	platform->window_height = window_attributes.height;
 
+	// Initialize game, loading the dynamic libraary and initializing it with some
+	// memory we allocate here.
+	void* lib = dlopen("./shiptastic.so", RTLD_NOW);
+	assert(lib != NULL);
+
+	GameInitFunction* game_init;
+	GameUpdateFunction* game_update;
+
+	game_init = dlsym(lib, "game_init");
+	assert(dlerror() == NULL);
+	game_update = dlsym(lib, "game_update");
+	assert(dlerror() == NULL);
+
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
-	//game_init(game_memory);
 
+	game_init(game_memory);
 	GameOutput game_output = {};
 
 	platform->frames_since_init = 0;
@@ -262,9 +277,9 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		//game_update(game_memory, platform->current_event, &game_output, 0.02f);
-		//render_prepare_frame_data(renderer, platform, &game_output.render_list);
-		//gl_update(renderer, platform);
+		game_update(game_memory, platform->current_event, &game_output, 0.02f);
+		render_prepare_frame_data(renderer, platform, &game_output.render_list);
+		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
 		arena_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);
