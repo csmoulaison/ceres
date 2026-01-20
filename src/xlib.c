@@ -1,3 +1,8 @@
+// NOW: I think as soon as DLLs are working we quickly try to implement render
+// targets and get the game in a completely playable local 2 player state with
+// keyboard input (hopefully controller soon after). Fight to a maximum score
+// and then restart after showing who won.
+
 // NOW: we are currently in a non working state as the game layer has been moved
 // to a shared library. As far as I can tell the build step is emitting a shared
 // library correctly, though I haven't verified that the actual code is set up

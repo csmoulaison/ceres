@@ -58,6 +58,7 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	//glDisable(GL_CULL_FACE);
+	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
 	if(data->programs_len > 0)
 		gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * data->programs_len);
