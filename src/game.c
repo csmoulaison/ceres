@@ -108,7 +108,7 @@ GAME_UPDATE(game_update) {
 
 		f32 forward_mod = 0.0f;
 		if(input_button_down(player->button_states[BUTTON_FORWARD]))
-			forward_mod += 0.3f;
+			forward_mod += 0.4f;
 		if(input_button_down(player->button_states[BUTTON_BACK]))
 			forward_mod -= 0.2f;
 		f32 forward[2];
@@ -181,7 +181,7 @@ GAME_UPDATE(game_update) {
 
 	f32 clear_color[3] = { 0.1f, 0.1f, 0.2f };
 	f32 cam_target[3] = { game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1] };
-	f32 cam_pos[3] = { cam_target[0] + 4.0f, 8.0f, cam_target[2] };
+	f32 cam_pos[3] = { cam_target[0] + 4.0f, 16.0f, cam_target[2] };
 	render_list_update_world(list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {

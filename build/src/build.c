@@ -32,6 +32,12 @@ void copy_manifest_asset_directly_to_bin(AssetManifestEntry* entry) {
 }
 
 i32 main(i32 argc, char** argv) {
+	bool game_only = false;
+	if(argc > 1 && strcmp(argv[1], "-g") == 0) {
+		game_only = true;
+	}
+	if(game_only) goto game_only;
+
 	print_header("Creating bin and asset directories...");
 	system_call_ignore_result("mkdir ../bin");
 	system_call_ignore_result("mkdir ../bin/data");
@@ -48,9 +54,11 @@ i32 main(i32 argc, char** argv) {
 	print_header("Compiling platform layer...");
 	system_call("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
 
+game_only:
 	print_header("Compiling game layer...");
-	system_call("gcc -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
-	system_call("gcc -g -shared intermediate/shiptastic.o -o ../bin/shiptastic.so -I ../extern/ -I ../src/ -lm");
+	system_call("gcc -g -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
+	system_call("gcc -g -shared intermediate/shiptastic.o -o ../bin/shiptastic_tmp.so -I ../extern/ -I ../src/ -lm");
+	system_call("mv ../bin/shiptastic_tmp.so ../bin/shiptastic.so");
 
 	print_header("\033[32mProgram compilation succeeded!");
 	return system_call_result;

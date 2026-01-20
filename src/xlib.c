@@ -20,6 +20,7 @@
 #include "core/core.h"
 
 #include <dlfcn.h>
+#include <sys/stat.h>
 
 #include "config.c"
 #include "platform/platform.h"
@@ -39,6 +40,11 @@ typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXCo
 typedef struct {
 	Display* display;
 	Window window;
+
+	void* game_lib_handle;
+	u64 game_lib_last_modified;
+	GameInitFunction* game_init;
+	GameUpdateFunction* game_update;
 } XlibContext;
 
 typedef struct {
@@ -61,6 +67,45 @@ void push_game_event(Platform* platform, GameEventType type, void* data, u64 dat
 		platform->current_event->next = event;
 	}
 	platform->current_event = event;
+}
+
+void xlib_reload_game_code(XlibContext* xlib) {
+	struct stat game_lib_stat;
+	stat("shiptastic.so", &game_lib_stat);
+
+	u64 actual_last_modified = game_lib_stat.st_mtim.tv_sec;
+	if(actual_last_modified > xlib->game_lib_last_modified) {
+		if(xlib->game_lib_last_modified != 0) {
+			dlclose(xlib->game_lib_handle);
+		}
+		xlib->game_lib_last_modified = actual_last_modified;
+
+		char copy_fname[256];
+		time_t t;
+		time(&t);
+		sprintf(copy_fname, "./shiptastic_%u.so", t);
+		//struct tm* tm;
+		//tm = localtime(&t);
+		//strftime(cpy_fname, sizeof(cpy_fname), "", tm);
+
+		char cmd[2048];
+		sprintf(cmd, "cp shiptastic.so %s", copy_fname);
+		system(cmd);
+
+		printf("%s\n", copy_fname);
+		xlib->game_lib_handle = dlopen(copy_fname, RTLD_NOW);
+		char* err;
+		if((err = dlerror()) != NULL) {
+			fprintf(stderr, "ERROR! %s\n", err);
+		}
+		assert(xlib->game_lib_handle != NULL);
+
+		xlib->game_init = dlsym(xlib->game_lib_handle, "game_init");
+		assert(dlerror() == NULL);
+		xlib->game_update = dlsym(xlib->game_lib_handle, "game_update");
+		assert(dlerror() == NULL);
+	}
+
 }
 
 i32 main(i32 argc, char** argv) {
@@ -211,26 +256,20 @@ i32 main(i32 argc, char** argv) {
 
 	// Initialize game, loading the dynamic libraary and initializing it with some
 	// memory we allocate here.
-	void* lib = dlopen("./shiptastic.so", RTLD_NOW);
-	assert(lib != NULL);
-
-	GameInitFunction* game_init;
-	GameUpdateFunction* game_update;
-
-	game_init = dlsym(lib, "game_init");
-	assert(dlerror() == NULL);
-	game_update = dlsym(lib, "game_update");
-	assert(dlerror() == NULL);
+	xlib->game_lib_last_modified = 0;
+	xlib_reload_game_code(xlib);
 
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
 
-	game_init(game_memory);
+	xlib->game_init(game_memory);
 	GameOutput game_output = {};
 
 	platform->frames_since_init = 0;
 	while(!game_output.close_requested) {
+		xlib_reload_game_code(xlib);
+		
 		platform->head_event = NULL;
 		platform->current_event = NULL;
 
@@ -277,7 +316,7 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		game_update(game_memory, platform->current_event, &game_output, 0.02f);
+		xlib->game_update(game_memory, platform->current_event, &game_output, 0.02f);
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);
