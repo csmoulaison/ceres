@@ -181,13 +181,13 @@ GAME_UPDATE(game_update) {
 
 	f32 clear_color[3] = { 0.1f, 0.1f, 0.2f };
 	f32 cam_target[3] = { game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1] };
-	f32 cam_pos[3] = { cam_target[0] + 4.0f, 16.0f, cam_target[2] };
+	f32 cam_pos[3] = { cam_target[0] + 4.0f, 8.0f, cam_target[2] };
 	render_list_update_world(list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		f32 ship_pos[3] = { player->ship_position[0], 0.5f, player->ship_position[1] };
-		f32 ship_tilt = clamp(player->ship_rotation_velocity, -8.0f, 8.0f);
+		f32 ship_tilt = clamp(player->ship_rotation_velocity, -5.0f, 5.0f);
 		f32 ship_rot[3] = { ship_tilt * -0.1f, player->ship_direction, 0.0f };
 		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
 	}

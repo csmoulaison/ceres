@@ -1,18 +1,57 @@
 #include "asset_format.h"
 
+#define MANIFEST_FILENAME "data/assets.manifest"
+#define MAX_ASSETS 256
 #define FLAT_MESH_SHADING true
 
 typedef enum {
-	MANIFEST_MESH,
-	MANIFEST_TEXTURE,
-	MANIFEST_RENDER_PROGRAM
-} AssetManifestItemType;
+	ASSET_TYPE_MESH,
+	ASSET_TYPE_TEXTURE,
+	ASSET_TYPE_RENDER_PROGRAM,
+	ASSET_TYPE_FONT,
+	NUM_ASSET_TYPES
+} AssetType;
 
 typedef struct {
-	AssetManifestItemType type;
-	char handle[64];
-	char filenames[2][2048];
-} AssetManifestItem;
+	AssetType type;
+	u64 size_in_buffer;
+	char handle[256];
+	void* data; // i.e. MeshInfo, TextureInfo
+} AssetInfo;
+
+typedef struct {
+	AssetInfo infos[MAX_ASSETS];
+	u32 len;
+	u32 total_buffer_size;
+} AssetInfoList;
+
+typedef struct {
+	char filename[256];
+	u32 vertices_len;
+	u32 indices_len;
+} MeshInfo;
+
+typedef enum {
+	TEXTURE_SOURCE_IMAGE,
+	TEXTURE_SOURCE_FONT
+} TextureSourceType;
+
+typedef struct {
+	char filename[256];
+	TextureSourceType source_type;
+	u32 font_size; // only used if source_type = TEXTURE_SOURCE_FONT
+} TextureInfo;
+
+typedef struct {
+	char vert_filename[256];
+	char frag_filename[256];
+} RenderProgramInfo;
+
+typedef struct {
+	char filename[256];
+	u32 font_size;
+	u32 texture_id;
+} FontInfo;
 
 void remove_slashes_from_line(char* line) {
 	i32 i = 0;
@@ -47,9 +86,14 @@ void consume_i32(i32* v, char* line, i32* line_i) {
 	*v = (i32)atoi(word);
 }
 
-void prepare_mesh_asset(char* filename, MeshAsset* asset, u8** data, Arena* arena) {
-	printf("Preparing mesh asset '%s'...\n", filename);
-	FILE* file = fopen(filename, "r");
+// NOW: Reduce redundancy here from the size calculator logic for all these
+// assets, storing all of it in the info struct so it doesn't need to be
+// recalculated in the actual preparation functions.
+//
+// Also rename them. Prepare doesn't make as uch sense anymore.
+void prepare_mesh_asset(MeshInfo* info, MeshAsset* asset) {
+	printf("Preparing mesh asset '%s'...\n", info->filename);
+	FILE* file = fopen(info->filename, "r");
 	assert(file != NULL);
 
 	// Count line types (vertices, uvs, normals, faces)
@@ -132,9 +176,8 @@ void prepare_mesh_asset(char* filename, MeshAsset* asset, u8** data, Arena* aren
 		asset->vertices_len = tmp_vertices_len;
 	}
 	asset->indices_len = tmp_faces_len * 3;
-	*data = (u8*)arena_alloc(arena, sizeof(MeshVertexData) * asset->vertices_len + sizeof(u32) * asset->indices_len);
-	MeshVertexData* vertices = (MeshVertexData*)*data;
-	u32* indices = (u32*)((*data) + sizeof(MeshVertexData) * asset->vertices_len);
+	MeshVertexData* vertices = (MeshVertexData*)asset->buffer;
+	u32* indices = (u32*)((asset->buffer) + sizeof(MeshVertexData) * asset->vertices_len);
 
 	// Iterate faces, filling index buffer with face data and associating
 	// verts/uvs/normals together at the same time.
@@ -159,10 +202,10 @@ void prepare_mesh_asset(char* filename, MeshAsset* asset, u8** data, Arena* aren
 	arena_destroy(&tmp_arena);
 }
 
-void prepare_texture_asset(char* filename, TextureAsset* asset, u8** buffer, Arena* arena) {
-	printf("Preparing texture asset '%s'...\n", filename);
+void prepare_texture_asset(TextureInfo* info, TextureAsset* asset) {
+	printf("Preparing texture asset '%s'...\n", info->filename);
 	u32 w, h, channels;
-	stbi_uc* stb_pixels = stbi_load(filename, &w, &h, &channels, STBI_rgb_alpha);
+	stbi_uc* stb_pixels = stbi_load(info->filename, &w, &h, &channels, STBI_rgb_alpha);
 	assert(stb_pixels != NULL);
 	assert(channels == 4);
 	assert(w == 256 && h == 256);
@@ -170,15 +213,14 @@ void prepare_texture_asset(char* filename, TextureAsset* asset, u8** buffer, Are
 	asset->height = h;
 
 	u64 buffer_size = sizeof(u32) * w * h;
-	*buffer = (u8*)arena_alloc(arena, buffer_size);
-	memcpy(*buffer, stb_pixels, buffer_size);
+	memcpy(asset->buffer, stb_pixels, buffer_size);
 	stbi_image_free(stb_pixels);
 }
 
-void prepare_render_program_asset(char* vert_filename, char* frag_filename, RenderProgramAsset* asset, char** buffer, Arena* arena) {
-	printf("Preparing render program asset (vert: '%s', frag: '%s')...\n", vert_filename, frag_filename);
+void prepare_render_program_asset(RenderProgramInfo* info, RenderProgramAsset* asset) {
+	printf("Preparing render program asset (vert: '%s', frag: '%s')...\n", info->vert_filename, info->frag_filename);
 
-	FILE* vert_file = fopen(vert_filename, "r");
+	FILE* vert_file = fopen(info->vert_filename, "r");
 	assert(vert_file != NULL);
 	asset->vertex_shader_src_len = 1;
 	while((fgetc(vert_file)) != EOF) {
@@ -186,7 +228,7 @@ void prepare_render_program_asset(char* vert_filename, char* frag_filename, Rend
 	}
 	fseek(vert_file, 0, SEEK_SET);
 
-	FILE* frag_file = fopen(frag_filename, "r");
+	FILE* frag_file = fopen(info->frag_filename, "r");
 	assert(frag_file != NULL);
 	asset->fragment_shader_src_len = 1;
 	while((fgetc(frag_file)) != EOF) {
@@ -194,199 +236,250 @@ void prepare_render_program_asset(char* vert_filename, char* frag_filename, Rend
 	}
 	fseek(frag_file, 0, SEEK_SET);
 
-	*buffer = (char*)arena_alloc(arena, sizeof(char) * asset->vertex_shader_src_len + sizeof(char) * asset->fragment_shader_src_len);
-
 	int i = 0;
-	while(((*buffer)[i] = fgetc(vert_file)) != EOF) {
+	while((asset->buffer[i] = fgetc(vert_file)) != EOF) {
 		i++;
 	}
-	(*buffer)[i] = '\0';
+	asset->buffer[i] = '\0';
 	fclose(vert_file);
 
 	i = 0;
-	while(((*buffer)[asset->vertex_shader_src_len + i] = fgetc(frag_file)) != EOF) {
+	while((asset->buffer[asset->vertex_shader_src_len + i] = fgetc(frag_file)) != EOF) {
 		i++;
 	}
-	(*buffer)[asset->vertex_shader_src_len + i] = '\0';
+	asset->buffer[asset->vertex_shader_src_len + i] = '\0';
 	//while((*buffer[asset->vertex_shader_src_len + i] = 'c') != EOF) {}
 	fclose(frag_file);
 }
 
-// TODO: We could avoid this multi-pass approach by having dedicated functions
-// which iterate each asset type and only do the processing needed to get the
-// required buffer size, then processing it into the final asset pack format
-// live.
-//
-// This feels to me like it would be easier to eventually encode into a generic
-// process as well, which will probably be useful as there is a lot of similar
-// code used throughout this pipeline.
-//
-// Of course, get this working first before we move onto any of that stuff.
-void pack_assets(char* manifest_filename, char* out_filename, char* generated_asset_handles_filename) {
-	// We first process the assets and store the output data into temporary buffers
-	// allocated by the arena. This is then written into the actual asset pack and
-	// saved to disk.
+void push_asset_info(AssetInfoList* list, AssetType type, char* manifest_name, void* data) {
+	char* asset_type_to_handle_prefix[NUM_ASSET_TYPES];
+	asset_type_to_handle_prefix[ASSET_TYPE_MESH] = "MESH";
+	asset_type_to_handle_prefix[ASSET_TYPE_TEXTURE] = "TEXTURE";
+	asset_type_to_handle_prefix[ASSET_TYPE_RENDER_PROGRAM] = "RENDER_PROGRAM";
+	asset_type_to_handle_prefix[ASSET_TYPE_FONT] = "FONT";
+
+	AssetInfo* info = &list->infos[list->len];
+	list->len++;
+	info->type = type;
+	info->data = data;
+	sprintf(info->handle, "ASSET_%s_%s", asset_type_to_handle_prefix[type], manifest_name);
+
+	// Getting the asset size in the buffer is specific to each asset type
+	switch(type) {
+		case ASSET_TYPE_MESH: {
+			MeshInfo* mesh_data = (MeshInfo*)data;
+			FILE* mesh_file = fopen(mesh_data->filename, "r");
+			printf("%s\n", mesh_data->filename);
+			assert(mesh_file != NULL);
+
+			u32 vertex_lines = 0;
+			u32 uv_lines = 0;
+			u32 normal_lines = 0;
+			u32 face_lines = 0;
+
+			char line[512];
+			while(fgets(line, sizeof(line), mesh_file)) {
+				char key[32];
+				u32 char_i = 0;
+				consume_word(key, line, &char_i);
+				if(strcmp(key, "v") == 0) {
+					vertex_lines++;
+				} else if(strcmp(key, "vt") == 0) {
+					uv_lines++;
+				} else if(strcmp(key, "vn") == 0) {
+					normal_lines++;
+				} else if(strcmp(key, "f") == 0) {
+					face_lines++;
+				}
+			}
+			// Three vertices per face. This is in the flat shading case without an index
+			// buffer. With an index buffer, the number of vertices would probably be
+			// equal to vertex_lines.
+			// 
+			// TODO: Just don't even have an index buffer in the flat shading case,
+			// obviously. Wait to make this change until after we get this reimplemented.
+			mesh_data->vertices_len = face_lines * 3;
+			mesh_data->indices_len = face_lines * 3;
+			info->size_in_buffer = sizeof(MeshAsset) + sizeof(MeshVertexData) * mesh_data->vertices_len + sizeof(u32) * mesh_data->indices_len;
+		} break;
+		case ASSET_TYPE_TEXTURE: {
+			TextureInfo* tex_data = (TextureInfo*)data;
+			switch(tex_data->source_type) {
+				case TEXTURE_SOURCE_IMAGE: {
+					u32 w, h, channels;
+					stbi_uc* stb_pixels = stbi_load(tex_data->filename, &w, &h, &channels, STBI_rgb_alpha);
+					assert(stb_pixels != NULL);
+					assert(channels == 4);
+					info->size_in_buffer = sizeof(TextureAsset) + TEXTURE_PIXEL_STRIDE_BYTES * w * h;
+				} break;
+				case TEXTURE_SOURCE_FONT: {
+					// NOW: implement font size calculation.
+					info->size_in_buffer = 0;
+					panic();
+				} break;
+				default: break;
+			}
+		} break;
+		case ASSET_TYPE_RENDER_PROGRAM: {
+			RenderProgramInfo* rp_info = (RenderProgramInfo*)data;
+
+			FILE* vert_file = fopen(rp_info->vert_filename, "r");
+			assert(vert_file != NULL);
+			u64 vert_len = 1;
+			while((fgetc(vert_file)) != EOF) {
+				vert_len++;
+			}
+			fseek(vert_file, 0, SEEK_SET);
+
+			FILE* frag_file = fopen(rp_info->frag_filename, "r");
+			assert(frag_file != NULL);
+			u64 frag_len = 1;
+			while((fgetc(frag_file)) != EOF) {
+				frag_len++;
+			}
+			fseek(frag_file, 0, SEEK_SET);
+
+			info->size_in_buffer = sizeof(RenderProgramAsset) + sizeof(char) * vert_len + sizeof(char) * frag_len;
+		} break;
+		case ASSET_TYPE_FONT: {
+			FontInfo* font_info = (FontInfo*)data;
+			// NOW: implement font asset size caclulation.
+		} break;
+		default: break;
+	}
+
+	list->total_buffer_size += info->size_in_buffer;
+}
+
+void pack_assets() {
+	// Process asset manifest into a list of assets along with their sizes in the
+	// final asset pack data buffer. The list of assets in the manifest isn't 1:1
+	// with the final list in the pack. For instance, manifest fonts create both a
+	// "font" asset and a texture asset.
 	Arena arena;
-	arena_init(&arena, MEGABYTE * 128, NULL, "AssetPacker");
+	arena_init(&arena, MEGABYTE * 32, NULL, "AssetInfo");
+	AssetInfoList infos_list;
+	infos_list.len = 0;
 
-	MeshAsset mesh_assets[MAX_MESH_ASSETS];
-	u8* mesh_buffers[MAX_MESH_ASSETS];
-	u32 meshes_len = 0;
-
-	TextureAsset texture_assets[MAX_TEXTURE_ASSETS];
-	u8* texture_buffers[MAX_TEXTURE_ASSETS];
-	u32 textures_len = 0;
-
-	RenderProgramAsset render_program_assets[MAX_RENDER_PROGRAM_ASSETS];
-	char* render_program_buffers[MAX_RENDER_PROGRAM_ASSETS];
-	u32 render_programs_len = 0;
-
-	// Load asset manifest file
-	FILE* manifest = fopen(manifest_filename, "r");
+	FILE* manifest = fopen(MANIFEST_FILENAME, "r");
 	assert(manifest != NULL);
-
-	char mesh_handles[MAX_MESH_ASSETS][256];
-	char texture_handles[MAX_TEXTURE_ASSETS][256];
-	char render_program_handles[MAX_RENDER_PROGRAM_ASSETS][256];
-
-	char line[4096];
+	u32 info_i = 0;
+	u32 line_i = 0;
+	char line[2048];
 	while(fgets(line, sizeof(line), manifest)) {
-		AssetManifestItem item;
-		i32 line_i = 0;
+		i32 char_i = 0;
 
-		char type_str[64];
-		consume_word(type_str, line, &line_i);
-		consume_word(item.handle, line, &line_i);
-		consume_word(item.filenames[0], line, &line_i);
+		char manifest_key[64];
+		consume_word(manifest_key, line, &char_i);
 
-		if(strncmp(type_str, "mesh", strlen("mesh")) == 0) { item.type = MANIFEST_MESH; }
-		else if(strncmp(type_str, "texture", strlen("texture")) == 0) { item.type = MANIFEST_TEXTURE; }
-		else if(strncmp(type_str, "render_program", strlen("render_program")) == 0) { item.type = MANIFEST_RENDER_PROGRAM; }
-		else { printf("Entry type '%s' not recognized in asset manifest.", type_str); }
+		char manifest_name[64];
+		consume_word(manifest_name, line, &char_i);
 
-		switch(item.type) {
-			case MANIFEST_MESH: {
-				strcpy(mesh_handles[meshes_len], item.handle);
-				assert(meshes_len < MAX_MESH_ASSETS);
-				prepare_mesh_asset(item.filenames[0], &mesh_assets[meshes_len], &mesh_buffers[meshes_len], &arena);
-				meshes_len++;
+		if(strcmp(manifest_key, "mesh") == 0) {
+			MeshInfo* info = (MeshInfo*)arena_alloc(&arena, sizeof(MeshInfo));
+			consume_word(info->filename, line, &char_i);
+			printf("%s\n", info->filename);
+			push_asset_info(&infos_list, ASSET_TYPE_MESH, manifest_name, info);
+		} else if(strcmp(manifest_key, "texture") == 0) {
+			TextureInfo* info = (TextureInfo*)arena_alloc(&arena, sizeof(TextureInfo));
+			info->source_type = TEXTURE_SOURCE_IMAGE;
+			consume_word(info->filename, line, &char_i);
+			push_asset_info(&infos_list, ASSET_TYPE_TEXTURE, manifest_name, info);
+		} else if(strcmp(manifest_key, "render_program") == 0) {
+			RenderProgramInfo* info = (RenderProgramInfo*)arena_alloc(&arena, sizeof(RenderProgramInfo));
+			consume_word(info->vert_filename, line, &char_i);
+			consume_word(info->frag_filename, line, &char_i);
+			push_asset_info(&infos_list, ASSET_TYPE_RENDER_PROGRAM, manifest_name, info);
+		} else if(strcmp(manifest_key, "font") == 0) {
+			char filename[256];
+			consume_word(filename, line, &char_i);
+
+			char font_size_str[64];
+			consume_word(font_size_str, line, &char_i);
+			u32 font_size = atoi(font_size_str);
+			
+			TextureInfo* tex_info = (TextureInfo*)arena_alloc(&arena, sizeof(TextureInfo));
+			tex_info->source_type = TEXTURE_SOURCE_FONT;
+			tex_info->font_size = font_size;
+			strcpy(tex_info->filename, filename);
+			push_asset_info(&infos_list, ASSET_TYPE_TEXTURE, manifest_name, tex_info);
+
+			FontInfo* font_info = (FontInfo*)arena_alloc(&arena, sizeof(FontInfo));
+			font_info->font_size = font_size;
+			strcpy(font_info->filename, filename);
+			push_asset_info(&infos_list, ASSET_TYPE_FONT, manifest_name, font_info);
+		} else {
+			printf("Asset manifest key '%s' at line %u not recognized!\n", line_i);
+		}
+		line_i++;
+	}
+
+	// Calculate the size of the asset pack buffer and store asset buffer offsets
+	AssetPack* pack = (AssetPack*)arena_alloc(&arena, sizeof(AssetPack) + infos_list.total_buffer_size);
+	u64 buffer_pos = 0;
+
+	u8* asset_counts[NUM_ASSET_TYPES];
+	asset_counts[ASSET_TYPE_MESH] = &pack->meshes_len;
+	asset_counts[ASSET_TYPE_TEXTURE] = &pack->textures_len;
+	asset_counts[ASSET_TYPE_RENDER_PROGRAM] = &pack->render_programs_len;
+	asset_counts[ASSET_TYPE_FONT] = &pack->fonts_len;
+
+	u64* asset_offset_lists[NUM_ASSET_TYPES];
+	asset_offset_lists[ASSET_TYPE_MESH] = pack->mesh_buffer_offsets;
+	asset_offset_lists[ASSET_TYPE_TEXTURE] = pack->texture_buffer_offsets;
+	asset_offset_lists[ASSET_TYPE_RENDER_PROGRAM] = pack->render_program_buffer_offsets;
+	asset_offset_lists[ASSET_TYPE_FONT] = pack->font_buffer_offsets;
+
+	for(i32 i = 0; i < infos_list.len; i++) {
+		AssetInfo* info = &infos_list.infos[i];
+		(asset_offset_lists[info->type])[*(asset_counts[info->type])] = buffer_pos;
+		*asset_counts[info->type] += 1;
+
+		switch(info->type) {
+			case ASSET_TYPE_MESH: {
+				prepare_mesh_asset((MeshInfo*)info->data, (MeshAsset*)&pack->buffer[buffer_pos]);
 			} break;
-			case MANIFEST_TEXTURE: {
-				strcpy(texture_handles[textures_len], item.handle);
-				assert(textures_len < MAX_TEXTURE_ASSETS);
-				prepare_texture_asset(item.filenames[0], &texture_assets[textures_len], &texture_buffers[textures_len], &arena);
-				textures_len++;
+			case ASSET_TYPE_TEXTURE: {
+				prepare_texture_asset((TextureInfo*)info->data, (TextureAsset*)&pack->buffer[buffer_pos]);
 			} break;
-			case MANIFEST_RENDER_PROGRAM: {
-				strcpy(render_program_handles[render_programs_len], item.handle);
-				assert(render_programs_len < MAX_RENDER_PROGRAM_ASSETS);
-				consume_word(item.filenames[1], line, &line_i);
-				prepare_render_program_asset(item.filenames[0], item.filenames[1], &render_program_assets[render_programs_len], &render_program_buffers[render_programs_len], &arena);
-				render_programs_len++;
+			case ASSET_TYPE_RENDER_PROGRAM: {
+				prepare_render_program_asset((RenderProgramInfo*)info->data, (RenderProgramAsset*)&pack->buffer[buffer_pos]);
+			} break;
+			case ASSET_TYPE_FONT: {
+				panic();
+				// TODO: implement font loading
+				//prepare_font_asset((FontInfo*)info->data, (FontAsset*)&pack->buffer[buffer_pos]);
 			} break;
 			default: break;
 		}
+
+		buffer_pos += info->size_in_buffer;
 	}
 
-	// Calculate total asset pack buffer size and per-asset buffer offsets
-	u64 buffer_size = 0;
-	u64 mesh_offsets[MAX_MESH_ASSETS];
-	u64 texture_offsets[MAX_TEXTURE_ASSETS];
-	u64 render_program_offsets[MAX_RENDER_PROGRAM_ASSETS];
-
-	for(i32 i = 0; i < meshes_len; i++) {
-		mesh_offsets[i] = buffer_size;
-		MeshAsset* asset = &mesh_assets[i];
-		buffer_size += sizeof(MeshAsset) + sizeof(MeshVertexData) * asset->vertices_len + sizeof(u32) * asset->indices_len;
-	}
-	for(i32 i = 0; i < textures_len; i++) {
-		texture_offsets[i] = buffer_size;
-		TextureAsset* asset = &texture_assets[i];
-		buffer_size += sizeof(TextureAsset) + TEXTURE_PIXEL_STRIDE_BYTES * asset->width * asset->height;
-	}
-	for(i32 i = 0; i < render_programs_len; i++) {
-		render_program_offsets[i] = buffer_size;
-		RenderProgramAsset* asset = &render_program_assets[i];
-		buffer_size += sizeof(RenderProgramAsset) + sizeof(char) * asset->vertex_shader_src_len + sizeof(char) * asset->fragment_shader_src_len;
-	}
-
-	// Build asset pack, copying the previously prepared data
-	u64 asset_pack_size = sizeof(AssetPack) + buffer_size;
-	AssetPack* pack = (AssetPack*)arena_alloc(&arena, asset_pack_size);
-	pack->meshes_len = meshes_len;
-	pack->textures_len = textures_len;
-	pack->render_programs_len = render_programs_len;
-	memcpy(pack->mesh_buffer_offsets, mesh_offsets, sizeof(pack->mesh_buffer_offsets));
-	memcpy(pack->texture_buffer_offsets, texture_offsets, sizeof(pack->texture_buffer_offsets));
-	memcpy(pack->render_program_buffer_offsets, render_program_offsets, sizeof(pack->render_program_buffer_offsets));
-
-	for(i32 i = 0; i < meshes_len; i++) {
-		MeshAsset* tmp_asset = &mesh_assets[i];
-		u8* tmp_buffer = mesh_buffers[i];
-
-		MeshAsset* pack_asset = (MeshAsset*)&pack->buffer[pack->mesh_buffer_offsets[i]];
-		u8* pack_buffer = &pack->buffer[pack->mesh_buffer_offsets[i] + sizeof(MeshAsset)];
-
-		memcpy(pack_asset, tmp_asset, sizeof(MeshAsset));
-		memcpy(pack_buffer, tmp_buffer, sizeof(MeshVertexData) * tmp_asset->vertices_len + sizeof(u32) * tmp_asset->indices_len);
-	}
-	for(i32 i = 0; i < textures_len; i++) {
-		TextureAsset* tmp_asset = &texture_assets[i];
-		u8* tmp_buffer = texture_buffers[i];
-
-		TextureAsset* pack_asset = (TextureAsset*)&pack->buffer[pack->texture_buffer_offsets[i]];
-		u8* pack_buffer = &pack->buffer[pack->texture_buffer_offsets[i] + sizeof(TextureAsset)];
-
-		memcpy(pack_asset, tmp_asset, sizeof(TextureAsset));
-		memcpy(pack_buffer, tmp_buffer, TEXTURE_PIXEL_STRIDE_BYTES * tmp_asset->width * tmp_asset->height);
-	}
-	for(i32 i = 0; i < render_programs_len; i++) {
-		RenderProgramAsset* tmp_asset = &render_program_assets[i];
-		u8* tmp_buffer = render_program_buffers[i];
-
-		RenderProgramAsset* pack_asset = (RenderProgramAsset*)&pack->buffer[pack->render_program_buffer_offsets[i]];
-		char* pack_buffer = pack_asset->buffer;
-
-		memcpy(pack_asset, tmp_asset, sizeof(RenderProgramAsset));
-		memcpy(pack_buffer, tmp_buffer, sizeof(char) * tmp_asset->vertex_shader_src_len + sizeof(char) * tmp_asset->fragment_shader_src_len);
-	}
-
-	FILE* out_file = fopen(out_filename, "w");
+	FILE* out_file = fopen("../bin/data/assets.pack", "w");
 	assert(out_file != NULL);
 
-	fwrite(pack, asset_pack_size, 1, out_file);
+	fwrite(pack, sizeof(AssetPack) + infos_list.total_buffer_size, 1, out_file);
 	fclose(out_file);
 
-
-	FILE* test_file = fopen(out_filename, "r");
-	assert(test_file != NULL);
-
-	AssetPack* test = (AssetPack*)arena_alloc(&arena, asset_pack_size);
-	fread(test, asset_pack_size, 1, test_file);
-
-	FILE* generated_file = fopen(generated_asset_handles_filename, "w");
-	assert(generated_file != NULL);
-
-	fprintf(generated_file, "\
-// WARNING: This file (will be in the future I promise) was generated by the\n\
-// build system. Any modifications made to it will be overwritten.\n\
-#ifndef GEN_asset_handles_h_INCLUDED\n\
-#define GEN_asset_handles_h_INCLUDED\n\
-\n\
-#define ASSET_PACK_FILENAME \"%s\"\n\n", "data/assets.pack");
-
-	for(i32 i = 0; i < meshes_len; i++) {
-		fprintf(generated_file, "#define ASSET_MESH_%s %i\n", mesh_handles[i], i);
+	/* FOR DEBUG PURPOSES ONLY:
+	for(i32 i = 0; i < pack->meshes_len; i++) {
+		printf("mesh offset: %u\n", pack->mesh_buffer_offsets[i]);
 	}
-	fprintf(generated_file, "\n");
-	for(i32 i = 0; i < textures_len; i++) {
-		fprintf(generated_file, "#define ASSET_TEXTURE_%s %i\n", texture_handles[i], i);
+	for(i32 i = 0; i < pack->textures_len; i++) {
+		printf("texture offset: %u\n", pack->texture_buffer_offsets[i]);
 	}
-	fprintf(generated_file, "\n");
-	for(i32 i = 0; i < render_programs_len; i++) {
-		fprintf(generated_file, "#define ASSET_RENDER_PROGRAM_%s %i\n", render_program_handles[i], i);
+	for(i32 i = 0; i < pack->render_programs_len; i++) {
+		printf("render_program offset: %u\n", pack->render_program_buffer_offsets[i]);
 	}
-	fprintf(generated_file, "\n#endif // GEN_asset_handles_h_INCLUDED");
+	for(i32 i = 0; i < pack->fonts_len; i++) {
+		printf("font offset: %u\n", pack->font_buffer_offsets[i]);
+	}
 
-	fclose(generated_file);
+	printf("meshes len: %u\n", pack->meshes_len);
+	printf("textures len: %u\n", pack->textures_len);
+	printf("render_programs len: %u\n", pack->render_programs_len);
+	printf("fonts len: %u\n", pack->fonts_len);
+	*/
 }

@@ -49,16 +49,18 @@ i32 main(i32 argc, char** argv) {
 	system_call("cp data/config/def_input.conf ../bin/data/def_input.conf");
 
 	print_header("Building asset pack from manifest...");
-	pack_assets("data/assets.manifest", "../bin/data/assets.pack", "../src/generated/asset_handles.h");
+	pack_assets();
 
 	print_header("Compiling platform layer...");
 	system_call("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
+
 
 game_only:
 	print_header("Compiling game layer...");
 	system_call("gcc -g -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
 	system_call("gcc -g -shared intermediate/shiptastic.o -o ../bin/shiptastic_tmp.so -I ../extern/ -I ../src/ -lm");
 	system_call("mv ../bin/shiptastic_tmp.so ../bin/shiptastic.so");
+	system_call_ignore_result("rm ../bin/shiptastic_*");
 
 	print_header("\033[32mProgram compilation succeeded!");
 	return system_call_result;

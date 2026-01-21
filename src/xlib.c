@@ -3,19 +3,6 @@
 // keyboard input (hopefully controller soon after). Fight to a maximum score
 // and then restart after showing who won.
 
-// NOW: we are currently in a non working state as the game layer has been moved
-// to a shared library. As far as I can tell the build step is emitting a shared
-// library correctly, though I haven't verified that the actual code is set up
-// properly to be loaded here.
-//
-// Nevertheless, the next step is to load the library at runtime here and load
-// the init and update functions. Once this is working, we want to do the thing
-// where we check if the file has recently changed and reload the .so at that
-// point, making sure to copy it before use so that it isn't locked for updates.
-//
-// This will be pretty badass once it is working. Afterwards, doing hot
-// reloading of assets would be the icing on the cake.
-
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
@@ -30,9 +17,7 @@
 #include "asset_loader.c"
 #include "renderer/renderer.c"
 #include "renderer/opengl/opengl.c"
-
 #include "game.h"
-// #include "game.c"
 
 #include <GL/glx.h>
 typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);

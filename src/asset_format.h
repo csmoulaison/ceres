@@ -2,6 +2,7 @@
 #define MAX_MESH_ASSETS 4
 #define MAX_TEXTURE_ASSETS 4
 #define MAX_RENDER_PROGRAM_ASSETS 1
+#define MAX_FONT_ASSETS 1
 
 typedef struct {
 	u8 meshes_len;
@@ -12,6 +13,9 @@ typedef struct {
 
 	u8 render_programs_len;
 	u64 render_program_buffer_offsets[MAX_RENDER_PROGRAM_ASSETS];
+
+	u8 fonts_len;
+	u64 font_buffer_offsets[MAX_FONT_ASSETS];
 
 	u8 buffer[];
 } AssetPack;
@@ -47,3 +51,7 @@ typedef struct {
 	// vertex_src, fragment_src
 	char buffer[];
 } RenderProgramAsset;
+
+typedef struct {
+	u32 texture_id;
+} FontAsset;
