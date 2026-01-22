@@ -1,6 +1,5 @@
 #include "renderer/render_list.h"
 #include "renderer/renderer.h"
-#include "renderer/mesh_loader.c"
 
 #define RENDER_NO_INTERPOLATION false
 

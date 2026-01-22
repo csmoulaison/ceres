@@ -2,7 +2,6 @@
 #include "core/core.h"
 
 #include "input_builder.c"
-#include "bitmap_processor.c"
 #include "asset_packing.c"
 
 i32 system_call_result;

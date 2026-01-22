@@ -1,5 +1,12 @@
 #include "asset_format.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STBI_ONLY_BMP
+#include "stb_image.h"
+
+//#include <ft2build.h>
+//#include FT_FREETYPE_H
+
 #define MANIFEST_FILENAME "data/assets.manifest"
 #define MAX_ASSETS 256
 #define FLAT_MESH_SHADING true
@@ -89,9 +96,7 @@ void consume_i32(i32* v, char* line, i32* line_i) {
 // NOW: Reduce redundancy here from the size calculator logic for all these
 // assets, storing all of it in the info struct so it doesn't need to be
 // recalculated in the actual preparation functions.
-//
-// Also rename them. Prepare doesn't make as uch sense anymore.
-void prepare_mesh_asset(MeshInfo* info, MeshAsset* asset) {
+void pack_mesh_asset(MeshInfo* info, MeshAsset* asset) {
 	printf("Preparing mesh asset '%s'...\n", info->filename);
 	FILE* file = fopen(info->filename, "r");
 	assert(file != NULL);
@@ -202,7 +207,7 @@ void prepare_mesh_asset(MeshInfo* info, MeshAsset* asset) {
 	arena_destroy(&tmp_arena);
 }
 
-void prepare_texture_asset(TextureInfo* info, TextureAsset* asset) {
+void pack_texture_asset(TextureInfo* info, TextureAsset* asset) {
 	printf("Preparing texture asset '%s'...\n", info->filename);
 	u32 w, h, channels;
 	stbi_uc* stb_pixels = stbi_load(info->filename, &w, &h, &channels, STBI_rgb_alpha);
@@ -217,7 +222,7 @@ void prepare_texture_asset(TextureInfo* info, TextureAsset* asset) {
 	stbi_image_free(stb_pixels);
 }
 
-void prepare_render_program_asset(RenderProgramInfo* info, RenderProgramAsset* asset) {
+void pack_render_program_asset(RenderProgramInfo* info, RenderProgramAsset* asset) {
 	printf("Preparing render program asset (vert: '%s', frag: '%s')...\n", info->vert_filename, info->frag_filename);
 
 	FILE* vert_file = fopen(info->vert_filename, "r");
@@ -344,7 +349,8 @@ void push_asset_info(AssetInfoList* list, AssetType type, char* manifest_name, v
 		} break;
 		case ASSET_TYPE_FONT: {
 			FontInfo* font_info = (FontInfo*)data;
-			// NOW: implement font asset size caclulation.
+
+			
 		} break;
 		default: break;
 	}
@@ -438,18 +444,18 @@ void pack_assets() {
 
 		switch(info->type) {
 			case ASSET_TYPE_MESH: {
-				prepare_mesh_asset((MeshInfo*)info->data, (MeshAsset*)&pack->buffer[buffer_pos]);
+				pack_mesh_asset((MeshInfo*)info->data, (MeshAsset*)&pack->buffer[buffer_pos]);
 			} break;
 			case ASSET_TYPE_TEXTURE: {
-				prepare_texture_asset((TextureInfo*)info->data, (TextureAsset*)&pack->buffer[buffer_pos]);
+				pack_texture_asset((TextureInfo*)info->data, (TextureAsset*)&pack->buffer[buffer_pos]);
 			} break;
 			case ASSET_TYPE_RENDER_PROGRAM: {
-				prepare_render_program_asset((RenderProgramInfo*)info->data, (RenderProgramAsset*)&pack->buffer[buffer_pos]);
+				pack_render_program_asset((RenderProgramInfo*)info->data, (RenderProgramAsset*)&pack->buffer[buffer_pos]);
 			} break;
 			case ASSET_TYPE_FONT: {
 				panic();
 				// TODO: implement font loading
-				//prepare_font_asset((FontInfo*)info->data, (FontAsset*)&pack->buffer[buffer_pos]);
+				//pack_font_asset((FontInfo*)info->data, (FontAsset*)&pack->buffer[buffer_pos]);
 			} break;
 			default: break;
 		}
