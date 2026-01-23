@@ -41,7 +41,8 @@ typedef struct {
 typedef struct {
 	u32 width;
 	u32 height;
-	// (u8 r, g, b, a) * width * height
+	u8 channel_count;
+	// u8 * channel_count * width * height
 	u8 buffer[];
 } TextureAsset;
 
@@ -53,5 +54,15 @@ typedef struct {
 } RenderProgramAsset;
 
 typedef struct {
+	u32 position[2];
+	u32 size[2];
+	i32 bearing[2];
+	u32 advance;
+} FontGlyph;
+
+typedef struct {
 	u32 texture_id;
+	u32 glyphs_len;
+	// FontGlyph * glyphs_len
+	FontGlyph buffer[];
 } FontAsset;

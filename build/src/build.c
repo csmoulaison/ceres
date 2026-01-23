@@ -1,6 +1,7 @@
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
+#include "line_reader.c"
 #include "input_builder.c"
 #include "asset_packing.c"
 
