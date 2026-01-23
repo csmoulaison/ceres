@@ -3,6 +3,7 @@
 #include "asset_format.h"
 
 #define MANIFEST_FILENAME "data/assets.manifest"
+#define GENERATED_ASSET_HANDLES_FILENAME "../src/generated/asset_handles.h"
 #define MAX_ASSETS 256
 #define FLAT_MESH_SHADING true
 
@@ -22,9 +23,16 @@ typedef enum {
 // manifest.
 // 
 // WARNING: Array length must match NUM_ASSET_TYPES.
-char* string_to_asset_type[NUM_ASSET_TYPES] = {
+char* asset_type_to_manifest_key[NUM_ASSET_TYPES] = {
 	"mesh",
 	"texture",
 	"render_program",
 	"font"
+};
+
+char* asset_type_to_macro_prefix[NUM_ASSET_TYPES] = {
+	"MESH",
+	"TEXTURE",
+	"RENDER_PROGRAM",
+	"FONT"
 };
