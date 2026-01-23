@@ -1,7 +1,9 @@
 #define TEXTURE_PIXEL_STRIDE_BYTES 4
+// NOW: This just ended up making dirty memory because there are no bounds
+// checks in place anywhere. Do some checking in the packing code.
 #define MAX_MESH_ASSETS 4
 #define MAX_TEXTURE_ASSETS 4
-#define MAX_RENDER_PROGRAM_ASSETS 1
+#define MAX_RENDER_PROGRAM_ASSETS 2
 #define MAX_FONT_ASSETS 1
 
 typedef struct {
@@ -47,8 +49,8 @@ typedef struct {
 } TextureAsset;
 
 typedef struct {
-	u16 vertex_shader_src_len;
-	u16 fragment_shader_src_len;
+	i32 vertex_shader_src_len;
+	i32 fragment_shader_src_len;
 	// vertex_src, fragment_src
 	char buffer[];
 } RenderProgramAsset;

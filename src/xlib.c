@@ -77,7 +77,6 @@ void xlib_reload_game_code(XlibContext* xlib) {
 		sprintf(cmd, "cp shiptastic.so %s", copy_fname);
 		system(cmd);
 
-		printf("%s\n", copy_fname);
 		xlib->game_lib_handle = dlopen(copy_fname, RTLD_NOW);
 		char* err;
 		if((err = dlerror()) != NULL) {

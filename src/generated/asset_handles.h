@@ -5,13 +5,20 @@
 
 #define ASSET_PACK_FILENAME "data/assets.pack"
 
+// Generated mesh asset handles
 #define ASSET_MESH_SHIP 0
 #define ASSET_MESH_FLOOR 1
+
+// Generated texture asset handles
 #define ASSET_TEXTURE_SHIP 0
 #define ASSET_TEXTURE_FLOOR 1
 #define ASSET_TEXTURE_OVO_SMALL 2
+
+// Generated render_program asset handles
 #define ASSET_RENDER_PROGRAM_MODEL 0
 #define ASSET_RENDER_PROGRAM_TEXT 1
+
+// Generated font asset handles
 #define ASSET_FONT_OVO_SMALL 0
 
 #endif // GEN_asset_handles_h_INCLUDED

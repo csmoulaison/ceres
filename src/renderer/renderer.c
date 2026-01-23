@@ -50,8 +50,11 @@ RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) 
 		RenderProgramInitData* program = &data->programs[i];
 
 		program->vertex_shader_src = (char*)arena_alloc(init_arena, asset->vertex_shader_src_len);
+		program->vertex_shader_src_len = asset->vertex_shader_src_len;
 		memcpy(program->vertex_shader_src, asset->buffer, sizeof(char) * asset->vertex_shader_src_len);
+
 		program->fragment_shader_src = (char*)arena_alloc(init_arena, asset->fragment_shader_src_len);
+		program->fragment_shader_src_len = asset->fragment_shader_src_len;
 		memcpy(program->fragment_shader_src, asset->buffer + asset->vertex_shader_src_len, sizeof(char) * asset->fragment_shader_src_len);
 
 		if(i == data->programs_len - 1) {

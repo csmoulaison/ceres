@@ -269,6 +269,8 @@ typedef struct RenderProgramInitData {
 	struct RenderProgramInitData* next;
 	char* vertex_shader_src;
 	char* fragment_shader_src;
+	i32 vertex_shader_src_len;
+	i32 fragment_shader_src_len;
 } RenderProgramInitData;
 
 typedef struct RenderMeshInitData {

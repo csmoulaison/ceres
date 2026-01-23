@@ -1,6 +1,8 @@
 typedef struct {
 	char vert_filename[256];
 	char frag_filename[256];
+	i32 vert_src_len;
+	i32 frag_src_len;
 } RenderProgramInfo;
 
 void calculate_render_program_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
@@ -11,56 +13,42 @@ void calculate_render_program_assets(AssetInfoList* list, char* handle, i32 args
 
 	FILE* vert_file = fopen(info->vert_filename, "r");
 	assert(vert_file != NULL);
-	u64 vert_len = 1;
+	info->vert_src_len = 0;
 	while((fgetc(vert_file)) != EOF) {
-		vert_len++;
+		info->vert_src_len++;
 	}
-	fseek(vert_file, 0, SEEK_SET);
+	fclose(vert_file);
 
 	FILE* frag_file = fopen(info->frag_filename, "r");
 	assert(frag_file != NULL);
-	u64 frag_len = 1;
+	info->frag_src_len = 0;
 	while((fgetc(frag_file)) != EOF) {
-		frag_len++;
+		info->frag_src_len++;
 	}
-	fseek(frag_file, 0, SEEK_SET);
+	fclose(frag_file);
 
-	u64 size = sizeof(RenderProgramAsset) + sizeof(char) * vert_len + sizeof(char) * frag_len;
+	u64 size = sizeof(RenderProgramAsset) + sizeof(char) * info->vert_src_len + sizeof(char) * info->frag_src_len;
 	push_asset_info(list, ASSET_TYPE_RENDER_PROGRAM, handle, size, info);
 }
 
 void pack_render_program_asset(void* p_info, void* p_asset) {
 	RenderProgramInfo* info = (RenderProgramInfo*)p_info;
 	RenderProgramAsset* asset = (RenderProgramAsset*)p_asset;
-	
-	FILE* vert_file = fopen(info->vert_filename, "r");
-	assert(vert_file != NULL);
-	asset->vertex_shader_src_len = 1;
-	while((fgetc(vert_file)) != EOF) {
-		asset->vertex_shader_src_len++;
-	}
-	fseek(vert_file, 0, SEEK_SET);
+	asset->vertex_shader_src_len = info->vert_src_len;
+	asset->fragment_shader_src_len = info->frag_src_len;
 
-	FILE* frag_file = fopen(info->frag_filename, "r");
-	assert(frag_file != NULL);
-	asset->fragment_shader_src_len = 1;
-	while((fgetc(frag_file)) != EOF) {
-		asset->fragment_shader_src_len++;
-	}
-	fseek(frag_file, 0, SEEK_SET);
+	struct { char* filename; u64 len; } files[2] = { 
+		{ .filename = info->vert_filename, .len = info->vert_src_len },
+		{ .filename = info->frag_filename, .len = info->frag_src_len }
+	};
 
-	int i = 0;
-	while((asset->buffer[i] = fgetc(vert_file)) != EOF) {
-		i++;
-	}
-	asset->buffer[i] = '\0';
-	fclose(vert_file);
+	u64 buffer_pos = 0;
+	for(i32 i = 0; i < 2; i++) {
+		FILE* file = fopen(files[i].filename, "r");
+		assert(file != NULL);
 
-	i = 0;
-	while((asset->buffer[asset->vertex_shader_src_len + i] = fgetc(frag_file)) != EOF) {
-		i++;
+		fread(&asset->buffer[buffer_pos], files[i].len, 1, file);
+		buffer_pos += files[i].len;
+		fclose(file);
 	}
-	asset->buffer[asset->vertex_shader_src_len + i] = '\0';
-	//while((*buffer[asset->vertex_shader_src_len + i] = 'c') != EOF) {}
-	fclose(frag_file);
 }

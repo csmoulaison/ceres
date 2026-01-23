@@ -115,15 +115,16 @@ void pack_assets() {
 #ifndef GEN_asset_handles_h_INCLUDED\n\
 #define GEN_asset_handles_h_INCLUDED\n\
 \n\
-#define ASSET_PACK_FILENAME \"%s\"\n\n", "data/assets.pack");
+#define ASSET_PACK_FILENAME \"%s\"\n", "data/assets.pack");
 
 
 	for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 		*asset_counts[i] = infos_list.counts_by_type[i];
+		fprintf(generated_file, "\n// Generated %s asset handles\n", asset_type_to_manifest_key[i]);
 
 		for(i32 j = 0; j < infos_list.counts_by_type[i]; j++) {
-			printf("Packing %s %u...\n", asset_type_to_manifest_key[i], j);
 			AssetInfo* info = &infos_list.infos_by_type[i][j];
+			printf("Packing %s %u: %s...\n", asset_type_to_manifest_key[i], j, info->handle);
 			asset_callbacks_by_type[i].pack_asset(info->data, &pack->buffer[buffer_pos]);
 
 			//asset_offset_lists[i][j] = buffer_pos;
