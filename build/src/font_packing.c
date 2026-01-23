@@ -16,7 +16,6 @@ typedef struct {
 	u32 font_size;
 	u32 texture_id;
 	u32 atlas_width;
-	u8* atlas_pixels;
 
 	u32 pack_order[FONT_CHARS_LEN];
 	GlyphInfo glyphs[FONT_CHARS_LEN];
@@ -24,23 +23,9 @@ typedef struct {
 
 void calculate_font_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
 	FontInfo* info = (FontInfo*)arena_alloc(arena, sizeof(FontInfo));
-	assert(args_len == 3);
+	assert(args_len == 2);
 	strcpy(info->filename, args[0].text);
 	info->font_size = atoi(args[1].text);
-
-	info->texture_id = INT32_MAX;
-	for(i32 i = 0; i < list->counts_by_type[ASSET_TYPE_TEXTURE]; i++) {
-		AssetInfo* t_info = &list->infos_by_type[ASSET_TYPE_TEXTURE][i];
-		if(strcmp(t_info->handle, args[2].text) == 0) {
-			info->texture_id = i;
-		}
-	}
-	if(info->texture_id == INT32_MAX) {
-		printf("Texture handle '%s' for font asset (%s) not recognized. It must exist in the asset manifest and appear before the font asset.\n", args[2], info->filename);
-	}
-
-	u64 size = sizeof(FontAsset) * sizeof(FontGlyph) * FONT_CHARS_LEN;
-	push_asset_info(list, ASSET_TYPE_FONT, handle, size, info);
 
 	FT_Library ft;
 	if(FT_Init_FreeType(&ft)) { panic(); }
@@ -117,18 +102,32 @@ try_pack_again:
 		if(cury + cur_shelf_size >= info->atlas_width) {
 			goto try_pack_again;
 		}
+	}
 
-		info->atlas_pixels = (u8*)arena_alloc(arena, sizeof(u8) * info->atlas_width * info->atlas_width);
+	// If we made it here, we found a good atlas size, so it's time to allocate
+	// space and render glyphs to the buffer
+	TextureInfo* t_info = (TextureInfo*)arena_alloc(arena, sizeof(TextureInfo));
+	t_info->source_type = TEXTURE_SOURCE_BUFFER;
+	t_info->buffer = (u8*)arena_alloc(arena, sizeof(u8) * info->atlas_width * info->atlas_width);
+	t_info->buffer_width = info->atlas_width;
+	t_info->buffer_height = info->atlas_width;
+	t_info->channel_count = 1;
+
+	for(i32 i = 0; i < FONT_CHARS_LEN; i++) {
+		GlyphInfo* g = &info->glyphs[info->pack_order[i]];
 		for(i32 y = 0; y < g->size[1]; y++) {
 			for(i32 x = 0; x < g->size[0]; x++) {
-				info->atlas_pixels[g->src_position[1] * info->atlas_width + g->src_position[0]] = g->bitmap_pixels[y * g->size[0] + x];
+				t_info->buffer[g->src_position[1] * info->atlas_width + g->src_position[0]] = g->bitmap_pixels[y * g->size[0] + x];
 			}
 		}
 	}
 
-	// NOW: Push the texture!
-	
-	//return sizeof(TextureAsset) + sizeof(u8) * info->font->atlas_width * info->font->atlas_width;
+	u64 t_size = sizeof(TextureAsset) + sizeof(u8) * t_info->buffer_width * t_info->buffer_height;
+	u32 t_id = push_asset_info(list, ASSET_TYPE_TEXTURE, handle, t_size, t_info);
+
+	info->texture_id = t_id;
+	u64 f_size = sizeof(FontAsset) * sizeof(FontGlyph) * FONT_CHARS_LEN;
+	push_asset_info(list, ASSET_TYPE_FONT, handle, f_size, info);
 }
 
 void pack_font_asset(void* p_info, void* p_asset) {

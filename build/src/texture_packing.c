@@ -11,7 +11,11 @@ typedef struct {
 	TextureSourceType source_type;
 	char filename[256];
 	u8 channel_count;
-	u8* buffer; // only used if source type is buffer
+
+	// only used if source type is buffer
+	u8* buffer; 
+	u32 buffer_width;
+	u32 buffer_height;
 } TextureInfo;
 
 void calculate_texture_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
@@ -34,16 +38,26 @@ void pack_texture_asset(void* p_info, void* p_asset) {
 	TextureInfo* info = (TextureInfo*)p_info;
 	TextureAsset* asset = (TextureAsset*)p_asset;
 
-	u32 channels;
-	stbi_uc* stb_pixels = stbi_load(info->filename, &asset->width, &asset->height, &channels, STBI_rgb_alpha);
-	asset->channel_count = channels;
+	switch(info->source_type) {
+		case TEXTURE_SOURCE_BMP: {
+			u32 channels;
+			stbi_uc* stb_pixels = stbi_load(info->filename, &asset->width, &asset->height, &channels, STBI_rgb_alpha);
+			asset->channel_count = channels;
 
-	assert(stb_pixels != NULL);
-	assert(asset->channel_count == 4 || asset->channel_count == 1);
-	assert(asset->width == 256 && asset->height == 256);
+			assert(stb_pixels != NULL);
+			assert(asset->channel_count == 4 || asset->channel_count == 1);
+			assert(asset->width == 256 && asset->height == 256);
 
-	u64 buffer_size = sizeof(u32) * asset->width * asset->height;
-	memcpy(asset->buffer, stb_pixels, buffer_size);
-	stbi_image_free(stb_pixels);
-
+			u64 buffer_size = sizeof(u32) * asset->width * asset->height;
+			memcpy(asset->buffer, stb_pixels, buffer_size);
+			stbi_image_free(stb_pixels);
+		} break;
+		case TEXTURE_SOURCE_BUFFER: {
+			asset->width = info->buffer_width;
+			asset->height = info->buffer_height;
+			asset->channel_count = info->channel_count;
+			memcpy(asset->buffer, info->buffer, sizeof(u8) * info->buffer_width * info->buffer_height);
+		} break;
+		default: break;
+	}
 }

@@ -97,8 +97,9 @@ RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) 
 		RenderTextureInitData* texture = &data->textures[i];
 		texture->width = asset->width;
 		texture->height = asset->height;
+		texture->channel_count = asset->channel_count;
 
-		u64 pixel_data_size = sizeof(u32) * texture->width * texture->height;
+		u64 pixel_data_size = sizeof(u8) * asset->channel_count * texture->width * texture->height;
 		texture->pixel_data = (u8*)arena_alloc(init_arena, pixel_data_size);
 		memcpy(texture->pixel_data, asset->buffer, pixel_data_size);
 

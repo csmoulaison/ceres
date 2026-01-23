@@ -128,7 +128,16 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glGenTextures(1, &texture->id);
 		glBindTexture(GL_TEXTURE_2D, texture->id);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_data->width, texture_data->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data->pixel_data);
+		GLint format;
+		if(texture_data->channel_count == 1) {
+			format = GL_RED;
+		} else if(texture_data->channel_count == 4) {
+			format = GL_RGBA;
+		} else {
+			printf("Channel count %u in texture data not supported.\n", texture_data->channel_count);
+			panic();
+		}
+		glTexImage2D(GL_TEXTURE_2D, 0, format, texture_data->width, texture_data->height, 0, format, GL_UNSIGNED_BYTE, texture_data->pixel_data);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);

@@ -24,7 +24,7 @@ typedef struct {
 	void (*pack_asset)(void* info, void* asset);
 } AssetCallbacks;
 
-AssetInfo* push_asset_info(AssetInfoList* list, AssetType type, char* handle, u64 size_in_buffer, void* data) {
+u32 push_asset_info(AssetInfoList* list, AssetType type, char* handle, u64 size_in_buffer, void* data) {
 	AssetInfo* info = &list->infos_by_type[type][list->counts_by_type[type]];
 	(list->counts_by_type[type])++;
 
@@ -32,7 +32,7 @@ AssetInfo* push_asset_info(AssetInfoList* list, AssetType type, char* handle, u6
 	info->size_in_buffer = size_in_buffer;
 	strcpy(info->handle, handle);
 	info->data = data;
-	return info;
+	return list->counts_by_type[type] - 1;
 }
 
 #include "asset_packing_callbacks.c"
