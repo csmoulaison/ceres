@@ -14,8 +14,8 @@ typedef struct {
 	u8* buffer; // only used if source type is buffer
 } TextureInfo;
 
-void calculate_texture_assets(AssetInfoList* list, i32 args_len, ManifestArgument* args, Arena* arena) {
-	TextureInfo* info = (TextureInfo*)arena_alloc(arena, sizeof(TextureInfo*));
+void calculate_texture_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
+	TextureInfo* info = (TextureInfo*)arena_alloc(arena, sizeof(TextureInfo));
 	info->source_type = TEXTURE_SOURCE_BMP;
 	assert(args_len == 1);
 	strcpy(info->filename, args[0].text);
@@ -25,12 +25,12 @@ void calculate_texture_assets(AssetInfoList* list, i32 args_len, ManifestArgumen
 	assert(stb_pixels != NULL);
 	assert(channels == 4);
 
-	// NOW: push texture asset
-	
-	//return sizeof(TextureAsset) + sizeof(u32) * w * h;
+	u64 size = sizeof(TextureAsset) + sizeof(u32) * w * h;
+	push_asset_info(list, ASSET_TYPE_TEXTURE, handle, size, info);
 }
 
 void pack_texture_asset(void* p_info, void* p_asset) {
+	// NOW: handle the font case with bmp, buffer switch
 	TextureInfo* info = (TextureInfo*)p_info;
 	TextureAsset* asset = (TextureAsset*)p_asset;
 
@@ -45,4 +45,5 @@ void pack_texture_asset(void* p_info, void* p_asset) {
 	u64 buffer_size = sizeof(u32) * asset->width * asset->height;
 	memcpy(asset->buffer, stb_pixels, buffer_size);
 	stbi_image_free(stb_pixels);
+
 }

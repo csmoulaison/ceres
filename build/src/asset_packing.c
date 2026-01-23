@@ -16,20 +16,22 @@ typedef struct {
 } AssetInfoList;
 
 typedef struct {
-	char text[64];
+	char text[128];
 } ManifestArgument;
 
 typedef struct {
-	void (*request_asset_list)(AssetInfoList* list, i32 args_len, ManifestArgument* args, Arena* arena);
+	void (*request_asset_list)(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena);
 	void (*pack_asset)(void* info, void* asset);
 } AssetCallbacks;
 
-AssetInfo* push_asset_info(AssetInfoList* list, AssetType type, char* manifest_name, u64 size_in_buffer, void* data) {
+AssetInfo* push_asset_info(AssetInfoList* list, AssetType type, char* handle, u64 size_in_buffer, void* data) {
 	AssetInfo* info = &list->infos_by_type[type][list->counts_by_type[type]];
 	(list->counts_by_type[type])++;
+
 	info->type = type;
-	info->data = data;
 	info->size_in_buffer = size_in_buffer;
+	strcpy(info->handle, handle);
+	info->data = data;
 	return info;
 }
 
@@ -54,13 +56,10 @@ void pack_assets() {
 	char line[2048];
 	while(fgets(line, sizeof(line), manifest)) {
 		i32 char_i = 0;
-
 		char manifest_key[64];
 		consume_word(manifest_key, line, &char_i);
-
-		char manifest_name[64];
-		consume_word(manifest_name, line, &char_i);
-
+		char handle[64];
+		consume_word(handle, line, &char_i);
 		i32 args_len = 0;
 		ManifestArgument args[32];
 		while(consume_word(args[args_len].text, line, &char_i)) {
@@ -71,7 +70,8 @@ void pack_assets() {
 		for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 			if(strcmp(manifest_key, string_to_asset_type[i]) == 0) {
 				type = i;
-				asset_callbacks_by_type[type].request_asset_list(&infos_list, args_len, args, &arena);
+				asset_callbacks_by_type[type].request_asset_list(&infos_list, handle, args_len, args, &arena);
+				break;
 			}
 		}
 		if(type == -1) {
@@ -93,6 +93,7 @@ void pack_assets() {
 	AssetPack* pack = (AssetPack*)arena_alloc(&arena, sizeof(AssetPack) + total_buffer_size);
 	u64 buffer_pos = 0;
 
+	// NOW: Genericize this.
 	u8* asset_counts[NUM_ASSET_TYPES];
 	asset_counts[ASSET_TYPE_MESH] = &pack->meshes_len;
 	asset_counts[ASSET_TYPE_TEXTURE] = &pack->textures_len;
@@ -106,10 +107,15 @@ void pack_assets() {
 	asset_offset_lists[ASSET_TYPE_FONT] = pack->font_buffer_offsets;
 
 	for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
+		*asset_counts[i] = infos_list.counts_by_type[i];
+
 		for(i32 j = 0; j < infos_list.counts_by_type[i]; j++) {
-			AssetInfo* info = &infos_list.infos_by_type[i][j];
 			printf("Packing %s %u...\n", string_to_asset_type[i], j);
+			AssetInfo* info = &infos_list.infos_by_type[i][j];
 			asset_callbacks_by_type[i].pack_asset(info->data, &pack->buffer[buffer_pos]);
+
+			//asset_offset_lists[i][j] = buffer_pos;
+			(asset_offset_lists[i])[j] = buffer_pos;
 			buffer_pos += info->size_in_buffer;
 		}
 	}
@@ -126,7 +132,7 @@ void pack_assets() {
 	//asset_type_to_handle_prefix[ASSET_TYPE_TEXTURE] = "TEXTURE";
 	//asset_type_to_handle_prefix[ASSET_TYPE_RENDER_PROGRAM] = "RENDER_PROGRAM";
 	//asset_type_to_handle_prefix[ASSET_TYPE_FONT] = "FONT";
-	//sprintf(info->handle, "ASSET_%s_%s", asset_type_to_handle_prefix[type], manifest_name);
+	//sprintf(info->handle, "ASSET_%s_%s", asset_type_to_handle_prefix[type], handle);
 
 	/* FOR DEBUG PURPOSES ONLY:
 	for(i32 i = 0; i < pack->meshes_len; i++) {

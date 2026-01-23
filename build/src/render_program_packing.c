@@ -3,13 +3,13 @@ typedef struct {
 	char frag_filename[256];
 } RenderProgramInfo;
 
-void calculate_render_program_assets(AssetInfoList* list, i32 args_len, ManifestArgument* args, Arena* arena) {
-	RenderProgramInfo* rp_info = (RenderProgramInfo*)arena_alloc(arena, sizeof(RenderProgramInfo));
+void calculate_render_program_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
+	RenderProgramInfo* info = (RenderProgramInfo*)arena_alloc(arena, sizeof(RenderProgramInfo));
 	assert(args_len == 2);
-	strcpy(rp_info->vert_filename, args[0].text);
-	strcpy(rp_info->frag_filename, args[1].text);
+	strcpy(info->vert_filename, args[0].text);
+	strcpy(info->frag_filename, args[1].text);
 
-	FILE* vert_file = fopen(rp_info->vert_filename, "r");
+	FILE* vert_file = fopen(info->vert_filename, "r");
 	assert(vert_file != NULL);
 	u64 vert_len = 1;
 	while((fgetc(vert_file)) != EOF) {
@@ -17,7 +17,7 @@ void calculate_render_program_assets(AssetInfoList* list, i32 args_len, Manifest
 	}
 	fseek(vert_file, 0, SEEK_SET);
 
-	FILE* frag_file = fopen(rp_info->frag_filename, "r");
+	FILE* frag_file = fopen(info->frag_filename, "r");
 	assert(frag_file != NULL);
 	u64 frag_len = 1;
 	while((fgetc(frag_file)) != EOF) {
@@ -25,9 +25,8 @@ void calculate_render_program_assets(AssetInfoList* list, i32 args_len, Manifest
 	}
 	fseek(frag_file, 0, SEEK_SET);
 
-	// NOW: pusyh the render program
-
-	//return sizeof(RenderProgramAsset) + sizeof(char) * vert_len + sizeof(char) * frag_len;
+	u64 size = sizeof(RenderProgramAsset) + sizeof(char) * vert_len + sizeof(char) * frag_len;
+	push_asset_info(list, ASSET_TYPE_RENDER_PROGRAM, handle, size, info);
 }
 
 void pack_render_program_asset(void* p_info, void* p_asset) {

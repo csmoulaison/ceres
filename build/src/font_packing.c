@@ -22,7 +22,7 @@ typedef struct {
 	GlyphInfo glyphs[FONT_CHARS_LEN];
 } FontInfo;
 
-void calculate_font_assets(AssetInfoList* list, i32 args_len, ManifestArgument* args, Arena* arena) {
+void calculate_font_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
 	FontInfo* info = (FontInfo*)arena_alloc(arena, sizeof(FontInfo));
 	assert(args_len == 3);
 	strcpy(info->filename, args[0].text);
@@ -32,14 +32,15 @@ void calculate_font_assets(AssetInfoList* list, i32 args_len, ManifestArgument* 
 	for(i32 i = 0; i < list->counts_by_type[ASSET_TYPE_TEXTURE]; i++) {
 		AssetInfo* t_info = &list->infos_by_type[ASSET_TYPE_TEXTURE][i];
 		if(strcmp(t_info->handle, args[2].text) == 0) {
-			info->font_size = 0; // NOW: whats this?
+			info->texture_id = i;
 		}
 	}
 	if(info->texture_id == INT32_MAX) {
 		printf("Texture handle '%s' for font asset (%s) not recognized. It must exist in the asset manifest and appear before the font asset.\n", args[2], info->filename);
 	}
 
-	//return sizeof(FontAsset) * sizeof(FontGlyph) * FONT_CHARS_LEN;
+	u64 size = sizeof(FontAsset) * sizeof(FontGlyph) * FONT_CHARS_LEN;
+	push_asset_info(list, ASSET_TYPE_FONT, handle, size, info);
 
 	FT_Library ft;
 	if(FT_Init_FreeType(&ft)) { panic(); }
@@ -125,7 +126,7 @@ try_pack_again:
 		}
 	}
 
-	// NOW: Push the font AND the um texture!
+	// NOW: Push the texture!
 	
 	//return sizeof(TextureAsset) + sizeof(u8) * info->font->atlas_width * info->font->atlas_width;
 }

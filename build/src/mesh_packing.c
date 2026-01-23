@@ -9,7 +9,7 @@ typedef struct {
 	u32 face_lines;
 } MeshInfo;
 
-void calculate_mesh_assets(AssetInfoList* list, i32 args_len, ManifestArgument* args, Arena* arena) {
+void calculate_mesh_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
 	MeshInfo* info = (MeshInfo*)arena_alloc(arena, sizeof(MeshInfo));
 	assert(args_len == 1);
 	strcpy(info->filename, args[0].text);
@@ -41,9 +41,8 @@ void calculate_mesh_assets(AssetInfoList* list, i32 args_len, ManifestArgument* 
 	info->vertices_len = info->face_lines * 3;
 	info->indices_len = info->face_lines * 3;
 
-	// NOW: Push the asset.
-
-	//return sizeof(MeshAsset) + sizeof(MeshVertexData) * info->vertices_len + sizeof(u32) * info->indices_len;
+	u64 size = sizeof(MeshAsset) + sizeof(MeshVertexData) * info->vertices_len + sizeof(u32) * info->indices_len;
+	push_asset_info(list, ASSET_TYPE_MESH, handle, size, info);
 }
 
 void pack_mesh_asset(void* p_info, void* p_asset) {

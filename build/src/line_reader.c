@@ -18,7 +18,7 @@ bool consume_word(char* word, char* line, i32* line_i) {
 		*line_i += 1;
 		word_i++;
 	}
-	while(line[*line_i] == ' ' && line[*line_i] != '\0' && line[*line_i] != '\n') {
+	while(line[*line_i] == ' ') {
 		*line_i += 1;
 	}
 	word[word_i] = '\0';
