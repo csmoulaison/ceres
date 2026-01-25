@@ -25,23 +25,23 @@ changes made to the render layer.
 #define RENDER_LIST_MAX_GLYPHS 1024
 
 typedef struct {
-	f32 clear_color[3];
-	f32 camera_position[3];
-	f32 camera_target[3];
+	v3 clear_color;
+	v3 camera_position;
+	v3 camera_target;
 } RenderListWorld;
 
 typedef struct {
-	f32 position[3];
-	f32 orientation[3];
+	v3 position;
+	v3 orientation;
 
 	i32 id;
 	i32 texture;
 } RenderListModel;
 
 typedef struct {
-	f32 src[4];
-	f32 dst[4];
-	f32 color[4];
+	v4 src;
+	v4 dst;
+	v4 color;
 } RenderListGlyph;
 
 typedef struct {

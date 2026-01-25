@@ -126,12 +126,15 @@ void pack_mesh_asset(void* p_info, void* p_asset) {
 		MeshVertexData* vert;
 		if(FLAT_MESH_SHADING) {
 			vert = &vertices[i];
-			v3_copy(vert->position, &tmp_vertices[face_vert_idx * 3]);
+			//v3_copy(vert->position, &tmp_vertices[face_vert_idx * 3]);
+			memcpy(vert->position, &tmp_vertices[face_vert_idx * 3], sizeof(f32) * 3);
 		} else {
 			vert = &vertices[face_vert_idx];
 		}
-		v2_copy(vert->texture_uv, &tmp_uvs[face_uv_idx * 2]);
-		v3_copy(vert->normal, &tmp_normals[face_norm_idx * 3]);
+		//v2_copy(vert->texture_uv, &tmp_uvs[face_uv_idx * 2]);
+		memcpy(vert->texture_uv, &tmp_uvs[face_uv_idx * 2], sizeof(f32) * 2);
+		//v3_copy(vert->normal, &tmp_normals[face_norm_idx * 3]);
+		memcpy(vert->normal, &tmp_normals[face_norm_idx * 3], sizeof(f32) * 3);
 	}
 
 	arena_destroy(&tmp_arena);

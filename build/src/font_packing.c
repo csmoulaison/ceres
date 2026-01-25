@@ -1,7 +1,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#define FONT_CHARS_LEN 128
+#define FONT_CHARS_LEN 256
 
 typedef struct {
 	u32 src_position[2];

@@ -9,8 +9,8 @@
 typedef struct {
 	f32 ship_direction;
 	f32 ship_rotation_velocity;
-	f32 ship_position[2];
-	f32 ship_velocity[2];
+	v2 ship_position;
+	v2 ship_velocity;
 	// TODO: Might we want to have this be part of an input handler which just has
 	// a list of button states per player?
 	ButtonState button_states[NUM_BUTTONS];
@@ -18,7 +18,7 @@ typedef struct {
 
 typedef struct {
 	GamePlayer players[2];
-	f32 camera_offset[2];
+	v2 camera_offset;
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
 	FontData fonts[ASSET_NUM_FONTS];

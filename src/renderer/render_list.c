@@ -23,23 +23,23 @@ void render_list_init(RenderList* list) {
 	*list = (RenderList){};
 }
 
-void render_list_update_world(RenderList* list, f32* clear_color, f32* camera_position, f32* camera_target) {
+void render_list_update_world(RenderList* list, v3 clear_color, v3 camera_position, v3 camera_target) {
 	RenderListWorld* world = &list->world;
-	v3_copy(world->clear_color, clear_color);
-	v3_copy(world->camera_position, camera_position);
-	v3_copy(world->camera_target, camera_target);
+	world->clear_color = clear_color;
+	world->camera_position = camera_position;
+	world->camera_target = camera_target;
 }
 
-void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, f32* position, f32* orientation) {
+void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, v3 position, v3 orientation) {
 	RenderListModel* model = &list->models[list->models_len];
 	model->id = model_id;
 	model->texture = texture;
-	v3_copy(model->position, position);
-	v3_copy(model->orientation, orientation);
+	model->position = position;
+	model->orientation = orientation;
 	list->models_len++;
 }
 
-void render_list_draw_glyph(RenderList* list, FontData* fonts, i32 font_handle, char c, f32* position, f32* color) {
+void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v4 color) {
 	FontData* font = &fonts[font_handle];
 	FontGlyph* font_glyph = &font->glyphs[c];
 	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
@@ -48,18 +48,15 @@ void render_list_draw_glyph(RenderList* list, FontData* fonts, i32 font_handle, 
 	// really this is just statically derivable data.
 	list->glyph_list_textures[font_handle] = font->texture_id;
 
-	list_glyph->src[0] = ((f32)font_glyph->position[0]) / font->texture_width;
-	list_glyph->src[1] = ((f32)font_glyph->position[1]) / font->texture_height;
-	list_glyph->src[2] = ((f32)font_glyph->size[0]) / font->texture_width;
-	list_glyph->src[3] = ((f32)font_glyph->size[1]) / font->texture_height;
+	list_glyph->src.x = ((f32)font_glyph->position[0]) / font->texture_width;
+	list_glyph->src.y = ((f32)font_glyph->position[1]) / font->texture_height;
+	list_glyph->src.z = ((f32)font_glyph->size[0]) / font->texture_width;
+	list_glyph->src.w = ((f32)font_glyph->size[1]) / font->texture_height;
 
-	list_glyph->dst[0] = position[0];
-	list_glyph->dst[1] = position[1];
-	list_glyph->dst[2] = font_glyph->size[0];
-	list_glyph->dst[3] = font_glyph->size[1];
+	list_glyph->dst.x = position.x;
+	list_glyph->dst.y = position.y;
+	list_glyph->dst.z = font_glyph->size[0];
+	list_glyph->dst.w = font_glyph->size[1];
 
-	list_glyph->color[0] = color[0];
-	list_glyph->color[1] = color[1];
-	list_glyph->color[2] = color[2];
-	list_glyph->color[3] = color[3];
+	list_glyph->color = color;
 }

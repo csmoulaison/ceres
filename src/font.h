@@ -1,7 +1,7 @@
 #ifndef font_h_INCLUDED
 #define font_h_INCLUDED
 
-#define FONT_GLYPHS_COUNT 128
+#define FONT_GLYPHS_COUNT 256
 
 typedef struct {
 	u32 position[2];

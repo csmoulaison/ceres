@@ -1,35 +1,64 @@
 #ifndef cmath_h_INCLUDED
 #define cmath_h_INCLUDED
 
-// Numbers
-f32 clamp(f32 v, f32 min, f32 max);
-f32 move_to_zero(f32 value, f32 amount);
-// Vectors
-void v2_zero(f32* dst);
-void v2_init(f32* dst, f32 x, f32 y);
-void v2_copy(f32* dst, f32* src);
-void v2_normalize(f32* dst, f32* res);
-void v2_scale(f32* dst, f32 s);
-void v2_add(f32* dst, f32* a, f32* b);
-void v2_sub(f32* dst, f32* a, f32* b);
-void v2_zero(f32* dst);
-void v3_init(f32* dst, f32 x, f32 y, f32 z);
-void v3_copy(f32* dst, f32* src);
-// TODO: change res at end to dst at beginning
-void v3_normalize(f32* v, f32* res);
-void v3_scale(f32* dst, f32 s);
-void v3_add(f32* dst, f32* a, f32* b);
-void v3_cross(f32* a, f32* b, f32* res);
-f32 v3_dot(f32* a, f32* b);
+typedef struct {
+	union {
+		struct { f32 x; f32 y; };
+		f32 components[2];
+	};
+} v2;
+
+typedef struct {
+	union {
+		struct { f32 x; f32 y; f32 z; };
+		struct { f32 r; f32 g; f32 b; };
+		f32 components[3];
+	};
+} v3;
+
+typedef struct {
+	union {
+		struct { f32 x; f32 y; f32 z; f32 w; };
+		struct { f32 r; f32 g; f32 b; f32 a; };
+		f32 components[4];
+	};
+} v4;
+
+// Scalar
+static inline f32 clamp(f32 v, f32 min, f32 max);
+static inline f32 move_to_zero(f32 value, f32 amount);
+// Vector2
+static inline v2 v2_new(f32 x, f32 y);
+static inline v2 v2_zero();
+static inline void v2_copy(f32* dst, v2 v);
+static inline v2 v2_normalize(v2 v);
+static inline v2 v2_scale(v2 v, f32 s);
+static inline v2 v2_add(v2 a, v2 b);
+static inline v2 v2_sub(v2 a, v2 b);
+// Vector3
+static inline v3 v3_new(f32 x, f32 y, f32 z);
+static inline v3 v3_zero();
+static inline void v3_copy(f32* dst, v3 v);
+static inline v3 v3_add(v3 a, v3 b);
+static inline v3 v3_sub(v3 a, v3 b);
+static inline f32 v3_magnitude(v3 v);
+static inline v3 v3_scale(v3 v, f32 s);
+static inline v3 v3_normalize(v3 v);
+static inline v3 v3_cross(v3 a, v3 b);
+static inline f32 v3_dot(v3 a, v3 b);
+// Vector4
+static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w);
+static inline v4 v4_zero();
+static inline void v4_copy(f32* dst, v4 v);
 // Radians
-f32 radians_from_degrees(f32 degrees);
+static inline f32 radians_from_degrees(f32 degrees);
 // 4x4 matrices
 // These are all column major.
 void mat4_identity(f32* res);
 void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
-void mat4_lookat(f32* origin, f32* target, f32* up, f32* res);
+void mat4_lookat(v3 origin, v3 target, v3 up, f32* res);
 void mat4_mul(f32* a, f32* b, f32* res);
-void mat4_translation(f32* v, f32* res);
+void mat4_translation(v3 v, f32* res);
 void mat4_rotation(f32 x, f32 y, f32 z, f32* res);
 void mat4_from_quat(f32* q, f32* res);
 // Quaternions
@@ -38,14 +67,13 @@ void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
-
-f32 clamp(f32 v, f32 min, f32 max) {
+static inline f32 clamp(f32 v, f32 min, f32 max) {
 	if(v < min) return min;
 	if(v > max) return max;
 	return v;
 }
 
-f32 move_to_zero(f32 value, f32 amount) {
+static inline f32 move_to_zero(f32 value, f32 amount) {
 	if(value > 0.0f) {
 		value -= amount;
 		if(value < 0.0f) value = 0.0f;
@@ -57,110 +85,121 @@ f32 move_to_zero(f32 value, f32 amount) {
 	return value;
 }
 
-void v2_zero(f32* dst) {
-	dst[0] = 0.0f;
-	dst[1] = 0.0f;
+static inline v2 v2_new(f32 x, f32 y) {
+	return (v2){ x, y };
 }
 
-void v2_init(f32* v, f32 x, f32 y) {
-	v[0] = x;
-	v[1] = y;
+static inline v2 v2_zero() {
+	return v2_new(0.0f, 0.0f);
 }
 
-void v2_copy(f32* dst, f32* src) {
-	dst[0] = src[0];
-	dst[1] = src[1];
+static inline void v2_copy(f32* dst, v2 v) {
+	dst[0] = v.x;
+	dst[1] = v.y;
 }
 
-f32 v2_magnitude(f32* v) {
-	return sqrt((v[0] * v[0]) + (v[1] * v[1]));
+
+static inline f32 v2_magnitude(v2 v) {
+	return sqrt(v.x * v.x + v.y * v.y);
 }
 
-void v2_scale(f32* v, f32 s) {
-	v[0] = v[0] * s;
-	v[1] = v[1] * s;
+static inline v2 v2_scale(v2 v, f32 s) {
+	return v2_new(v.x * s, v.y * s);
 }
 
-void v2_normalize(f32* v, f32* res) {
+static inline v2 v2_normalize(v2 v) {
 	f32 mag = v2_magnitude(v);
 	if(mag == 0.0f) {
-		res[0] = 0.0f;
-		res[1] = 0.0f;
-		return;
+		return v2_zero();
 	}
-	res[0] = v[0] / mag;
-	res[1] = v[1] / mag;
+	return v2_new(v.x / mag, v.y / mag);
 }
 
-void v2_add(f32* dst, f32* a, f32* b) {
-	dst[0] = a[0] + b[0];
-	dst[1] = a[1] + b[1];
+static inline v2 v2_add(v2 a, v2 b) {
+	return v2_new(a.x + b.x, a.y + b.y);
 }
 
-void v2_sub(f32* dst, f32* a, f32* b) {
-	dst[0] = a[0] - b[0];
-	dst[1] = a[1] - b[1];
+static inline v2 v2_sub(v2 a, v2 b) {
+	return v2_new(a.x - b.x, a.y - b.y);
 }
 
-void v3_zero(f32* dst) {
-	dst[0] = 0.0f;
-	dst[1] = 0.0f;
-	dst[2] = 0.0f;
+static inline v3 v3_new(f32 x, f32 y, f32 z) {
+	return (v3){x, y, z};
 }
 
-void v3_init(f32* v, f32 x, f32 y, f32 z) {
-	v[0] = x;
-	v[1] = y;
-	v[2] = z;
+static inline v3 v3_zero() {
+	return v3_new(0.0f, 0.0f, 0.0f);
 }
 
-void v3_copy(f32* dst, f32* src) {
-	dst[0] = src[0];
-	dst[1] = src[1];
-	dst[2] = src[2];
+static inline void v3_copy(f32* dst, v3 v) {
+	dst[0] = v.x;
+	dst[1] = v.y;
+	dst[2] = v.z;
 }
 
-void v3_scale(f32* v, f32 s) {
-	v[0] = v[0] * s;
-	v[1] = v[1] * s;
-	v[2] = v[2] * s;
+static inline v3 v3_add(v3 a, v3 b) {
+	return v3_new(a.x + b.x, a.y + b.y, a.z + b.z);
 }
 
-void v3_normalize(f32* v, f32* res) {
-	f32 mag = sqrt((v[0] * v[0]) + (v[1] * v[1]) + (v[2] * v[2]));
-	res[0] = v[0] / mag;
-	res[1] = v[1] / mag;
-	res[2] = v[2] / mag;
+static inline v3 v3_sub(v3 a, v3 b) {
+	return v3_new(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
-void v3_add(f32* dst, f32* a, f32* b) {
-	dst[0] = a[0] + b[0];
-	dst[1] = a[1] + b[1];
-	dst[2] = a[2] + b[2];
+static inline f32 v3_magnitude(v3 v) {
+	return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
-void v3_cross(f32* a, f32* b, f32* res) {
-	res[0] = a[1] * b[2] - a[2] * b[1];
-	res[1] = a[2] * b[0] - a[0] * b[2];
-	res[2] = a[0] * b[1] - a[1] * b[0];
+static inline v3 v3_scale(v3 v, f32 s) {
+	return v3_new(v.x * s, v.y * s, v.z * s);
 }
 
-f32 v3_dot(f32* a, f32* b) {
-	return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+static inline v3 v3_normalize(v3 v) {
+	f32 mag = v3_magnitude(v);
+	if(mag == 0.0f) {
+		return v3_zero();
+	}
+	return v3_new(v.x / mag, v.y / mag, v.z / mag);
 }
 
-f32 v3_distance_squared(f32* a, f32* b) {
-	f32 dx = a[0] - b[0];
-	f32 dy = a[1] - b[1];
-	f32 dz = a[2] - b[2];
+static inline v3 v3_cross(v3 a, v3 b) {
+	return v3_new(
+		a.y * b.z - a.z * b.y,
+		a.z * b.x - a.x * b.z,
+		a.x * b.y - a.y * b.x
+	);
+}
+
+static inline f32 v3_dot(v3 a, v3 b) {
+	return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+static inline f32 v3_distance_squared(v3 a, v3 b) {
+	f32 dx = a.x - b.x;
+	f32 dy = a.y - b.y;
+	f32 dz = a.z - b.z;
 	return dx * dx + dy * dy + dz * dz;
 }
 
-f32 v3_distance(f32* a, f32* b) {
+static inline f32 v3_distance(v3 a, v3 b) {
 	return sqrt(v3_distance_squared(a, b));
 }
 
-f32 radians_from_degrees(f32 degrees) {
+static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w) {
+	return (v4){ x, y, z, w };
+}
+
+static inline v4 v4_zero() {
+	return v4_new(0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+static inline void v4_copy(f32* dst, v4 v) {
+	dst[0] = v.x;
+	dst[1] = v.y;
+	dst[2] = v.z;
+	dst[3] = v.w;
+}
+
+static inline f32 radians_from_degrees(f32 degrees) {
 	return degrees * 0.0174533;
 }
 
@@ -190,39 +229,30 @@ void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
 	res[14] = - (2.0f * zfar * znear) / (zfar - znear);
 }
 
-void mat4_lookat(f32* origin, f32* target, f32* up, f32* res) {
-	f32 dir[3] = { 
-		target[0] - origin[0],
-		target[1] - origin[1],
-		target[2] - origin[2]
-	};
-	f32 f[3];
-	f32 u[3]; 
-	f32 s[3]; 
-	v3_normalize(dir, f);
-	v3_normalize(up, u);
+void mat4_lookat(v3 origin, v3 target, v3 up, f32* res) {
+	v3 dir = v3_sub(target, origin);
+	v3 f = v3_normalize(dir);
+	v3 u = v3_normalize(up); 
+	v3 cross_fu = v3_cross(f, u);
+	v3 s = v3_normalize(cross_fu);
+	u = v3_cross(s, f);
 
-	f32 cross_fu[3];
-	v3_cross(f, u, cross_fu);
-
-	v3_normalize(cross_fu, s);
-	v3_cross(s, f, u);
-
-	res[0] = s[0];
-	res[4] = s[1];
-	res[8] = s[2];
-	res[1] = u[0];
-	res[5] = u[1];
-	res[9] = u[2];
-	res[2] = -f[0];
-	res[6] = -f[1];
-	res[10] = -f[2];
+	res[0] = s.x;
+	res[4] = s.y;
+	res[8] = s.z;
+	res[1] = u.x;
+	res[5] = u.y;
+	res[9] = u.z;
+	res[2] = -f.x;
+	res[6] = -f.y;
+	res[10] = -f.z;
 	res[12] = -v3_dot(s, origin);
 	res[13] = -v3_dot(u, origin);
-	res[14] =  v3_dot(f, origin);
+	res[14] = v3_dot(f, origin);
 }
 
 void mat4_mul(f32* a, f32* b, f32* res) {
+	// TODO: just do the algorithm
 	f32 a00 = a[0];
 	f32 a01 = a[1];
 	f32 a02 = a[2]; 
@@ -275,7 +305,7 @@ void mat4_mul(f32* a, f32* b, f32* res) {
 	res[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
 }
 
-void mat4_translation(f32* v, f32* res) {
+void mat4_translation(v3 v, f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -284,9 +314,9 @@ void mat4_translation(f32* v, f32* res) {
 	res[10] = 1.0f;
 	res[15] = 1.0f;
 
-	res[12] = v[0];
-	res[13] = v[1];
-	res[14] = v[2];
+	res[12] = v.x;
+	res[13] = v.y;
+	res[14] = v.z;
 }
 
 void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {

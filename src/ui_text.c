@@ -40,12 +40,12 @@ TextLinePlacements ui_text_line_placements(FontData* fonts, FontAssetHandle font
 	return result;
 }
 
-void ui_draw_text_line(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char* text, float x, float y, float anchor_x, float anchor_y, f32* color, Arena* arena) {
+void ui_draw_text_line(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char* text, float x, float y, float anchor_x, float anchor_y, v4 color, Arena* arena) {
 	TextLinePlacements placements = ui_text_line_placements(fonts, font_handle, text, x, y, anchor_x, anchor_y, arena);
 
 	FontData* font = &fonts[font_handle];
 	for(i32 j = 0; j < placements.len; j++) {
-		f32 position[2] = {placements.x[j], placements.y[j]};
+		v2 position = v2_new(placements.x[j], placements.y[j]);
 		render_list_draw_glyph(list, fonts, font_handle, text[j], position, color);
 	}
 }

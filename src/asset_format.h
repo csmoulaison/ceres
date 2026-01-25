@@ -3,10 +3,10 @@
 
 // NOW: This just ended up making dirty memory because there are no bounds
 // checks in place anywhere. Do some checking in the packing code.
-#define MAX_MESH_ASSETS 4
-#define MAX_TEXTURE_ASSETS 5
-#define MAX_RENDER_PROGRAM_ASSETS 2
-#define MAX_FONT_ASSETS 4
+#define MAX_MESH_ASSETS 16
+#define MAX_TEXTURE_ASSETS 16
+#define MAX_RENDER_PROGRAM_ASSETS 8
+#define MAX_FONT_ASSETS 12
 
 #include "font.h"
 

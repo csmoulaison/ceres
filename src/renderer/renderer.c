@@ -187,8 +187,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
 	f32 view[16];
 	mat4_identity(view);
-	float up[3];
-	v3_init(up, 0.0f, 1.0f, 0.0f);
+	v3 up = v3_new(0.0f, 1.0f, 0.0f);
 	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
 	mat4_mul(perspective, view, ubo_projection);
 	v3_copy(ubo_camera_position, list->world.camera_position);
@@ -203,9 +202,9 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 
 		f32 rotation[16];
 		mat4_rotation(
-			model->orientation[0], 
-			model->orientation[1], 
-			model->orientation[2], 
+			model->orientation.x, 
+			model->orientation.y, 
+			model->orientation.z, 
 			rotation);
 		mat4_mul(instance, rotation, instance);
 	}
@@ -216,17 +215,17 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		for(u32 j = 0; j < list->glyph_list_lens[i]; j++) {
 			RenderListGlyph* glyph = &list->glyph_lists[i][j];
 
-			glyph->dst[0] /= platform->window_width;
-			glyph->dst[1] /= platform->window_height;
-			glyph->dst[0] *= 2.0f;
-			glyph->dst[1] *= 2.0f;
-			glyph->dst[0] -= 1.0f;
-			glyph->dst[1] -= 1.0f;
+			glyph->dst.x /= platform->window_width;
+			glyph->dst.y /= platform->window_height;
+			glyph->dst.x *= 2.0f;
+			glyph->dst.y *= 2.0f;
+			glyph->dst.x -= 1.0f;
+			glyph->dst.y -= 1.0f;
 
-			glyph->dst[2] /= platform->window_width;
-			glyph->dst[3] /= platform->window_height;
-			glyph->dst[2] *= 2.0f;
-			glyph->dst[3] *= 2.0f;
+			glyph->dst.z /= platform->window_width;
+			glyph->dst.w /= platform->window_height;
+			glyph->dst.z *= 2.0f;
+			glyph->dst.w *= 2.0f;
 		}
 	}
 	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)list->glyph_lists;
@@ -234,7 +233,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
-	RenderCommandClear clear = { .color = { list->world.clear_color[0], list->world.clear_color[1], list->world.clear_color[2], 1.0f } };
+	RenderCommandClear clear = { .color = { list->world.clear_color.r, list->world.clear_color.g, list->world.clear_color.b, 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
 	// Draw models

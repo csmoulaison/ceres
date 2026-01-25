@@ -5,9 +5,8 @@
 #include "renderer/render_list.c"
 #include "ui_text.c"
 
-void player_direction_vector(f32* dst, GamePlayer* player) {
-	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
-	v2_normalize(dst, dst);
+v2 player_direction_vector(GamePlayer* player) {
+	return v2_normalize(v2_new(sin(player->ship_direction), cos(player->ship_direction)));
 }
 
 GAME_INIT(game_init) {
@@ -30,8 +29,8 @@ GAME_INIT(game_init) {
 		GamePlayer* player = &game->players[i];
 		player->ship_direction = 0.0f;
 		player->ship_rotation_velocity = 0.0f;
-		v2_zero(player->ship_position);
-		v2_zero(player->ship_velocity);
+		player->ship_position = v2_zero();
+		player->ship_velocity = v2_zero();
 
 		for(i32 i = 0; i < NUM_BUTTONS; i++) {
 			player->button_states[i] = 0;
@@ -46,7 +45,7 @@ GAME_INIT(game_init) {
 		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
 	}
 
-	v2_zero(game->camera_offset);
+	game->camera_offset = v2_zero();
 }
 
 GAME_UPDATE(game_update) {
@@ -115,21 +114,17 @@ GAME_UPDATE(game_update) {
 		player->ship_direction += player->ship_rotation_velocity * dt;
 
 		// Forward/back thruster control
-		f32 direction_vector[2];
-		player_direction_vector(direction_vector, player);
+		v2 direction_vector = player_direction_vector(player);
 
 		f32 forward_mod = 0.0f;
 		if(input_button_down(player->button_states[BUTTON_FORWARD]))
 			forward_mod += 0.4f;
 		if(input_button_down(player->button_states[BUTTON_BACK]))
 			forward_mod -= 0.2f;
-		f32 forward[2];
-		v2_copy(forward, direction_vector);
-		v2_scale(forward, forward_mod);
-		v2_add(player->ship_velocity, player->ship_velocity, forward);
+		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(direction_vector, forward_mod));
 
 		// Side thruster control
-		f32 side_vector[2] = { -direction_vector[1], direction_vector[0] };
+		v2 side_vector = { -direction_vector.y, direction_vector.x };
 
 		f32 strafe_speed = 0.3f;
 		f32 strafe_mod = 0.0f;
@@ -137,119 +132,114 @@ GAME_UPDATE(game_update) {
 			strafe_mod -= 1.0f;
 		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT]))
 			strafe_mod += 1.0f;
-		f32 strafe[2];
-		v2_copy(strafe, side_vector);
-		v2_scale(strafe, strafe_mod * strafe_speed);
-		v2_add(player->ship_velocity, player->ship_velocity, strafe);
+		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(side_vector, strafe_mod * strafe_speed));
 
 		// Normalize to max velocity and apply friction.
-		f32 velocity_normalized[2];
-		v2_normalize(player->ship_velocity, velocity_normalized);
+		v2 velocity_normalized = v2_normalize(player->ship_velocity);
 		f32 velocity_mag = v2_magnitude(player->ship_velocity);
 
 		f32 movement_friction = 6.0f;
 		if(velocity_mag > 0.1f) {
-			f32 friction[2];
-			v2_copy(friction, velocity_normalized);
-			v2_scale(friction, -movement_friction * dt);
-			v2_add(player->ship_velocity, player->ship_velocity, friction);
+			player->ship_velocity = v2_add(player->ship_velocity, v2_scale(velocity_normalized, -movement_friction * dt));
 		} else {
-			v2_zero(player->ship_velocity);
+			player->ship_velocity = v2_zero();
 		}
 
 		f32 max_speed = 14.0f;
 		if(velocity_mag > max_speed) {
-			v2_copy(player->ship_velocity, velocity_normalized);
-			v2_scale(player->ship_velocity, max_speed);
+			player->ship_velocity = v2_scale(velocity_normalized, max_speed);
 		}
 
-		f32 delta_velocity[2];
-		v2_copy(delta_velocity, player->ship_velocity);
-		v2_scale(delta_velocity, dt);
-		v2_add(player->ship_position, player->ship_position, delta_velocity);
+		player->ship_position = v2_add(player->ship_position, v2_scale(player->ship_velocity, dt));
 	}
 
 	// Camera control
 	GamePlayer* primary_player = &game->players[0];
 	f32 camera_lookahead = 4.0f;
-	f32 camera_target_position[2];
-	f32 camera_target_offset[2];
-	f32 direction_vector[2];
-	player_direction_vector(direction_vector, primary_player);
-	v2_copy(camera_target_offset, direction_vector);
-	v2_scale(camera_target_offset, camera_lookahead);
+	v2 camera_target_offset = v2_scale(player_direction_vector(primary_player), camera_lookahead);
 
 	f32 camera_speed_mod = 2.0f;
-	f32 camera_target_delta[2];	
-	v2_copy(camera_target_delta, camera_target_offset);
-	v2_sub(camera_target_delta, camera_target_offset, game->camera_offset);
-	v2_scale(camera_target_delta, camera_speed_mod * dt);
-	v2_add(game->camera_offset, game->camera_offset, camera_target_delta);
+	v2 camera_target_delta = v2_sub(camera_target_offset, game->camera_offset);
+	camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
+	game->camera_offset = v2_add(game->camera_offset, camera_target_delta);
 
 	// Populate render list
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
-	f32 clear_color[3] = { 0.1f, 0.1f, 0.2f };
-	f32 cam_target[3] = { game->camera_offset[0] + primary_player->ship_position[0], 0.0f, game->camera_offset[1] + primary_player->ship_position[1] };
-	f32 cam_pos[3] = { cam_target[0] + 4.0f, 8.0f, cam_target[2] };
+	v3 clear_color = v3_new(0.1f, 0.1f, 0.2f);
+	v3 cam_target = v3_new(game->camera_offset.x + primary_player->ship_position.x, 0.0f, game->camera_offset.y + primary_player->ship_position.y);
+	v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
 	render_list_update_world(list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
-		f32 ship_pos[3] = { player->ship_position[0], 0.5f, player->ship_position[1] };
+		v3 ship_pos = v3_new(player->ship_position.x, 0.5f, player->ship_position.y);
 		f32 ship_tilt = clamp(player->ship_rotation_velocity, -5.0f, 5.0f);
-		f32 ship_rot[3] = { ship_tilt * -0.1f, player->ship_direction, 0.0f };
+		v3 ship_rot = v3_new(ship_tilt * -0.1f, player->ship_direction, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
 	}
 
 	i32 floor_instances = 1024;
 	for(i32 i = 0; i < floor_instances; i++) {
-		f32 floor_pos[3] = { -15.5f + (i % 32), 0.0f, -15.5f + (i / 32) };
-		f32 floor_rot[3] = { 0.0f , 0.0f, 0.0f };
+		v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
+		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}
 
 	Arena ui_arena;
 	arena_init(&ui_arena, MEGABYTE, NULL, "UI");
 
-	f32 print_values[4] = {
-		primary_player->ship_position[0],
-		primary_player->ship_position[1],
-		primary_player->ship_velocity[0],
-		primary_player->ship_velocity[1]
+#define PRINT_VALUES_LEN 10
+	f32 print_values[PRINT_VALUES_LEN] = {
+		primary_player->ship_position.x,
+		primary_player->ship_position.y,
+		primary_player->ship_velocity.x,
+		primary_player->ship_velocity.y,
+		cam_pos.x,
+		cam_pos.y,
+		cam_pos.z,
+		cam_target.x,
+		cam_target.y,
+		cam_target.z
 	};
-	char* print_labels[4] = {
-		"pos_x: ",
-		"pos_y: ",
-		"vel_x: ",
-		"vel_y: "
+	char* print_labels[PRINT_VALUES_LEN] = {
+		"ship_pos_x: ",
+		"ship_pos_y: ",
+		"ship_vel_x: ",
+		"ship_vel_y: ",
+		"cam_pos_x: ",
+		"cam_pos_y: ",
+		"cam_pos_z: ",
+		"cam_target_x: ",
+		"cam_target_y: ",
+		"cam_target_z: "
 	};
-	for(i32 i = 0; i < 4; i++) {
+	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {
 		char str[256];
 		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
-		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_OVO_SMALL, str,
-			32.0f, 12.0f + ((4 - i) * 32.0f), 0.0f, 0.0f, &ui_arena);
+		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_MONO_SMALL, str,
+			32.0f, 12.0f + ((PRINT_VALUES_LEN  - i) * 24.0f), 0.0f, 0.0f, &ui_arena);
 
 		f32 gb_mod = 1.0f;
 		for(i32 j = 0; j < placements.len; j++) {
-			f32 position[2] = {placements.x[j], placements.y[j]};
-			f32 color[4] = { 1.0f, 1.0f * gb_mod, 1.0f * gb_mod, 1.0f };
+			v2 position = v2_new(placements.x[j], placements.y[j]);
+			v4 color = v4_new(0.75f, 0.75f * gb_mod, 0.75f * gb_mod, 1.0f);
 
 			if(str[j] == ':') {
-				gb_mod = 0.0f;
+				gb_mod = 0.1f;
 			}
 
-			render_list_draw_glyph(list, game->fonts, ASSET_FONT_OVO_SMALL, str[j], position, color);
+			render_list_draw_glyph(list, game->fonts, ASSET_FONT_MONO_SMALL, str[j], position, color);
 		}
 	}
 
-	f32 color[4] = { 0.4f, 0.5f, 0.7f, 1.0f };
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Shiptastic",
-		32.0f, 1000.0f, 0.0f, 1.0f, color, &ui_arena);
-	f32 color_neu[4] = { 0.4f, 0.7f, 0.5f, 1.0f };
+	v4 color = v4_new(0.4f, 0.5f, 0.7f, 1.0f);
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Sector Seven or some shit",
+		32.0f, 1140.0f, 0.0f, 1.0f, color, &ui_arena);
+	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "A game about love, life, and loss.",
-		32.0f, 1300.0f, 0.0f, 1.0f, color_neu, &ui_arena);
+		32.0f, 1090.0f, 0.0f, 1.0f, color_neu, &ui_arena);
 
 	arena_destroy(&ui_arena);
 		
