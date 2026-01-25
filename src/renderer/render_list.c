@@ -39,7 +39,8 @@ void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, f32* po
 	list->models_len++;
 }
 
-void render_list_draw_glyph(RenderList* list, FontData* font, i32 font_handle, char c, f32* position, f32* color) {
+void render_list_draw_glyph(RenderList* list, FontData* fonts, i32 font_handle, char c, f32* position, f32* color) {
+	FontData* font = &fonts[font_handle];
 	FontGlyph* font_glyph = &font->glyphs[c];
 	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
 	list->glyph_list_lens[font_handle] += 1;

@@ -210,6 +210,9 @@ GAME_UPDATE(game_update) {
 		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}
 
+	Arena ui_arena;
+	arena_init(&ui_arena, MEGABYTE, NULL, "UI");
+
 	f32 print_values[4] = {
 		primary_player->ship_position[0],
 		primary_player->ship_position[1],
@@ -225,31 +228,30 @@ GAME_UPDATE(game_update) {
 	for(i32 i = 0; i < 4; i++) {
 		char str[256];
 		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
-		u32 str_len = strlen(str);
-		float x_placements[str_len];
-		float y_placements[str_len];
-		ui_text_line_placements(&game->fonts[ASSET_FONT_OVO_SMALL], str, x_placements, y_placements,
-			32.0f, 12.0f + ((4 - i) * 32.0f), 0.0f, 0.0f);
+		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_OVO_SMALL, str,
+			32.0f, 12.0f + ((4 - i) * 32.0f), 0.0f, 0.0f, &ui_arena);
 
 		f32 gb_mod = 1.0f;
-		for(i32 j = 0; j < str_len; j++) {
-			f32 position[2] = {x_placements[j], y_placements[j]};
+		for(i32 j = 0; j < placements.len; j++) {
+			f32 position[2] = {placements.x[j], placements.y[j]};
 			f32 color[4] = { 1.0f, 1.0f * gb_mod, 1.0f * gb_mod, 1.0f };
 
 			if(str[j] == ':') {
 				gb_mod = 0.0f;
 			}
 
-			render_list_draw_glyph(list, &game->fonts[ASSET_FONT_OVO_SMALL], ASSET_FONT_OVO_SMALL, str[j], position, color);
+			render_list_draw_glyph(list, game->fonts, ASSET_FONT_OVO_SMALL, str[j], position, color);
 		}
 	}
 
 	f32 color[4] = { 0.4f, 0.5f, 0.7f, 1.0f };
-	ui_text_line(list, "Shiptastic", &game->fonts[ASSET_FONT_OVO_LARGE], ASSET_FONT_OVO_LARGE, color, 
-		32.0f, 1380.0f, 0.0f, 1.0f);
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Shiptastic",
+		32.0f, 1000.0f, 0.0f, 1.0f, color, &ui_arena);
 	f32 color_neu[4] = { 0.4f, 0.7f, 0.5f, 1.0f };
-	ui_text_line(list, "A game about love, life, and loss.", &game->fonts[ASSET_FONT_OVO_REGULAR], ASSET_FONT_OVO_REGULAR, color_neu, 
-		32.0f, 1300.0f, 0.0f, 1.0f);
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "A game about love, life, and loss.",
+		32.0f, 1300.0f, 0.0f, 1.0f, color_neu, &ui_arena);
+
+	arena_destroy(&ui_arena);
 		
 	game->frame++;
 }
