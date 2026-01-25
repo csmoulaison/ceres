@@ -169,7 +169,7 @@ GAME_UPDATE(game_update) {
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
-	v3 clear_color = v3_new(0.1f, 0.1f, 0.2f);
+	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	v3 cam_target = v3_new(game->camera_offset.x + primary_player->ship_position.x, 0.0f, game->camera_offset.y + primary_player->ship_position.y);
 	v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
 	render_list_update_world(list, clear_color, cam_pos, cam_target);
