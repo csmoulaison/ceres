@@ -22,7 +22,7 @@ changes made to the render layer.
 #include "renderer/renderer.h"
 
 #define RENDER_LIST_MAX_MODEL_INSTANCES 4096
-#define RENDER_LIST_MAX_GLYPHS 4096
+#define RENDER_LIST_MAX_GLYPHS 1024
 
 typedef struct {
 	f32 clear_color[3];

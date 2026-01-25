@@ -272,25 +272,24 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 
 	u64 text_buffer_offset = 0;
 	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
-		if(list->glyph_list_lens[i] < 1) continue;
+		if(list->glyph_list_lens[i] > 0) {
+			RenderCommandBufferSsboData buffer_ssbo_data_text = { 
+				.ssbo = RENDER_SSBO_TEXT, 
+				.size = sizeof(RenderListGlyph) * list->glyph_list_lens[i], 
+				.host_buffer_index = RENDER_HOST_BUFFER_TEXT, 
+				.host_buffer_offset = text_buffer_offset 
+			};
+			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));
 
-		RenderCommandBufferSsboData buffer_ssbo_data_text = { 
-			.ssbo = RENDER_SSBO_TEXT, 
-			.size = sizeof(RenderListGlyph) * list->glyph_list_lens[i], 
-			.host_buffer_index = RENDER_HOST_BUFFER_TEXT, 
-			.host_buffer_offset = text_buffer_offset 
-		};
-		render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));
+			RenderCommandUseTexture use_texture_text = { .texture = list->glyph_list_textures[i] };
+			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, sizeof(use_texture_text));
 
-		RenderCommandUseTexture use_texture_text = { .texture = list->glyph_list_textures[i] };
-		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, sizeof(use_texture_text));
-
-		RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { 
-			.mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], 
-			.count = list->glyph_list_lens[i] 
-		};
-		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
-
-		text_buffer_offset += sizeof(RenderListGlyph) * list->glyph_list_lens[i];
+			RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { 
+				.mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], 
+				.count = list->glyph_list_lens[i] 
+			};
+			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
+		}
+		text_buffer_offset += sizeof(RenderListGlyph) * RENDER_LIST_MAX_GLYPHS;
 	}
 }

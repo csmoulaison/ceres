@@ -245,9 +245,11 @@ GAME_UPDATE(game_update) {
 	}
 
 	f32 color[4] = { 0.4f, 0.5f, 0.7f, 1.0f };
-	// NOW: using a different font isn't working. this works with the small one
-	ui_text_line(list, "Shiptastic", &game->fonts[ASSET_FONT_OVO_REGULAR], ASSET_FONT_OVO_REGULAR, color, 
-		32.0f, 64.0f, 0.0f, 1.0f);
+	ui_text_line(list, "Shiptastic", &game->fonts[ASSET_FONT_OVO_LARGE], ASSET_FONT_OVO_LARGE, color, 
+		32.0f, 1380.0f, 0.0f, 1.0f);
+	f32 color_neu[4] = { 0.4f, 0.7f, 0.5f, 1.0f };
+	ui_text_line(list, "A game about love, life, and loss.", &game->fonts[ASSET_FONT_OVO_REGULAR], ASSET_FONT_OVO_REGULAR, color_neu, 
+		32.0f, 1300.0f, 0.0f, 1.0f);
 		
 	game->frame++;
 }
