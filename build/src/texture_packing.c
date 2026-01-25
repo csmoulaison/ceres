@@ -56,8 +56,9 @@ void pack_texture_asset(void* p_info, void* p_asset) {
 			asset->width = info->buffer_width;
 			asset->height = info->buffer_height;
 			asset->channel_count = info->channel_count;
-			memcpy(asset->buffer, info->buffer, sizeof(u8) * info->buffer_width * info->buffer_height);
+			memcpy(asset->buffer, info->buffer, sizeof(u8) * asset->channel_count * info->buffer_width * info->buffer_height);
 		} break;
 		default: break;
 	}
+	printf("texture packing channels %u\n", asset->channel_count);
 }

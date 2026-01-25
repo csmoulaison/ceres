@@ -5,3 +5,5 @@ texture FLOOR data/textures/metal.bmp
 render_program MODEL ../src/shaders/cube.vert ../src/shaders/cube.frag
 render_program TEXT ../src/shaders/text.vert ../src/shaders/text.frag
 font OVO_SMALL data/fonts/Ovo-Regular.ttf 24
+font OVO_REGULAR data/fonts/Ovo-Regular.ttf 36
+font OVO_LARGE data/fonts/Ovo-Regular.ttf 48

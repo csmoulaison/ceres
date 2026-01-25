@@ -39,10 +39,13 @@ void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, f32* po
 	list->models_len++;
 }
 
-void render_list_draw_glyph(RenderList* list, FontData* font, char c, f32* position, f32* color) {
+void render_list_draw_glyph(RenderList* list, FontData* font, i32 font_handle, char c, f32* position, f32* color) {
 	FontGlyph* font_glyph = &font->glyphs[c];
-	RenderListGlyph* list_glyph = &list->glyphs[list->glyphs_len];
-	list->glyphs_len++;
+	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
+	list->glyph_list_lens[font_handle] += 1;
+	// TODO: this is quite unideal, setting every time we draw a single glyph, when
+	// really this is just statically derivable data.
+	list->glyph_list_textures[font_handle] = font->texture_id;
 
 	list_glyph->src[0] = ((f32)font_glyph->position[0]) / font->texture_width;
 	list_glyph->src[1] = ((f32)font_glyph->position[1]) / font->texture_height;

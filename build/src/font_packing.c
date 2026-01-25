@@ -147,6 +147,7 @@ void pack_font_asset(void* p_info, void* p_asset) {
 	FontInfo* info = (FontInfo*)p_info;
 
 	asset->glyphs_len = FONT_CHARS_LEN;
+	asset->texture_id = info->texture_id;
 	
 	for(i32 i = 0; i < FONT_CHARS_LEN; i++) {
 		GlyphInfo* g_info = &info->glyphs[i];

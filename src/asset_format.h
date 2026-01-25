@@ -1,13 +1,12 @@
 #ifndef asset_formtat_h_INCLUDED
 #define asset_formtat_h_INCLUDED
 
-#define TEXTURE_PIXEL_STRIDE_BYTES 4
 // NOW: This just ended up making dirty memory because there are no bounds
 // checks in place anywhere. Do some checking in the packing code.
 #define MAX_MESH_ASSETS 4
-#define MAX_TEXTURE_ASSETS 4
+#define MAX_TEXTURE_ASSETS 5
 #define MAX_RENDER_PROGRAM_ASSETS 2
-#define MAX_FONT_ASSETS 8
+#define MAX_FONT_ASSETS 4
 
 #include "font.h"
 

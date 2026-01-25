@@ -15,6 +15,8 @@ typedef enum {
    ASSET_TEXTURE_SHIP,
    ASSET_TEXTURE_FLOOR,
    ASSET_TEXTURE_OVO_SMALL,
+   ASSET_TEXTURE_OVO_REGULAR,
+   ASSET_TEXTURE_OVO_LARGE,
    ASSET_NUM_TEXTURES
 } TextureAssetHandle;
 
@@ -26,6 +28,8 @@ typedef enum {
 
 typedef enum {
    ASSET_FONT_OVO_SMALL,
+   ASSET_FONT_OVO_REGULAR,
+   ASSET_FONT_OVO_LARGE,
    ASSET_NUM_FONTS
 } FontAssetHandle;
 

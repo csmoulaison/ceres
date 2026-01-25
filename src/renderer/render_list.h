@@ -50,8 +50,9 @@ typedef struct {
 	RenderListModel models[RENDER_LIST_MAX_MODEL_INSTANCES];
 	u32 models_len;
 
-	RenderListGlyph glyphs[RENDER_LIST_MAX_GLYPHS];
-	u32 glyphs_len;
+	RenderListGlyph glyph_lists[ASSET_NUM_FONTS][RENDER_LIST_MAX_GLYPHS];
+	u32 glyph_list_lens[ASSET_NUM_FONTS];
+	u32 glyph_list_textures[ASSET_NUM_FONTS];
 } RenderList;
 
 #endif // render_list_h_INCLUDED

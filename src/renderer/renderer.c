@@ -212,22 +212,24 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	renderer->host_buffers[RENDER_HOST_BUFFER_INSTANCE].data = (u8*)instances_ubo;
 
 	// Text ssbo
-	for(u32 j = 0; j < list->glyphs_len; j++) {
-		RenderListGlyph* glyph = &list->glyphs[j];
+	for(u32 i = 0; i < ASSET_NUM_FONTS; i++) {
+		for(u32 j = 0; j < list->glyph_list_lens[i]; j++) {
+			RenderListGlyph* glyph = &list->glyph_lists[i][j];
 
-		glyph->dst[0] /= platform->window_width;
-		glyph->dst[1] /= platform->window_height;
-		glyph->dst[0] *= 2.0f;
-		glyph->dst[1] *= 2.0f;
-		glyph->dst[0] -= 1.0f;
-		glyph->dst[1] -= 1.0f;
+			glyph->dst[0] /= platform->window_width;
+			glyph->dst[1] /= platform->window_height;
+			glyph->dst[0] *= 2.0f;
+			glyph->dst[1] *= 2.0f;
+			glyph->dst[0] -= 1.0f;
+			glyph->dst[1] -= 1.0f;
 
-		glyph->dst[2] /= platform->window_width;
-		glyph->dst[3] /= platform->window_height;
-		glyph->dst[2] *= 2.0f;
-		glyph->dst[3] *= 2.0f;
+			glyph->dst[2] /= platform->window_width;
+			glyph->dst[3] /= platform->window_height;
+			glyph->dst[2] *= 2.0f;
+			glyph->dst[3] *= 2.0f;
+		}
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)list->glyphs;
+	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)list->glyph_lists;
 
 	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
@@ -249,7 +251,6 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = RENDER_UBO_WORLD, .host_buffer_index = RENDER_HOST_BUFFER_WORLD, .host_buffer_offset = 0 };
 	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_world, sizeof(buffer_ubo_data_world));
 
-
 	for(i32 i = 0; i < list->models_len; i++) {
 		RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_INSTANCE, .host_buffer_index = RENDER_HOST_BUFFER_INSTANCE, .host_buffer_offset = i * 64 };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
@@ -266,15 +267,30 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	RenderCommandUseProgram use_program_text = { .program = ASSET_RENDER_PROGRAM_TEXT };
 	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_text, sizeof(use_program_text));
 
-	RenderCommandUseTexture use_texture_text = { .texture = ASSET_TEXTURE_OVO_SMALL };
-	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, sizeof(use_texture_text));
-
 	RenderCommandUseSsbo use_ssbo_text = { .ssbo = RENDER_SSBO_TEXT };
 	render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_text, sizeof(use_ssbo_text));
-	
-	RenderCommandBufferSsboData buffer_ssbo_data_text = { .ssbo = RENDER_SSBO_TEXT, .size = sizeof(RenderListGlyph) * list->glyphs_len, .host_buffer_index = RENDER_HOST_BUFFER_TEXT, .host_buffer_offset = 0 };
-	render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));
 
-	RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { .mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], .count = list->glyphs_len };
-	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
+	u64 text_buffer_offset = 0;
+	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
+		if(list->glyph_list_lens[i] < 1) continue;
+
+		RenderCommandBufferSsboData buffer_ssbo_data_text = { 
+			.ssbo = RENDER_SSBO_TEXT, 
+			.size = sizeof(RenderListGlyph) * list->glyph_list_lens[i], 
+			.host_buffer_index = RENDER_HOST_BUFFER_TEXT, 
+			.host_buffer_offset = text_buffer_offset 
+		};
+		render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));
+
+		RenderCommandUseTexture use_texture_text = { .texture = list->glyph_list_textures[i] };
+		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, sizeof(use_texture_text));
+
+		RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { 
+			.mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], 
+			.count = list->glyph_list_lens[i] 
+		};
+		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
+
+		text_buffer_offset += sizeof(RenderListGlyph) * list->glyph_list_lens[i];
+	}
 }

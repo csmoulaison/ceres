@@ -43,7 +43,7 @@ void pack_assets() {
 	// with the final list in the pack. For instance, manifest fonts create both a
 	// "font" asset and a texture asset.
 	Arena arena;
-	arena_init(&arena, MEGABYTE * 32, NULL, "AssetInfo");
+	arena_init(&arena, MEGABYTE * 64, NULL, "AssetInfo");
 	AssetInfoList infos_list;
 	for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 		infos_list.counts_by_type[i] = 0;

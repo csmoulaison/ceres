@@ -1,5 +1,6 @@
 #include "font.h"
 
+// TODO: Make screen anchor part of this.
 // Placements must be preallocated float * string length.
 void ui_text_line_placements(
 	FontData* font,
@@ -32,5 +33,28 @@ void ui_text_line_placements(
 
 		x_placements[i] = floor(x_placements[i]);
 		y_placements[i] = floor(y_placements[i]);
+	}
+}
+
+void ui_text_line(
+	RenderList* list,
+	char* text,
+	FontData* font,
+	u32 font_handle,
+	f32* color,
+	float x,
+	float y,
+	float anchor_x,
+	float anchor_y)
+{
+	u32 str_len = strlen(text);
+	float x_placements[str_len];
+	float y_placements[str_len];
+	ui_text_line_placements(font, text, x_placements, y_placements,
+		x, y, anchor_x, anchor_y);
+
+	for(i32 j = 0; j < str_len; j++) {
+		f32 position[2] = {x_placements[j], y_placements[j]};
+		render_list_draw_glyph(list, font, font_handle, text[j], position, color);
 	}
 }

@@ -240,9 +240,14 @@ GAME_UPDATE(game_update) {
 				gb_mod = 0.0f;
 			}
 
-			render_list_draw_glyph(list, &game->fonts[ASSET_FONT_OVO_SMALL], str[j], position, color);
+			render_list_draw_glyph(list, &game->fonts[ASSET_FONT_OVO_SMALL], ASSET_FONT_OVO_SMALL, str[j], position, color);
 		}
 	}
 
+	f32 color[4] = { 0.4f, 0.5f, 0.7f, 1.0f };
+	// NOW: using a different font isn't working. this works with the small one
+	ui_text_line(list, "Shiptastic", &game->fonts[ASSET_FONT_OVO_REGULAR], ASSET_FONT_OVO_REGULAR, color, 
+		32.0f, 64.0f, 0.0f, 1.0f);
+		
 	game->frame++;
 }
