@@ -39,7 +39,7 @@ void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, v3 posi
 	list->models_len++;
 }
 
-void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v4 color) {
+void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v2 screen_anchor, v4 color) {
 	FontData* font = &fonts[font_handle];
 	FontGlyph* font_glyph = &font->glyphs[c];
 	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
@@ -48,15 +48,14 @@ void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle f
 	// really this is just statically derivable data.
 	list->glyph_list_textures[font_handle] = font->texture_id;
 
+	list_glyph->screen_anchor = screen_anchor;
+	list_glyph->offset = position;
+	list_glyph->size.x = font_glyph->size[0];
+	list_glyph->size.y = font_glyph->size[1];
+	list_glyph->color = color;
+
 	list_glyph->src.x = ((f32)font_glyph->position[0]) / font->texture_width;
 	list_glyph->src.y = ((f32)font_glyph->position[1]) / font->texture_height;
 	list_glyph->src.z = ((f32)font_glyph->size[0]) / font->texture_width;
 	list_glyph->src.w = ((f32)font_glyph->size[1]) / font->texture_height;
-
-	list_glyph->dst.x = position.x;
-	list_glyph->dst.y = position.y;
-	list_glyph->dst.z = font_glyph->size[0];
-	list_glyph->dst.w = font_glyph->size[1];
-
-	list_glyph->color = color;
 }

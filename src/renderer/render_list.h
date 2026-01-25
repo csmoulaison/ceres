@@ -39,9 +39,11 @@ typedef struct {
 } RenderListModel;
 
 typedef struct {
-	v4 src;
-	v4 dst;
+	v2 screen_anchor;
+	v2 offset;
+	v2 size;
 	v4 color;
+	v4 src;
 } RenderListGlyph;
 
 typedef struct {

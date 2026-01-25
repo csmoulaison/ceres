@@ -3,6 +3,12 @@
 
 #define RENDER_NO_INTERPOLATION false
 
+typedef struct {
+	v4 src;
+	v4 dst;
+	v4 color;
+} RenderGlyph;
+
 void render_push_command(Renderer* renderer, RenderCommandType type, void* data, u64 data_size) {
 	RenderCommand* cmd = (RenderCommand*)arena_alloc(&renderer->frame_arena, sizeof(RenderCommand));
 	cmd->type = type;
@@ -211,24 +217,22 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	renderer->host_buffers[RENDER_HOST_BUFFER_INSTANCE].data = (u8*)instances_ubo;
 
 	// Text ssbo
+	RenderGlyph* text_ssbo = (RenderGlyph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS);
 	for(u32 i = 0; i < ASSET_NUM_FONTS; i++) {
 		for(u32 j = 0; j < list->glyph_list_lens[i]; j++) {
-			RenderListGlyph* glyph = &list->glyph_lists[i][j];
+			RenderListGlyph* list_glyph = &list->glyph_lists[i][j];
+			RenderGlyph* render_glyph = &text_ssbo[i * RENDER_LIST_MAX_GLYPHS + j];
 
-			glyph->dst.x /= platform->window_width;
-			glyph->dst.y /= platform->window_height;
-			glyph->dst.x *= 2.0f;
-			glyph->dst.y *= 2.0f;
-			glyph->dst.x -= 1.0f;
-			glyph->dst.y -= 1.0f;
+			render_glyph->dst.x = 2.0f * (list_glyph->offset.x / platform->window_width + list_glyph->screen_anchor.x) - 1.0f;
+			render_glyph->dst.y = 2.0f * (list_glyph->offset.y / platform->window_height + list_glyph->screen_anchor.y) - 1.0f;
+			render_glyph->dst.z = 2.0f * (list_glyph->size.x / platform->window_width);
+			render_glyph->dst.w = 2.0f * (list_glyph->size.y / platform->window_height);
 
-			glyph->dst.z /= platform->window_width;
-			glyph->dst.w /= platform->window_height;
-			glyph->dst.z *= 2.0f;
-			glyph->dst.w *= 2.0f;
+			render_glyph->src = list_glyph->src;
+			render_glyph->color = list_glyph->color;
 		}
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)list->glyph_lists;
+	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)text_ssbo;
 
 	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
@@ -274,7 +278,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		if(list->glyph_list_lens[i] > 0) {
 			RenderCommandBufferSsboData buffer_ssbo_data_text = { 
 				.ssbo = RENDER_SSBO_TEXT, 
-				.size = sizeof(RenderListGlyph) * list->glyph_list_lens[i], 
+				.size = sizeof(RenderGlyph) * list->glyph_list_lens[i], 
 				.host_buffer_index = RENDER_HOST_BUFFER_TEXT, 
 				.host_buffer_offset = text_buffer_offset 
 			};
@@ -289,6 +293,6 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			};
 			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
 		}
-		text_buffer_offset += sizeof(RenderListGlyph) * RENDER_LIST_MAX_GLYPHS;
+		text_buffer_offset += sizeof(RenderGlyph) * RENDER_LIST_MAX_GLYPHS;
 	}
 }

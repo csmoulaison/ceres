@@ -217,11 +217,15 @@ GAME_UPDATE(game_update) {
 		"cam_target_y: ",
 		"cam_target_z: "
 	};
+	v2 debug_screen_anchor = v2_zero();
 	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {
 		char str[256];
 		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
+
+		v2 debug_position = v2_new(32.0f, 12.0f + (PRINT_VALUES_LEN - i) * 24.0f);
+		v2 debug_inner_anchor = v2_zero();
 		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_MONO_SMALL, str,
-			32.0f, 12.0f + ((PRINT_VALUES_LEN  - i) * 24.0f), 0.0f, 0.0f, &ui_arena);
+			debug_position, debug_inner_anchor, &ui_arena);
 
 		f32 gb_mod = 1.0f;
 		for(i32 j = 0; j < placements.len; j++) {
@@ -232,16 +236,21 @@ GAME_UPDATE(game_update) {
 				gb_mod = 0.1f;
 			}
 
-			render_list_draw_glyph(list, game->fonts, ASSET_FONT_MONO_SMALL, str[j], position, color);
+			render_list_draw_glyph(list, game->fonts, ASSET_FONT_MONO_SMALL, str[j], position, debug_screen_anchor, color);
 		}
 	}
 
 	v4 color = v4_new(0.4f, 0.5f, 0.7f, 1.0f);
+	v2 title_position = v2_new(32.0f, -32.0f);
+	v2 title_inner_anchor = v2_new(0.0f, 1.0f);
+	v2 title_screen_anchor = v2_new(0.0f, 1.0f);
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Sector Seven or some shit",
-		32.0f, 1140.0f, 0.0f, 1.0f, color, &ui_arena);
+		title_position, title_inner_anchor, title_screen_anchor, color, &ui_arena);
+
 	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
+	title_position.y -= 64.0f;
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "A game about love, life, and loss.",
-		32.0f, 1090.0f, 0.0f, 1.0f, color_neu, &ui_arena);
+		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_arena);
 
 	arena_destroy(&ui_arena);
 		
