@@ -97,60 +97,62 @@ GAME_UPDATE(game_update) {
 			output->close_requested = true;
 		}
 
-		// Rotation thruster control
+		// Calculate ship rotational acceleration
 		f32 rotate_speed = 32.0f;
-		if(input_button_down(player->button_states[BUTTON_TURN_LEFT]))
-			player->ship_rotation_velocity += rotate_speed * dt;
-		if(input_button_down(player->button_states[BUTTON_TURN_RIGHT]))
-			player->ship_rotation_velocity -= rotate_speed * dt;
+		f32 rot_acceleration = 0.0f;
+		if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
+			rot_acceleration += rotate_speed;
+		}
+		if(input_button_down(player->button_states[BUTTON_TURN_RIGHT])) {
+			rot_acceleration -= rotate_speed;
+		}
 
-		f32 rotate_max_speed = 12.0f;
-		f32 rotate_friction = 8.0f;
-		player->ship_rotation_velocity = move_to_zero(player->ship_rotation_velocity, rotate_friction * dt);
-		if(player->ship_rotation_velocity > rotate_max_speed)
-			player->ship_rotation_velocity = rotate_max_speed;
-		if(player->ship_rotation_velocity < -rotate_max_speed)
-			player->ship_rotation_velocity = -rotate_max_speed;
-		player->ship_direction += player->ship_rotation_velocity * dt;
+		// Rotational damping
+		f32 rot_damping = 2.0f;
+		rot_acceleration += player->ship_rotation_velocity * -rot_damping;
 
+		// Apply rotational acceleration
+		player->ship_direction = 0.5f * rot_acceleration * dt * dt + player->ship_rotation_velocity * dt + player->ship_direction;
+		player->ship_rotation_velocity += rot_acceleration * dt;
+
+		// Calculate ship acceleration
 		// Forward/back thruster control
-		v2 direction_vector = player_direction_vector(player);
+		v2 acceleration = v2_zero();
 
+		v2 direction_vector = player_direction_vector(player);
 		f32 forward_mod = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_FORWARD]))
-			forward_mod += 0.4f;
-		if(input_button_down(player->button_states[BUTTON_BACK]))
-			forward_mod -= 0.2f;
-		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(direction_vector, forward_mod));
+		if(input_button_down(player->button_states[BUTTON_FORWARD])) {
+			forward_mod += 32.0f;
+		}
+		if(input_button_down(player->button_states[BUTTON_BACK])) {
+			forward_mod -= 16.0f;
+		}
+		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Side thruster control
 		v2 side_vector = { -direction_vector.y, direction_vector.x };
-
-		f32 strafe_speed = 0.3f;
+		f32 strafe_speed = 32.0f;
 		f32 strafe_mod = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT]))
+		if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT])) {
 			strafe_mod -= 1.0f;
-		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT]))
+		}
+		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT])) {
 			strafe_mod += 1.0f;
-		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(side_vector, strafe_mod * strafe_speed));
-
-		// Normalize to max velocity and apply friction.
-		v2 velocity_normalized = v2_normalize(player->ship_velocity);
-		f32 velocity_mag = v2_magnitude(player->ship_velocity);
-
-		f32 movement_friction = 6.0f;
-		if(velocity_mag > 0.1f) {
-			player->ship_velocity = v2_add(player->ship_velocity, v2_scale(velocity_normalized, -movement_friction * dt));
-		} else {
-			player->ship_velocity = v2_zero();
 		}
+		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
-		f32 max_speed = 14.0f;
-		if(velocity_mag > max_speed) {
-			player->ship_velocity = v2_scale(velocity_normalized, max_speed);
-		}
+		// Damp acceleration
+		f32 damping = 2.0f;
+		acceleration = v2_add(acceleration, v2_scale(player->ship_velocity, -damping));
 
-		player->ship_position = v2_add(player->ship_position, v2_scale(player->ship_velocity, dt));
+		// Apply acceleration to position
+		// (acceleration / 2) * dt^2 + velocity * t + position
+		v2 accel_dt = v2_scale(v2_scale(acceleration, 0.5f), dt * dt);
+		v2 velocity_dt = v2_scale(player->ship_velocity, dt);
+		player->ship_position = v2_add(player->ship_position, v2_add(accel_dt, velocity_dt));
+
+		// Update player velocity
+		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(acceleration, dt));
 	}
 
 	// Camera control
