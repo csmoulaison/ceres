@@ -8,8 +8,8 @@ typedef struct {
 typedef struct {
 	u32 vao;
 	u32 ebo;
+	u32 vertices_len;
 	u32 indices_len;
-	bool flat_shading;
 } GlMesh;
 
 typedef struct {
@@ -23,10 +23,17 @@ typedef struct {
 } GlUbo;
 
 typedef struct {
+	u32 id;
+	u32 size;
+	u32 binding;
+} GlSsbo;
+
+typedef struct {
 	GlProgram* programs;
 	GlMesh* meshes;
 	GlTexture* textures;
 	GlUbo* ubos;
+	GlSsbo* ssbos;
 } OpenGl;
 
 u32 gl_compile_shader(const char* src, i32 src_len,  GLenum type) {
@@ -46,35 +53,39 @@ u32 gl_compile_shader(const char* src, i32 src_len,  GLenum type) {
 	return shader;
 }
 
-Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) {
-	Renderer* renderer = render_pre_init(data, render_arena);
+void gl_init_buffer(i32* id, u64 size, GLenum target, GLenum usage) {
+	glGenBuffers(1, id);
+	glBindBuffer(target, *id);
+	glBufferData(target, size, NULL, usage);
+	glBindBuffer(target, 0);
+}
 
+void gl_init(Renderer* renderer, RenderBackendInitData* init, Arena* render_arena, Arena* init_arena) {
 	renderer->backend = arena_alloc(&renderer->persistent_arena, sizeof(OpenGl));
 	OpenGl* gl = (OpenGl*)renderer->backend;
 
 	if(gl3wInit() != 0) { panic(); }
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	//glDisable(GL_CULL_FACE);
 	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	if(data->programs_len > 0)
-		gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * data->programs_len);
-	if(data->meshes_len > 0)
-		gl->meshes = (GlMesh*)arena_alloc(&renderer->persistent_arena, sizeof(GlMesh) * data->meshes_len);
-	if(data->textures_len > 0)
-		gl->textures = (GlTexture*)arena_alloc(&renderer->persistent_arena, sizeof(GlTexture) * data->textures_len);
-	if(data->ubos_len > 0)
-		gl->ubos = (GlUbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlUbo) * data->ubos_len);
+	gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * init->programs_len);
+	gl->meshes = (GlMesh*)arena_alloc(&renderer->persistent_arena, sizeof(GlMesh) * init->meshes_len);
+	gl->textures = (GlTexture*)arena_alloc(&renderer->persistent_arena, sizeof(GlTexture) * init->textures_len);
+	gl->ubos = (GlUbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlUbo) * init->ubos_len);
+	gl->ssbos = (GlSsbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlSsbo) * init->ssbos_len);
 
-	RenderProgramInitData* program_data = data->programs;
+	RenderProgramInitData* program_data = init->programs;
+	i32 program_index = 0;
 	while(program_data != NULL) {
 		u32 vert_shader = gl_compile_shader(program_data->vertex_shader_src, program_data->vertex_shader_src_len, GL_VERTEX_SHADER);
 		u32 frag_shader = gl_compile_shader(program_data->fragment_shader_src, program_data->fragment_shader_src_len, GL_FRAGMENT_SHADER);
 
-		GlProgram* program = &gl->programs[renderer->programs_len];
+		GlProgram* program = &gl->programs[program_index];
 		program->id = glCreateProgram();
 		glAttachShader(program->id, vert_shader);
 		glAttachShader(program->id, frag_shader);
@@ -82,15 +93,14 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glDeleteShader(vert_shader);
 		glDeleteShader(frag_shader);
 
-		renderer->programs[renderer->programs_len] = renderer->programs_len;
-		renderer->programs_len++;
 		program_data = program_data->next;
+		program_index++;
 	}
-	assert(renderer->programs_len == data->programs_len);
 
-	RenderMeshInitData* mesh_data = data->meshes;
+	RenderMeshInitData* mesh_data = init->meshes;
+	i32 mesh_index = 0;
 	while(mesh_data != NULL) {
-		GlMesh* mesh = &gl->meshes[renderer->meshes_len];
+		GlMesh* mesh = &gl->meshes[mesh_index];
 		glGenVertexArrays(1, &mesh->vao);
 		glBindVertexArray(mesh->vao);
 
@@ -113,18 +123,18 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glGenBuffers(1, &mesh->ebo);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
+		mesh->vertices_len = mesh_data->vertices_len;
 		mesh->indices_len = mesh_data->indices_len;
-		mesh->flat_shading = mesh_data->flat_shading;
+		//mesh->flat_shading = mesh_data->flat_shading;
 
-		renderer->meshes[renderer->meshes_len] = renderer->meshes_len;
-		renderer->meshes_len++;
 		mesh_data = mesh_data->next;
+		mesh_index++;
 	}
-	assert(renderer->meshes_len == data->meshes_len);
 
-	RenderTextureInitData* texture_data = data->textures;
+	RenderTextureInitData* texture_data = init->textures;
+	i32 texture_index = 0;
 	while(texture_data != NULL) {
-		GlTexture* texture = &gl->textures[renderer->textures_len];
+		GlTexture* texture = &gl->textures[texture_index];
 		glGenTextures(1, &texture->id);
 		glBindTexture(GL_TEXTURE_2D, texture->id);
 
@@ -143,42 +153,33 @@ Renderer* gl_init(RenderInitData* data, Arena* render_arena, Arena* init_arena) 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		renderer->textures[renderer->textures_len] = renderer->textures_len;
-		renderer->textures_len++;
 		texture_data = texture_data->next;
+		texture_index++;
 	}
-	assert(renderer->textures_len == data->textures_len);
 
-	RenderUboInitData* ubo_data = data->ubos;
+	RenderUboInitData* ubo_data = init->ubos;
+	u32 ubo_index = 0;
 	while(ubo_data != NULL) {
-		GlUbo* ubo = &gl->ubos[renderer->ubos_len];
+		GlUbo* ubo = &gl->ubos[ubo_index];
 		ubo->binding = ubo_data->binding;
 		ubo->size = ubo_data->size;
-
-		glGenBuffers(1, &ubo->id);
-		glBindBuffer(GL_UNIFORM_BUFFER, ubo->id);
-		glBufferData(GL_UNIFORM_BUFFER, ubo_data->size, NULL, GL_DYNAMIC_DRAW);
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		renderer->ubos[renderer->ubos_len] = renderer->ubos_len;
-		renderer->ubos_len++;
+		gl_init_buffer(&ubo->id, ubo_data->size, GL_UNIFORM_BUFFER, GL_DYNAMIC_DRAW);
 		ubo_data = ubo_data->next;
+		ubo_index++;
 	}
-	assert(renderer->ubos_len == data->ubos_len);
 
-	RenderHostBufferInitData* host_buffer_data = data->host_buffers;
-	while(host_buffer_data != NULL) {
-		RenderHostBuffer* host_buffer = &renderer->host_buffers[renderer->host_buffers_len];
-		host_buffer->id = renderer->host_buffers_len;
-		host_buffer->data = NULL;
-
-		renderer->host_buffers_len++;
-		host_buffer_data = host_buffer_data->next;
+	RenderSsboInitData* ssbo_data = init->ssbos;
+	u32 ssbo_index = 0;
+	while(ssbo_data != NULL) {
+		GlSsbo* ssbo = &gl->ssbos[ssbo_index];
+		ssbo->binding = ssbo_data->binding;
+		ssbo->size = ssbo_data->size;
+		gl_init_buffer(&ssbo->id, ssbo_data->size, GL_SHADER_STORAGE_BUFFER, GL_DYNAMIC_DRAW);
+		ssbo_data = ssbo_data->next;
+		ssbo_index++;
 	}
-	assert(renderer->host_buffers_len == data->host_buffers_len);
 
 	glViewport(0, 0, 1, 1);
-	return renderer;
 }
 
 void gl_update(Renderer* renderer, Platform* platform) {
@@ -207,6 +208,11 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				GlUbo* ubo = &gl->ubos[data->ubo];
 				glBindBufferBase(GL_UNIFORM_BUFFER, ubo->binding, ubo->id);
 			} break;
+			case RENDER_COMMAND_USE_SSBO: {
+				RenderCommandUseSsbo* data = (RenderCommandUseSsbo*)cmd->data;
+				GlSsbo* ssbo = &gl->ssbos[data->ssbo];
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo->binding, ssbo->id);
+			} break;
 			case RENDER_COMMAND_USE_TEXTURE: {
 				RenderCommandUseTexture* data = (RenderCommandUseTexture*)cmd->data;
 				glBindTexture(GL_TEXTURE_2D, gl->textures[data->texture].id);
@@ -222,16 +228,35 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				memcpy(mapped_buffer, host_buffer->data + data->host_buffer_offset, ubo->size);
 				glUnmapBuffer(GL_UNIFORM_BUFFER);
 			} break;
+			case RENDER_COMMAND_BUFFER_SSBO_DATA: {
+				RenderCommandBufferSsboData* data = (RenderCommandBufferSsboData*)cmd->data;
+				GlSsbo* ssbo = &gl->ssbos[data->ssbo];
+				RenderHostBuffer* host_buffer = &renderer->host_buffers[data->host_buffer_index];
+				assert(host_buffer->data != NULL);
+
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo->id);
+				glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, data->size, host_buffer->data + data->host_buffer_offset);
+			} break;
 			case RENDER_COMMAND_DRAW_MESH: {
 				RenderCommandDrawMesh* data = (RenderCommandDrawMesh*)cmd->data;
 				GlMesh* mesh = &gl->meshes[data->mesh];
 				glBindVertexArray(mesh->vao);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-				if(mesh->flat_shading) {
-					glDrawArrays(GL_TRIANGLES, 0, mesh->indices_len);
-				} else {
-					glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
-				}
+				glDrawArrays(GL_TRIANGLES, 0, mesh->vertices_len);
+				//glDrawElements(GL_TRIANGLES, mesh->indices_len, GL_UNSIGNED_INT, 0);
+			} break;
+			case RENDER_COMMAND_DRAW_MESH_INSTANCED: {
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+				
+				RenderCommandDrawMeshInstanced* data = (RenderCommandDrawMeshInstanced*)cmd->data;
+				GlMesh* mesh = &gl->meshes[data->mesh];
+				glBindVertexArray(mesh->vao);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+				// TODO: take out magic number of 6. I believe its the number of vertex attributes * lens
+				glDrawArraysInstanced(GL_TRIANGLES, 0, 6, data->count);
+
+				glDisable(GL_BLEND);
 			} break;
 			default: break;
 		}

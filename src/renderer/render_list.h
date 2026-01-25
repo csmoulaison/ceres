@@ -19,17 +19,10 @@ changes made to the render layer.
 #ifndef render_list_h_INCLUDED
 #define render_list_h_INCLUDED
 
-#define RENDER_LIST_MAX_MODEL_INSTANCES 4096
+#include "renderer/renderer.h"
 
-// Renderer (not backend) side references to data
-typedef u8 RenderProgram;
-typedef u8 RenderMesh;
-typedef u8 RenderTexture;
-typedef u8 RenderUbo;
-typedef struct {
-	u8 id;
-	u8* data;
-} RenderHostBuffer;
+#define RENDER_LIST_MAX_MODEL_INSTANCES 4096
+#define RENDER_LIST_MAX_GLYPHS 4096
 
 typedef struct {
 	f32 clear_color[3];
@@ -41,15 +34,24 @@ typedef struct {
 	f32 position[3];
 	f32 orientation[3];
 
-	RenderMesh mesh;
-	RenderTexture texture;
+	i32 id;
+	i32 texture;
 } RenderListModel;
+
+typedef struct {
+	f32 src[4];
+	f32 dst[4];
+	f32 color[4];
+} RenderListGlyph;
 
 typedef struct {
 	RenderListWorld world;
 
 	RenderListModel models[RENDER_LIST_MAX_MODEL_INSTANCES];
 	u32 models_len;
+
+	RenderListGlyph glyphs[RENDER_LIST_MAX_GLYPHS];
+	u32 glyphs_len;
 } RenderList;
 
 #endif // render_list_h_INCLUDED

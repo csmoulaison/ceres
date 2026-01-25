@@ -226,11 +226,12 @@ i32 main(i32 argc, char** argv) {
 	platform->viewport_update_requested = true;
 
 	// Load asset pack file
-	AssetPack* asset_pack = asset_pack_load(&arenas.render_init);
+	AssetPack* asset_pack = asset_pack_load(&arenas.global);
 
 	// Initialize open GL before getting window attributes.
-	RenderInitData* init_data = render_load_init_data(&arenas.render_init, asset_pack);
-	Renderer* renderer = gl_init(init_data, &arenas.render, &arenas.render_init);
+	RenderBackendInitData* init_data = (RenderBackendInitData*)arena_alloc(&arenas.render_init, sizeof(RenderBackendInitData));
+	Renderer* renderer = render_init(init_data, &arenas.render_init, &arenas.render, asset_pack);
+	gl_init(renderer, init_data, &arenas.render, &arenas.render_init);
 	arena_destroy(&arenas.render_init);
 
 	XWindowAttributes window_attributes;
@@ -247,7 +248,7 @@ i32 main(i32 argc, char** argv) {
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
 
-	xlib->game_init(game_memory);
+	xlib->game_init(game_memory, asset_pack);
 	GameOutput game_output = {};
 
 	platform->frames_since_init = 0;

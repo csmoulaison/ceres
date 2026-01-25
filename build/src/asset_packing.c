@@ -120,7 +120,7 @@ void pack_assets() {
 
 	for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 		*asset_counts[i] = infos_list.counts_by_type[i];
-		fprintf(generated_file, "\n// Generated %s asset handles\n", asset_type_to_manifest_key[i]);
+		fprintf(generated_file, "\ntypedef enum {\n");
 
 		for(i32 j = 0; j < infos_list.counts_by_type[i]; j++) {
 			AssetInfo* info = &infos_list.infos_by_type[i][j];
@@ -131,8 +131,11 @@ void pack_assets() {
 			(asset_offset_lists[i])[j] = buffer_pos;
 			buffer_pos += info->size_in_buffer;
 
-			fprintf(generated_file, "#define ASSET_%s_%s %i\n", asset_type_to_macro_prefix[i], info->handle, j);
+			fprintf(generated_file, "   ASSET_%s_%s,\n", asset_type_to_macro_prefix[i], info->handle);
 		}
+
+		fprintf(generated_file, "   ASSET_NUM_%s\n", asset_type_to_macro_plural[i]);
+		fprintf(generated_file, "} %sAssetHandle;\n", asset_type_to_pascal_case[i]);
 	}
 
 	fprintf(generated_file, "\n#endif // GEN_asset_handles_h_INCLUDED");

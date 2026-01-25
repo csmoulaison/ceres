@@ -1,12 +1,18 @@
+#ifndef asset_formtat_h_INCLUDED
+#define asset_formtat_h_INCLUDED
+
 #define TEXTURE_PIXEL_STRIDE_BYTES 4
 // NOW: This just ended up making dirty memory because there are no bounds
 // checks in place anywhere. Do some checking in the packing code.
 #define MAX_MESH_ASSETS 4
 #define MAX_TEXTURE_ASSETS 4
 #define MAX_RENDER_PROGRAM_ASSETS 2
-#define MAX_FONT_ASSETS 1
+#define MAX_FONT_ASSETS 8
+
+#include "font.h"
 
 typedef struct {
+	// NOW: counts not needed eh if we are putting those in the thing.
 	u8 meshes_len;
 	u64 mesh_buffer_offsets[MAX_MESH_ASSETS];
 
@@ -56,15 +62,10 @@ typedef struct {
 } RenderProgramAsset;
 
 typedef struct {
-	u32 position[2];
-	u32 size[2];
-	i32 bearing[2];
-	u32 advance;
-} FontGlyph;
-
-typedef struct {
 	u32 texture_id;
 	u32 glyphs_len;
 	// FontGlyph * glyphs_len
 	FontGlyph buffer[];
 } FontAsset;
+
+#endif // asset_format_h_INCLUDED

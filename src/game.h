@@ -1,6 +1,8 @@
 #ifndef game_h_INCLUDED
 #define game_h_INCLUDED
 
+#include "asset_format.h"
+#include "generated/asset_handles.h"
 #include "renderer/render_list.h"
 #include "input.c"
 
@@ -19,6 +21,8 @@ typedef struct {
 	f32 camera_offset[2];
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
+	FontData fonts[ASSET_NUM_FONTS];
+	u8 frame;
 } GameState;
 
 typedef struct {
@@ -48,7 +52,7 @@ typedef struct GameEvent {
 	void* data;
 } GameEvent;
 
-#define GAME_INIT(name) void name(GameMemory* memory)
+#define GAME_INIT(name) void name(GameMemory* memory, AssetPack* asset_pack)
 typedef GAME_INIT(GameInitFunction);
 GAME_INIT(game_init_stub) {}
 

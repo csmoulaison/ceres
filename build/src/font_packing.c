@@ -117,8 +117,20 @@ try_pack_again:
 		GlyphInfo* g = &info->glyphs[info->pack_order[i]];
 		for(i32 y = 0; y < g->size[1]; y++) {
 			for(i32 x = 0; x < g->size[0]; x++) {
-				t_info->buffer[g->src_position[1] * info->atlas_width + g->src_position[0]] = g->bitmap_pixels[y * g->size[0] + x];
+				i32 dst_x = g->src_position[0] + x;
+				i32 dst_y = g->src_position[1] + y;
+				u8 pixel = g->bitmap_pixels[y * g->size[0] + x];
+				t_info->buffer[dst_y * info->atlas_width + dst_x] = pixel;
+			
+				/* This, and the comment below, print out each character in the terminal.
+				if(g->bitmap_pixels[y * g->size[0] + x] > 128) {
+					printf("#");
+				} else {
+					printf(" ");
+				}
+				*/
 			}
+			//printf("\n");
 		}
 	}
 
@@ -133,6 +145,8 @@ try_pack_again:
 void pack_font_asset(void* p_info, void* p_asset) {
 	FontAsset* asset = (FontAsset*)p_asset;
 	FontInfo* info = (FontInfo*)p_info;
+
+	asset->glyphs_len = FONT_CHARS_LEN;
 	
 	for(i32 i = 0; i < FONT_CHARS_LEN; i++) {
 		GlyphInfo* g_info = &info->glyphs[i];

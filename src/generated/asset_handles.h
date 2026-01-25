@@ -5,20 +5,28 @@
 
 #define ASSET_PACK_FILENAME "data/assets.pack"
 
-// Generated mesh asset handles
-#define ASSET_MESH_SHIP 0
-#define ASSET_MESH_FLOOR 1
+typedef enum {
+   ASSET_MESH_SHIP,
+   ASSET_MESH_FLOOR,
+   ASSET_NUM_MESHES
+} MeshAssetHandle;
 
-// Generated texture asset handles
-#define ASSET_TEXTURE_SHIP 0
-#define ASSET_TEXTURE_FLOOR 1
-#define ASSET_TEXTURE_OVO_SMALL 2
+typedef enum {
+   ASSET_TEXTURE_SHIP,
+   ASSET_TEXTURE_FLOOR,
+   ASSET_TEXTURE_OVO_SMALL,
+   ASSET_NUM_TEXTURES
+} TextureAssetHandle;
 
-// Generated render_program asset handles
-#define ASSET_RENDER_PROGRAM_MODEL 0
-#define ASSET_RENDER_PROGRAM_TEXT 1
+typedef enum {
+   ASSET_RENDER_PROGRAM_MODEL,
+   ASSET_RENDER_PROGRAM_TEXT,
+   ASSET_NUM_RENDER_PROGRAMS
+} RenderProgramAssetHandle;
 
-// Generated font asset handles
-#define ASSET_FONT_OVO_SMALL 0
+typedef enum {
+   ASSET_FONT_OVO_SMALL,
+   ASSET_NUM_FONTS
+} FontAssetHandle;
 
 #endif // GEN_asset_handles_h_INCLUDED

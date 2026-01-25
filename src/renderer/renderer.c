@@ -18,7 +18,38 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 	}
 }
 
-Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
+void render_push_mesh_init_data(
+	RenderMeshInitData* mesh, 
+	f32* vertex_data, 
+	u32 vertices_len, 
+	u32* indices, 
+	u32 indices_len, 
+	u32* vertex_attribute_sizes, 
+	u32 vertex_attributes_len,
+	Arena* init_arena) 
+{
+	mesh->flat_shading = true;
+	mesh->vertex_attributes_len = vertex_attributes_len;
+
+	u32 total_vertex_size = 0;
+	for(u32 i = 0; i < vertex_attributes_len; i++) {
+		mesh->vertex_attribute_sizes[i] = vertex_attribute_sizes[i];
+		total_vertex_size += vertex_attribute_sizes[i];
+	}
+
+	mesh->vertices_len = vertices_len;
+	u64 vertex_buffer_size = sizeof(f32) * total_vertex_size * vertices_len;
+	mesh->vertex_data = (f32*)arena_alloc(init_arena, vertex_buffer_size);
+	memcpy(mesh->vertex_data, vertex_data, vertex_buffer_size);
+
+	mesh->indices_len = indices_len;
+	u64 index_buffer_size = sizeof(u32) * indices_len;
+	mesh->indices = (u32*)arena_alloc(init_arena, index_buffer_size);
+	memcpy(mesh->indices, indices, index_buffer_size);
+
+}
+
+Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* render_arena, AssetPack* asset_pack) {
 	Renderer* renderer = (Renderer*)arena_alloc(render_arena, sizeof(Renderer));
 	renderer->frames_since_init = 0;
 
@@ -26,28 +57,11 @@ Renderer* render_pre_init(RenderInitData* data, Arena* render_arena) {
 	arena_init(&renderer->viewport_arena, RENDER_VIEWPORT_ARENA_SIZE, render_arena, "RenderViewport");
 	arena_init(&renderer->frame_arena, RENDER_FRAME_ARENA_SIZE, render_arena, "RenderFrame");
 
-	if(data->programs_len > 0)
-		renderer->programs = (RenderProgram*)arena_alloc(&renderer->persistent_arena, sizeof(RenderProgram) * data->programs_len);
-	if(data->meshes_len > 0)
-		renderer->meshes = (RenderMesh*)arena_alloc(&renderer->persistent_arena, sizeof(RenderMesh) * data->meshes_len);
-	if(data->textures_len > 0)
-		renderer->textures = (RenderTexture*)arena_alloc(&renderer->persistent_arena, sizeof(RenderTexture) * data->textures_len);
-	if(data->ubos_len > 0)
-		renderer->ubos = (RenderUbo*)arena_alloc(&renderer->persistent_arena, sizeof(RenderUbo) * data->ubos_len);
-	if(data->host_buffers_len > 0)
-		renderer->host_buffers = (RenderHostBuffer*)arena_alloc(&renderer->persistent_arena, sizeof(RenderHostBuffer) * data->host_buffers_len);
-
-	return renderer;
-}
-
-RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) {
-	RenderInitData* data = (RenderInitData*)arena_alloc(init_arena, sizeof(RenderInitData));
-
-	data->programs_len = asset_pack->render_programs_len;
-	data->programs = (RenderProgramInitData*)arena_alloc(init_arena, sizeof(RenderProgramInitData) * data->programs_len);
-	for(i32 i = 0; i < data->programs_len; i++) {
+	init->programs_len = asset_pack->render_programs_len;
+	init->programs = (RenderProgramInitData*)arena_alloc(init_arena, sizeof(RenderProgramInitData) * init->programs_len);
+	for(i32 i = 0; i < init->programs_len; i++) {
 		RenderProgramAsset* asset = (RenderProgramAsset*)&asset_pack->buffer[asset_pack->render_program_buffer_offsets[i]];
-		RenderProgramInitData* program = &data->programs[i];
+		RenderProgramInitData* program = &init->programs[i];
 
 		program->vertex_shader_src = (char*)arena_alloc(init_arena, asset->vertex_shader_src_len);
 		program->vertex_shader_src_len = asset->vertex_shader_src_len;
@@ -57,47 +71,50 @@ RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) 
 		program->fragment_shader_src_len = asset->fragment_shader_src_len;
 		memcpy(program->fragment_shader_src, asset->buffer + asset->vertex_shader_src_len, sizeof(char) * asset->fragment_shader_src_len);
 
-		if(i == data->programs_len - 1) {
-			program->next = NULL;
-		} else {
-			program->next = &data->programs[i + 1];
-		}
+		if(i == init->programs_len - 1) program->next = NULL; else program->next = &init->programs[i + 1];
 	}
 
-	data->meshes_len = asset_pack->meshes_len;
-	data->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * data->meshes_len);
-	for(i32 i = 0; i < data->meshes_len; i++) {
+	init->meshes_len = asset_pack->meshes_len + NUM_RENDER_PRIMITIVES;
+	init->meshes = (RenderMeshInitData*)arena_alloc(init_arena, sizeof(RenderMeshInitData) * init->meshes_len);
+	for(i32 i = 0; i < asset_pack->meshes_len; i++) {
+		renderer->model_to_mesh_map[i] = i;
+
 		MeshAsset* asset = (MeshAsset*)&asset_pack->buffer[asset_pack->mesh_buffer_offsets[i]];
-		RenderMeshInitData* mesh = &data->meshes[i];
-		mesh->flat_shading = true;
-		mesh->vertex_attributes_len = 3;
-		mesh->vertex_attribute_sizes[0] = 3;
-		mesh->vertex_attribute_sizes[1] = 3;
-		mesh->vertex_attribute_sizes[2] = 2;
-		u32 total_vertex_size = 8;
+		RenderMeshInitData* mesh = &init->meshes[i];
+		u32 vert_attrib_sizes[3] = { 3, 3, 2 };
+		u32 vert_attribs_len = 3;
+		u64 vertex_buffer_size = sizeof(f32) * 8 * asset->vertices_len;
+		render_push_mesh_init_data(mesh, (f32*)(asset->buffer), asset->vertices_len, (u32*)(asset->buffer + vertex_buffer_size), asset->indices_len, vert_attrib_sizes, vert_attribs_len, init_arena);
 
-		mesh->vertices_len = asset->vertices_len;
-		u64 vertex_buffer_size = sizeof(MeshVertexData) * mesh->vertices_len;
-		mesh->vertex_data = (f32*)arena_alloc(init_arena, vertex_buffer_size);
-		memcpy(mesh->vertex_data, asset->buffer, vertex_buffer_size);
+		if(i == init->meshes_len - 1) {
+			mesh->next = NULL; 
+		} else {
+			mesh->next = &init->meshes[i + 1];
+		}
+	}
+	for(i32 i = 0; i < NUM_RENDER_PRIMITIVES; i++) {
+		i32 mesh_index = asset_pack->meshes_len + i;
+		renderer->primitive_to_mesh_map[i] = mesh_index;
+		
+		RenderMeshInitData* mesh = &init->meshes[mesh_index];
+		u32 vert_attrib_sizes[1] = { 2 };
+		u32 vert_attribs_len = 1;
+		f32* vertex_data = render_primitives[i];
+		u32 vertices_len = sizeof(render_primitives[i]) * sizeof(f32);
+		render_push_mesh_init_data(mesh, render_primitives[i], vertices_len, render_primitives_indices[i], 1, vert_attrib_sizes, vert_attribs_len, init_arena);
 
-		mesh->indices_len = asset->indices_len;
-		u64 index_buffer_size = sizeof(u32) * mesh->indices_len;
-		mesh->indices = (u32*)arena_alloc(init_arena, index_buffer_size);
-		memcpy(mesh->indices, asset->buffer + vertex_buffer_size, index_buffer_size);
-
-		if(i == data->meshes_len - 1) {
+		if(mesh_index == init->meshes_len - 1) {
 			mesh->next = NULL;
 		} else {
-			mesh->next = &data->meshes[i + 1];
+			mesh->next = &init->meshes[mesh_index + 1];
 		}
 	}
 
-	data->textures_len = asset_pack->textures_len;
-	data->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * data->textures_len);
-	for(i32 i = 0; i < data->textures_len; i++) {
+	init->textures_len = asset_pack->textures_len;
+	init->textures = (RenderTextureInitData*)arena_alloc(init_arena, sizeof(RenderTextureInitData) * init->textures_len);
+	for(i32 i = 0; i < init->textures_len; i++) {
 		TextureAsset* asset = (TextureAsset*)&asset_pack->buffer[asset_pack->texture_buffer_offsets[i]];
-		RenderTextureInitData* texture = &data->textures[i];
+		RenderTextureInitData* texture = &init->textures[i];
 		texture->width = asset->width;
 		texture->height = asset->height;
 		texture->channel_count = asset->channel_count;
@@ -106,17 +123,17 @@ RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) 
 		texture->pixel_data = (u8*)arena_alloc(init_arena, pixel_data_size);
 		memcpy(texture->pixel_data, asset->buffer, pixel_data_size);
 
-		if(i == data->textures_len - 1) {
+		if(i == init->textures_len - 1) {
 			texture->next = NULL;
 		} else {
-			texture->next = &data->textures[i + 1];
+			texture->next = &init->textures[i + 1];
 		}
 	}
 
-	data->ubos_len = 2;
-	data->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * data->ubos_len);
-	for(i32 i = 0; i < data->ubos_len; i++) {
-		RenderUboInitData* ubo = &data->ubos[i];
+	init->ubos_len = 2;
+	init->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * init->ubos_len);
+	for(i32 i = 0; i < init->ubos_len; i++) {
+		RenderUboInitData* ubo = &init->ubos[i];
 
 		switch(i) {
 			case RENDER_UBO_WORLD: {
@@ -130,18 +147,34 @@ RenderInitData* render_load_init_data(Arena* init_arena, AssetPack* asset_pack) 
 			default: break;
 		}
 
-		if(i == data->ubos_len - 1) {
+		if(i == init->ubos_len - 1) {
 			ubo->next = NULL;
 		} else {
-			ubo->next = &data->ubos[i + 1];
+			ubo->next = &init->ubos[i + 1];
 		}
 	}
 
-	data->host_buffers_len = 2;
-	data->host_buffers = (RenderHostBufferInitData*)arena_alloc(init_arena, sizeof(RenderHostBufferInitData) * data->host_buffers_len);
-	data->host_buffers[0].next = &data->host_buffers[1];
-	data->host_buffers[1].next = NULL;
-	return data;
+	init->ssbos_len = 1;
+	init->ssbos = (RenderSsboInitData*)arena_alloc(init_arena, sizeof(RenderSsboInitData) * init->ssbos_len);
+	for(i32 i = 0; i < init->ssbos_len; i++) {
+		RenderSsboInitData* ssbo = &init->ssbos[i];
+
+		switch(i) {
+			case RENDER_SSBO_TEXT: {
+				ssbo->size = sizeof(RenderListGlyph) * RENDER_LIST_MAX_GLYPHS;
+				ssbo->binding = 0;
+			} break;
+			default: break;
+		}
+
+		if(i == init->ssbos_len - 1) {
+			ssbo->next = NULL;
+		} else {
+			ssbo->next = &init->ssbos[i + 1];
+		}
+	}
+
+	return renderer;
 }
 
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderList* list) {
@@ -158,7 +191,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	v3_init(up, 0.0f, 1.0f, 0.0f);
 	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
 	mat4_mul(perspective, view, ubo_projection);
-	v3_copy(list->world.camera_position, ubo_camera_position);
+	v3_copy(ubo_camera_position, list->world.camera_position);
 	renderer->host_buffers[RENDER_HOST_BUFFER_WORLD].data = (u8*)world_ubo;
 
 	// Model ubo
@@ -178,13 +211,33 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	}
 	renderer->host_buffers[RENDER_HOST_BUFFER_INSTANCE].data = (u8*)instances_ubo;
 
+	// Text ssbo
+	for(u32 j = 0; j < list->glyphs_len; j++) {
+		RenderListGlyph* glyph = &list->glyphs[j];
+
+		glyph->dst[0] /= platform->window_width;
+		glyph->dst[1] /= platform->window_height;
+		glyph->dst[0] *= 2.0f;
+		glyph->dst[1] *= 2.0f;
+		glyph->dst[0] -= 1.0f;
+		glyph->dst[1] -= 1.0f;
+
+		glyph->dst[2] /= platform->window_width;
+		glyph->dst[3] /= platform->window_height;
+		glyph->dst[2] *= 2.0f;
+		glyph->dst[3] *= 2.0f;
+	}
+	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)list->glyphs;
+
 	// Render graph
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
-	RenderCommandClear clear = { .color = { 0.05f, 0.05f, 0.05f, 1.0f } };
+	RenderCommandClear clear = { .color = { list->world.clear_color[0], list->world.clear_color[1], list->world.clear_color[2], 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
-	RenderCommandUseProgram use_program = { .program = RENDER_PROGRAM_MODEL };
+	// Draw models
+	// NOW: buffering to anny of these buffers is not working, doesn't seem like.
+	RenderCommandUseProgram use_program = { .program = ASSET_RENDER_PROGRAM_MODEL };
 	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program, sizeof(use_program));
 
 	RenderCommandUseUbo use_ubo_world = { .ubo = RENDER_UBO_WORLD };
@@ -193,19 +246,35 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_INSTANCE };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
-	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = 0, .host_buffer_index = 0, .host_buffer_offset = 0 };
+	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = RENDER_UBO_WORLD, .host_buffer_index = RENDER_HOST_BUFFER_WORLD, .host_buffer_offset = 0 };
 	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_world, sizeof(buffer_ubo_data_world));
 
-	// Draw models
+
 	for(i32 i = 0; i < list->models_len; i++) {
-		RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = 1, .host_buffer_index = 1, .host_buffer_offset = i * 64 };
+		RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_INSTANCE, .host_buffer_index = RENDER_HOST_BUFFER_INSTANCE, .host_buffer_offset = i * 64 };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
 
 		RenderListModel* model = &list->models[i];
-		RenderCommandUseTexture use_texture= { .texture = model->texture };
+		RenderCommandUseTexture use_texture = { .texture = model->texture };
 		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
 
-		RenderCommandDrawMesh draw_mesh = { .mesh = model->mesh };
+		RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[model->id] };
 		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
 	}
+
+	// Draw text
+	RenderCommandUseProgram use_program_text = { .program = ASSET_RENDER_PROGRAM_TEXT };
+	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_text, sizeof(use_program_text));
+
+	RenderCommandUseTexture use_texture_text = { .texture = ASSET_TEXTURE_OVO_SMALL };
+	render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, sizeof(use_texture_text));
+
+	RenderCommandUseSsbo use_ssbo_text = { .ssbo = RENDER_SSBO_TEXT };
+	render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_text, sizeof(use_ssbo_text));
+	
+	RenderCommandBufferSsboData buffer_ssbo_data_text = { .ssbo = RENDER_SSBO_TEXT, .size = sizeof(RenderListGlyph) * list->glyphs_len, .host_buffer_index = RENDER_HOST_BUFFER_TEXT, .host_buffer_offset = 0 };
+	render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));
+
+	RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { .mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], .count = list->glyphs_len };
+	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, sizeof(draw_mesh_instanced_text));
 }

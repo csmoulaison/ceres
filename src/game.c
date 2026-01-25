@@ -2,8 +2,8 @@
 #include "core/core.h"
 
 #include "game.h"
-#include "generated/asset_handles.h"
 #include "renderer/render_list.c"
+#include "ui_text.c"
 
 void player_direction_vector(f32* dst, GamePlayer* player) {
 	v2_init(dst, sin(player->ship_direction), cos(player->ship_direction));
@@ -12,6 +12,19 @@ void player_direction_vector(f32* dst, GamePlayer* player) {
 
 GAME_INIT(game_init) {
 	GameState* game = &memory->state;
+	game->frame = 0;
+
+	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
+		FontData* font = &game->fonts[i];
+		FontAsset* f_asset = (FontAsset*)&asset_pack->buffer[asset_pack->font_buffer_offsets[i]];
+		TextureAsset* t_asset = (TextureAsset*)&asset_pack->buffer[asset_pack->texture_buffer_offsets[f_asset->texture_id]];
+
+		font->texture_id = f_asset->texture_id;
+		font->texture_width = t_asset->width;
+		font->texture_height = t_asset->height;
+		font->size = f_asset->buffer['O'].size[1];
+		memcpy(font->glyphs, f_asset->buffer, sizeof(FontGlyph) * f_asset->glyphs_len);
+	}
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
@@ -135,7 +148,7 @@ GAME_UPDATE(game_update) {
 		f32 velocity_mag = v2_magnitude(player->ship_velocity);
 
 		f32 movement_friction = 6.0f;
-		if(velocity_mag > 0.02f) {
+		if(velocity_mag > 0.1f) {
 			f32 friction[2];
 			v2_copy(friction, velocity_normalized);
 			v2_scale(friction, -movement_friction * dt);
@@ -143,7 +156,6 @@ GAME_UPDATE(game_update) {
 		} else {
 			v2_zero(player->ship_velocity);
 		}
-
 
 		f32 max_speed = 14.0f;
 		if(velocity_mag > max_speed) {
@@ -197,4 +209,40 @@ GAME_UPDATE(game_update) {
 		f32 floor_rot[3] = { 0.0f , 0.0f, 0.0f };
 		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}
+
+	f32 print_values[4] = {
+		primary_player->ship_position[0],
+		primary_player->ship_position[1],
+		primary_player->ship_velocity[0],
+		primary_player->ship_velocity[1]
+	};
+	char* print_labels[4] = {
+		"pos_x: ",
+		"pos_y: ",
+		"vel_x: ",
+		"vel_y: "
+	};
+	for(i32 i = 0; i < 4; i++) {
+		char str[256];
+		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
+		u32 str_len = strlen(str);
+		float x_placements[str_len];
+		float y_placements[str_len];
+		ui_text_line_placements(&game->fonts[ASSET_FONT_OVO_SMALL], str, x_placements, y_placements,
+			32.0f, 12.0f + ((4 - i) * 32.0f), 0.0f, 0.0f);
+
+		f32 gb_mod = 1.0f;
+		for(i32 j = 0; j < str_len; j++) {
+			f32 position[2] = {x_placements[j], y_placements[j]};
+			f32 color[4] = { 1.0f, 1.0f * gb_mod, 1.0f * gb_mod, 1.0f };
+
+			if(str[j] == ':') {
+				gb_mod = 0.0f;
+			}
+
+			render_list_draw_glyph(list, &game->fonts[ASSET_FONT_OVO_SMALL], str[j], position, color);
+		}
+	}
+
+	game->frame++;
 }

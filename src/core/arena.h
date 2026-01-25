@@ -4,7 +4,7 @@
 #define DEBUG_ARENA true
 #if DEBUG_ARENA
 	#define DEBUG_LOGGING false
-	#define DEBUG_CAPACITY_WARNING false
+	#define DEBUG_CAPACITY_WARNING true
 #endif
 
 typedef struct {

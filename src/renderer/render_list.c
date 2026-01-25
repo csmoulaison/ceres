@@ -17,6 +17,7 @@ changes made to the render layer.
 */
 
 #include "renderer/render_list.h"
+#include "font.h"
 
 void render_list_init(RenderList* list) {
 	*list = (RenderList){};
@@ -29,12 +30,32 @@ void render_list_update_world(RenderList* list, f32* clear_color, f32* camera_po
 	v3_copy(world->camera_target, camera_target);
 }
 
-// TODO: RenderTexture becomes RenderMaterial.
-void render_list_draw_model(RenderList* list, RenderMesh mesh, RenderTexture texture, f32* position, f32* orientation) {
+void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, f32* position, f32* orientation) {
 	RenderListModel* model = &list->models[list->models_len];
-	model->mesh = mesh;
+	model->id = model_id;
 	model->texture = texture;
 	v3_copy(model->position, position);
 	v3_copy(model->orientation, orientation);
 	list->models_len++;
+}
+
+void render_list_draw_glyph(RenderList* list, FontData* font, char c, f32* position, f32* color) {
+	FontGlyph* font_glyph = &font->glyphs[c];
+	RenderListGlyph* list_glyph = &list->glyphs[list->glyphs_len];
+	list->glyphs_len++;
+
+	list_glyph->src[0] = ((f32)font_glyph->position[0]) / font->texture_width;
+	list_glyph->src[1] = ((f32)font_glyph->position[1]) / font->texture_height;
+	list_glyph->src[2] = ((f32)font_glyph->size[0]) / font->texture_width;
+	list_glyph->src[3] = ((f32)font_glyph->size[1]) / font->texture_height;
+
+	list_glyph->dst[0] = position[0];
+	list_glyph->dst[1] = position[1];
+	list_glyph->dst[2] = font_glyph->size[0];
+	list_glyph->dst[3] = font_glyph->size[1];
+
+	list_glyph->color[0] = color[0];
+	list_glyph->color[1] = color[1];
+	list_glyph->color[2] = color[2];
+	list_glyph->color[3] = color[3];
 }

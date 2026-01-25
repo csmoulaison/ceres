@@ -36,3 +36,17 @@ char* asset_type_to_macro_prefix[NUM_ASSET_TYPES] = {
 	"RENDER_PROGRAM",
 	"FONT"
 };
+
+char* asset_type_to_macro_plural[NUM_ASSET_TYPES] = {
+	"MESHES",
+	"TEXTURES",
+	"RENDER_PROGRAMS",
+	"FONTS"
+};
+
+char* asset_type_to_pascal_case[NUM_ASSET_TYPES] = {
+	"Mesh",
+	"Texture",
+	"RenderProgram",
+	"Font"
+};
