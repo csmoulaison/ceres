@@ -7,10 +7,11 @@
 #include "input.c"
 
 typedef struct {
-	f32 ship_direction;
-	f32 ship_rotation_velocity;
-	v2 ship_position;
-	v2 ship_velocity;
+	f32 direction;
+	f32 rotation_velocity;
+	f32 strafe_tilt;
+	v2 position;
+	v2 velocity;
 	// TODO: Might we want to have this be part of an input handler which just has
 	// a list of button states per player?
 	ButtonState button_states[NUM_BUTTONS];

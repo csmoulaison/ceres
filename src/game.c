@@ -6,7 +6,7 @@
 #include "ui_text.c"
 
 v2 player_direction_vector(GamePlayer* player) {
-	return v2_normalize(v2_new(sin(player->ship_direction), cos(player->ship_direction)));
+	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
 }
 
 GAME_INIT(game_init) {
@@ -27,10 +27,10 @@ GAME_INIT(game_init) {
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
-		player->ship_direction = 0.0f;
-		player->ship_rotation_velocity = 0.0f;
-		player->ship_position = v2_zero();
-		player->ship_velocity = v2_zero();
+		player->direction = 0.0f;
+		player->rotation_velocity = 0.0f;
+		player->position = v2_zero();
+		player->velocity = v2_zero();
 
 		for(i32 i = 0; i < NUM_BUTTONS; i++) {
 			player->button_states[i] = 0;
@@ -109,11 +109,11 @@ GAME_UPDATE(game_update) {
 
 		// Rotational damping
 		f32 rot_damping = 2.0f;
-		rot_acceleration += player->ship_rotation_velocity * -rot_damping;
+		rot_acceleration += player->rotation_velocity * -rot_damping;
 
 		// Apply rotational acceleration
-		player->ship_direction = 0.5f * rot_acceleration * dt * dt + player->ship_rotation_velocity * dt + player->ship_direction;
-		player->ship_rotation_velocity += rot_acceleration * dt;
+		player->direction = 0.5f * rot_acceleration * dt * dt + player->rotation_velocity * dt + player->direction;
+		player->rotation_velocity += rot_acceleration * dt;
 
 		// Calculate ship acceleration
 		// Forward/back thruster control
@@ -141,18 +141,21 @@ GAME_UPDATE(game_update) {
 		}
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
+		f32 strafe_tilt_target = -strafe_mod * 0.66f;
+		player->strafe_tilt = lerp(player->strafe_tilt, strafe_tilt_target, dt * 6.0f);
+
 		// Damp acceleration
 		f32 damping = 2.0f;
-		acceleration = v2_add(acceleration, v2_scale(player->ship_velocity, -damping));
+		acceleration = v2_add(acceleration, v2_scale(player->velocity, -damping));
 
 		// Apply acceleration to position
 		// (acceleration / 2) * dt^2 + velocity * t + position
 		v2 accel_dt = v2_scale(v2_scale(acceleration, 0.5f), dt * dt);
-		v2 velocity_dt = v2_scale(player->ship_velocity, dt);
-		player->ship_position = v2_add(player->ship_position, v2_add(accel_dt, velocity_dt));
+		v2 velocity_dt = v2_scale(player->velocity, dt);
+		player->position = v2_add(player->position, v2_add(accel_dt, velocity_dt));
 
 		// Update player velocity
-		player->ship_velocity = v2_add(player->ship_velocity, v2_scale(acceleration, dt));
+		player->velocity = v2_add(player->velocity, v2_scale(acceleration, dt));
 	}
 
 	// Camera control
@@ -170,16 +173,16 @@ GAME_UPDATE(game_update) {
 	render_list_init(list);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
-	v3 cam_target = v3_new(game->camera_offset.x + primary_player->ship_position.x, 0.0f, game->camera_offset.y + primary_player->ship_position.y);
+	v3 cam_target = v3_new(game->camera_offset.x + primary_player->position.x, 0.0f, game->camera_offset.y + primary_player->position.y);
 	v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
 	render_list_update_world(list, clear_color, cam_pos, cam_target);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
-		v3 ship_pos = v3_new(player->ship_position.x, 0.5f, player->ship_position.y);
-		f32 ship_tilt = clamp(player->ship_rotation_velocity, -5.0f, 5.0f);
-		v3 ship_rot = v3_new(ship_tilt * -0.1f, player->ship_direction, 0.0f);
-		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, ship_pos, ship_rot);
+		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
+		f32 tilt = player->strafe_tilt + clamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
+		v3 rot = v3_new(-tilt, player->direction, 0.0f);
+		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, pos, rot);
 	}
 
 	i32 floor_instances = 1024;
@@ -194,10 +197,10 @@ GAME_UPDATE(game_update) {
 
 #define PRINT_VALUES_LEN 10
 	f32 print_values[PRINT_VALUES_LEN] = {
-		primary_player->ship_position.x,
-		primary_player->ship_position.y,
-		primary_player->ship_velocity.x,
-		primary_player->ship_velocity.y,
+		primary_player->position.x,
+		primary_player->position.y,
+		primary_player->velocity.x,
+		primary_player->velocity.y,
 		cam_pos.x,
 		cam_pos.y,
 		cam_pos.z,
@@ -206,10 +209,10 @@ GAME_UPDATE(game_update) {
 		cam_target.z
 	};
 	char* print_labels[PRINT_VALUES_LEN] = {
-		"ship_pos_x: ",
-		"ship_pos_y: ",
-		"ship_vel_x: ",
-		"ship_vel_y: ",
+		"pos_x: ",
+		"pos_y: ",
+		"vel_x: ",
+		"vel_y: ",
 		"cam_pos_x: ",
 		"cam_pos_y: ",
 		"cam_pos_z: ",
