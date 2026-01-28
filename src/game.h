@@ -61,4 +61,18 @@ GAME_INIT(game_init_stub) {}
 typedef GAME_UPDATE(GameUpdateFunction);
 GAME_UPDATE(game_update_stub) {}
 
+// NOW: We are addding audio now to the game. Start by creating a function like
+// game_generate_sound_samples(f32* buffer, u32 samples_requested, f32 start_t?)
+//
+// The platform must be able to call this function whenever it wants so that it
+// can request samples relative to its place in a circular audio samples buffer.
+// 
+// To reiterate, upcoming audio samples are stored in a ring buffer which is
+// populated by the game. The closer the audio hardware "position" is to the
+// time of sample generation, the less latency there is between audio and their
+// consequent game effects; but, the lower the latency, the less tolerant the
+// audio is to frame time variance.
+//
+// 
+
 #endif // game_h_INCLUDED

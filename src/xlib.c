@@ -1,7 +1,18 @@
-// NOW: I think as soon as DLLs are working we quickly try to implement render
-// targets and get the game in a completely playable local 2 player state with
-// keyboard input (hopefully controller soon after). Fight to a maximum score
-// and then restart after showing who won.
+// NOW: < LIST: I think our order is as follows:
+// - Audio, with some actual sound effects driven by ship movement
+// - Shooting, with a destroyed ship evet.
+// - The ship exploding in some visually pleasing way, along with shooting and
+//   exploding sound effects
+// - Two player splitscreen
+// - Networking
+// - A game with lives and a game over screen, then restart
+// 
+// - Controller input in here somewhere
+// - Menu and session flow
+// 
+// - Whenever we start working on assets more in earnest, we may think about
+//   whether a more iterable asset pipeline is in order with regards to .blend
+//   files and similar things.
 
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"

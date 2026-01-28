@@ -141,6 +141,7 @@ GAME_UPDATE(game_update) {
 		}
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
+		// TODO: Make strafing tilt curve based off of the same equations as motion 
 		f32 strafe_tilt_target = -strafe_mod * 0.66f;
 		player->strafe_tilt = lerp(player->strafe_tilt, strafe_tilt_target, dt * 6.0f);
 
