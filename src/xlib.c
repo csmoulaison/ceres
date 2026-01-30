@@ -1,11 +1,13 @@
 // NOW: < LIST: I think our order is as follows:
 // - Audio, with some actual sound effects driven by ship movement
-// - Shooting, with a destroyed ship evet.
+// - Shooting, with a destroyed ship event.
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
 // - Two player splitscreen
 // - Networking
 // - A game with lives and a game over screen, then restart
+// - Level format and collisions
+// - Fiedler frames
 // 
 // - Controller input in here somewhere
 // - Menu and session flow
@@ -104,6 +106,7 @@ void xlib_reload_game_code(XlibContext* xlib) {
 }
 
 i32 main(i32 argc, char** argv) {
+	// TODO #27 (Win32 Build): Memory arenas are common to both platforms.
 	MemoryArenas arenas;
 	arena_init(&arenas.global, GLOBAL_ARENA_SIZE, NULL, "Global");
 	arena_init(&arenas.frame, GLOBAL_FRAME_ARENA_SIZE, &arenas.global, "GlobalFrame");
@@ -237,6 +240,8 @@ i32 main(i32 argc, char** argv) {
 	platform->viewport_update_requested = true;
 
 	// Load asset pack file
+	// TODO #27 (Win32 Build): Asset packs and render initialization is common to
+	// both platforms.
 	AssetPack* asset_pack = asset_pack_load(&arenas.global);
 
 	// Initialize open GL before getting window attributes.
@@ -250,11 +255,14 @@ i32 main(i32 argc, char** argv) {
 	platform->window_width = window_attributes.width;
 	platform->window_height = window_attributes.height;
 
+	// TODO #4: Initialize audio ring buffer and ALSA
+
 	// Initialize game, loading the dynamic libraary and initializing it with some
 	// memory we allocate here.
 	xlib->game_lib_last_modified = 0;
 	xlib_reload_game_code(xlib);
 
+	// TODO #27 (Win32 Build): Game initialization is common across platforms.
 	Arena game_arena;
 	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
 	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
@@ -313,6 +321,10 @@ i32 main(i32 argc, char** argv) {
 		platform->current_event = platform->head_event;
 
 		xlib->game_update(game_memory, platform->current_event, &game_output, 0.02f);
+
+		// TODO #4: Request sound samples from the game based on a desired latency and
+		// populate the audio ring buffer
+		
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
 		arena_clear_to_zero(&renderer->frame_arena);

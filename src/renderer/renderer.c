@@ -183,6 +183,24 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 	return renderer;
 }
 
+// TODO #23: This is currently very "immediate mode". At minimum, most of this
+// stuff is done every frame with minimal variation, and so we should bake large
+// parts of it at initialization. This also allows modern renderers to do that
+// sort of thing. We should also refresh ourselves on modern APIs with their
+// more retained workflows and make the front end look more like that so that,
+// once we move on to DX12 or Vulkan or whatever, the transition is easier.
+//
+// I don't think it would be appropriate to do some kind of proper frame graph
+// architecture, we should just be trying to respect what's most performant and
+// try to figure out how to cull boilerplate as we go, as well as eventually
+// make things multithreaded.
+//
+// One thing that might really start to necessitate some more hardcore
+// abstractions is allowing the frame graph to encode actual data buffering
+// operations. At minimum, we might be defining callback functions to do that
+// sort of thing. The reason is to save memory by aliasing stuff. As a simple
+// example, in the splitscreen case, the camera ubos needn't all be taking up
+// memory at the same time.
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderList* list) {
 	// World ubo
 	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);

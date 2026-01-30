@@ -35,6 +35,8 @@ typedef enum {
 // Render commands are populated by the host and read in sequential order by the
 // renderer implementation. Later, we might want to change this to a render
 // graph with dependencies and all of that.
+// 
+// TODO: RENDER_COMMAND_SET_VIEWPORT for splitscreen
 typedef enum {
 	RENDER_COMMAND_NULL,
 	RENDER_COMMAND_CLEAR,
