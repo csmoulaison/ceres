@@ -6,8 +6,8 @@
 #define RENDER_MAX_VERTEX_ATTRIBUTES 16
 
 typedef enum {
-	RENDER_UBO_WORLD = 0,
-	RENDER_UBO_INSTANCE,
+	RENDER_UBO_CAMERA = 0,
+	RENDER_UBO_MODEL,
 	NUM_RENDER_UBOS
 } RenderUboType;
 
@@ -17,8 +17,8 @@ typedef enum {
 } RenderSsboType;
 
 typedef enum {
-	RENDER_HOST_BUFFER_WORLD = 0,
-	RENDER_HOST_BUFFER_INSTANCE,
+	RENDER_HOST_BUFFER_CAMERA = 0,
+	RENDER_HOST_BUFFER_MODEL,
 	RENDER_HOST_BUFFER_TEXT,
 	NUM_RENDER_HOST_BUFFERS
 } RenderHostBufferType;
@@ -35,11 +35,10 @@ typedef enum {
 // Render commands are populated by the host and read in sequential order by the
 // renderer implementation. Later, we might want to change this to a render
 // graph with dependencies and all of that.
-// 
-// TODO: RENDER_COMMAND_SET_VIEWPORT for splitscreen
 typedef enum {
 	RENDER_COMMAND_NULL,
 	RENDER_COMMAND_CLEAR,
+	RENDER_COMMAND_SET_VIEWPORT,
 	RENDER_COMMAND_USE_PROGRAM,
 	RENDER_COMMAND_USE_UBO,
 	RENDER_COMMAND_USE_SSBO,
@@ -65,6 +64,10 @@ typedef struct {
 typedef struct {
 	float color[4];
 } RenderCommandClear;
+
+typedef struct {
+	v4 rect;
+} RenderCommandSetViewport;
 
 typedef struct {
 	i32 program;

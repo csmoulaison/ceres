@@ -54,6 +54,8 @@ static inline void v4_copy(f32* dst, v4 v);
 static inline f32 radians_from_degrees(f32 degrees);
 // 4x4 matrices
 // These are all column major.
+// 
+// TODO: Make res (dst) the first parameter rather than last.
 void mat4_identity(f32* res);
 void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
 void mat4_lookat(v3 origin, v3 target, v3 up, f32* res);

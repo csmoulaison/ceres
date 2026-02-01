@@ -199,6 +199,10 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				glClearColor(data->color[0], data->color[1], data->color[2], data->color[3]);
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			} break;
+			case RENDER_COMMAND_SET_VIEWPORT: {
+				RenderCommandSetViewport* data = (RenderCommandSetViewport*)cmd->data;
+				glViewport(data->rect.x, data->rect.y, data->rect.z, data->rect.w);
+			} break;
 			case RENDER_COMMAND_USE_PROGRAM: {
 				RenderCommandUseProgram* data = (RenderCommandUseProgram*)cmd->data;
 				glUseProgram(gl->programs[data->program].id);
@@ -255,7 +259,6 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 				// TODO: take out magic number of 6. I believe its the number of vertex attributes * lens
 				glDrawArraysInstanced(GL_TRIANGLES, 0, 6, data->count);
-
 				glDisable(GL_BLEND);
 			} break;
 			default: break;

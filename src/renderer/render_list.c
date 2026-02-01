@@ -23,11 +23,16 @@ void render_list_init(RenderList* list) {
 	*list = (RenderList){};
 }
 
-void render_list_update_world(RenderList* list, v3 clear_color, v3 camera_position, v3 camera_target) {
-	RenderListWorld* world = &list->world;
-	world->clear_color = clear_color;
-	world->camera_position = camera_position;
-	world->camera_target = camera_target;
+void render_list_set_clear_color(RenderList* list, v3 clear_color) {
+	list->clear_color = clear_color;
+}
+
+void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_rect) {
+	RenderListCamera* camera = &list->cameras[list->cameras_len];
+	camera->position = position;
+	camera->target = target;
+	camera->screen_rect = screen_rect;
+	list->cameras_len++;
 }
 
 void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, v3 position, v3 orientation) {

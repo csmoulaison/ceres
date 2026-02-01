@@ -5,7 +5,7 @@ layout (location = 2) in vec2 uv;
 
 layout(std140, binding = 0) uniform world {
 	mat4 projection;
-	vec4 cam_position;
+	vec3 cam_position;
 };
 
 layout(std140, binding = 1) uniform instance {

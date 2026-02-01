@@ -35,6 +35,9 @@ GAME_INIT(game_init) {
 		for(i32 i = 0; i < NUM_BUTTONS; i++) {
 			player->button_states[i] = 0;
 		}
+
+		GameCamera* camera = &game->cameras[i];
+		camera->offset = v2_zero();
 	}
 
 	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
@@ -45,7 +48,6 @@ GAME_INIT(game_init) {
 		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
 	}
 
-	game->camera_offset = v2_zero();
 }
 
 GAME_UPDATE(game_update) {
@@ -157,26 +159,28 @@ GAME_UPDATE(game_update) {
 
 		// Update player velocity
 		player->velocity = v2_add(player->velocity, v2_scale(acceleration, dt));
+
+		// Update camera
+		// 
+		// TODO: Not every player will necessarily get a camera in the future. Bots
+		// and online play, for instance.
+		GameCamera* camera = &game->cameras[i];
+		f32 camera_lookahead = 4.0f;
+		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
+
+		f32 camera_speed_mod = 2.0f;
+		v2 camera_target_delta = v2_sub(camera_target_offset, camera->offset);
+		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
+		camera->offset = v2_add(camera->offset, camera_target_delta);
+
 	}
-
-	// Camera control
-	GamePlayer* primary_player = &game->players[0];
-	f32 camera_lookahead = 4.0f;
-	v2 camera_target_offset = v2_scale(player_direction_vector(primary_player), camera_lookahead);
-
-	f32 camera_speed_mod = 2.0f;
-	v2 camera_target_delta = v2_sub(camera_target_offset, game->camera_offset);
-	camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
-	game->camera_offset = v2_add(game->camera_offset, camera_target_delta);
 
 	// Populate render list
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
-	v3 cam_target = v3_new(game->camera_offset.x + primary_player->position.x, 0.0f, game->camera_offset.y + primary_player->position.y);
-	v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
-	render_list_update_world(list, clear_color, cam_pos, cam_target);
+	render_list_set_clear_color(list, clear_color);
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
@@ -184,6 +188,14 @@ GAME_UPDATE(game_update) {
 		f32 tilt = player->strafe_tilt + clamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, pos, rot);
+
+		// TODO: Disassociate camera from player index.
+		GameCamera* camera = &game->cameras[i];
+		v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
+		v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
+		f32 gap = 0.0025f;
+		v4 screen_rect = v4_new(0.5f * i + gap * i, 0.0f, 0.5f - gap * (1 - i), 1.0f);
+		render_list_add_camera(list, cam_pos, cam_target, screen_rect);
 	}
 
 	i32 floor_instances = 1024;
@@ -196,30 +208,20 @@ GAME_UPDATE(game_update) {
 	Arena ui_arena;
 	arena_init(&ui_arena, MEGABYTE, NULL, "UI");
 
-#define PRINT_VALUES_LEN 10
+	GamePlayer* pl_primary = &game->players[0];
+	GameCamera* cam_primary = &game->cameras[0];
+#define PRINT_VALUES_LEN 4
 	f32 print_values[PRINT_VALUES_LEN] = {
-		primary_player->position.x,
-		primary_player->position.y,
-		primary_player->velocity.x,
-		primary_player->velocity.y,
-		cam_pos.x,
-		cam_pos.y,
-		cam_pos.z,
-		cam_target.x,
-		cam_target.y,
-		cam_target.z
+		pl_primary->position.x,
+		pl_primary->position.y,
+		pl_primary->velocity.x,
+		pl_primary->velocity.y,
 	};
 	char* print_labels[PRINT_VALUES_LEN] = {
 		"pos_x: ",
 		"pos_y: ",
 		"vel_x: ",
-		"vel_y: ",
-		"cam_pos_x: ",
-		"cam_pos_y: ",
-		"cam_pos_z: ",
-		"cam_target_x: ",
-		"cam_target_y: ",
-		"cam_target_z: "
+		"vel_y: "
 	};
 	v2 debug_screen_anchor = v2_zero();
 	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {

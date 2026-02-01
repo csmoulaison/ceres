@@ -9,6 +9,16 @@ typedef struct {
 	v4 color;
 } RenderGlyph;
 
+typedef struct {
+	float projection[16];
+	v3 position;
+	f32 padding;
+} RenderCameraUbo;
+
+typedef struct {
+	f32 transform[16];
+} RenderModelUbo;
+
 void render_push_command(Renderer* renderer, RenderCommandType type, void* data, u64 data_size) {
 	RenderCommand* cmd = (RenderCommand*)arena_alloc(&renderer->frame_arena, sizeof(RenderCommand));
 	cmd->type = type;
@@ -52,7 +62,6 @@ void render_push_mesh_init_data(
 	u64 index_buffer_size = sizeof(u32) * indices_len;
 	mesh->indices = (u32*)arena_alloc(init_arena, index_buffer_size);
 	memcpy(mesh->indices, indices, index_buffer_size);
-
 }
 
 Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* render_arena, AssetPack* asset_pack) {
@@ -136,21 +145,24 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 		}
 	}
 
-	init->ubos_len = 2;
+	init->ubos_len = NUM_RENDER_UBOS;
 	init->ubos = (RenderUboInitData*)arena_alloc(init_arena, sizeof(RenderUboInitData) * init->ubos_len);
 	for(i32 i = 0; i < init->ubos_len; i++) {
 		RenderUboInitData* ubo = &init->ubos[i];
 
 		switch(i) {
-			case RENDER_UBO_WORLD: {
-				ubo->size = sizeof(f32) * 20;
+			case RENDER_UBO_CAMERA: {
+				ubo->size = sizeof(RenderCameraUbo);
 				ubo->binding = 0;
 			} break;
-			case RENDER_UBO_INSTANCE: {
-				ubo->size = sizeof(f32) * 16;
+			case RENDER_UBO_MODEL: {
+				ubo->size = sizeof(RenderModelUbo);
 				ubo->binding = 1;
 			} break;
-			default: break;
+			default: {
+				printf("Error: No initialization data defined for uniform buffer %i.\n", i);
+				panic();
+			} break;
 		}
 
 		if(i == init->ubos_len - 1) {
@@ -170,7 +182,10 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 				ssbo->size = sizeof(RenderListGlyph) * RENDER_LIST_MAX_GLYPHS;
 				ssbo->binding = 0;
 			} break;
-			default: break;
+			default: {
+				printf("Error: No initialization data defined for shader storage buffer %i.\n", i);
+				panic();
+			} break;
 		}
 
 		if(i == init->ssbos_len - 1) {
@@ -202,27 +217,35 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 // example, in the splitscreen case, the camera ubos needn't all be taking up
 // memory at the same time.
 void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderList* list) {
-	// World ubo
-	f32* world_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 20);
-	f32* ubo_projection = &world_ubo[0];
-	f32* ubo_camera_position = &world_ubo[16];
+	// =========================
+	// PREPARE HOST DATA BUFFERS
+	// =========================
 
-	f32 perspective[16];
-	mat4_perspective(radians_from_degrees(75.0f), (f32)platform->window_width / (f32)platform->window_height, 100.00f, 0.05f, perspective);
-	f32 view[16];
-	mat4_identity(view);
-	v3 up = v3_new(0.0f, 1.0f, 0.0f);
-	mat4_lookat(list->world.camera_position, list->world.camera_target, up, view);
-	mat4_mul(perspective, view, ubo_projection);
-	v3_copy(ubo_camera_position, list->world.camera_position);
-	renderer->host_buffers[RENDER_HOST_BUFFER_WORLD].data = (u8*)world_ubo;
+	// Camera ubo
+	RenderCameraUbo* camera_ubos = (RenderCameraUbo*)arena_alloc(&renderer->frame_arena, sizeof(RenderCameraUbo) * list->cameras_len);
+	for(i32 i = 0; i < list->cameras_len; i++) {
+		RenderListCamera* cam = &list->cameras[i];
+		RenderCameraUbo* ubo = &camera_ubos[i];
+		f32 perspective[16];
+		mat4_perspective(
+			radians_from_degrees(75.0f), 
+			(cam->screen_rect.z * (f32)platform->window_width) / (cam->screen_rect.w * (f32)platform->window_height),
+			100.00f, 0.05f, perspective);
+		f32 view[16];
+		mat4_identity(view);
+		v3 up = v3_new(0.0f, 1.0f, 0.0f);
+		mat4_lookat(cam->position, cam->target, up, view);
+		mat4_mul(perspective, view, ubo->projection);
+		ubo->position = cam->position;
+	}
+	renderer->host_buffers[RENDER_HOST_BUFFER_CAMERA].data = (u8*)camera_ubos;
 
 	// Model ubo
-	f32* instances_ubo = (f32*)arena_alloc(&renderer->frame_arena, sizeof(f32) * 16 * list->models_len);
+	RenderModelUbo* model_ubos = (RenderModelUbo*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelUbo) * list->models_len);
 	for(i32 i = 0; i < list->models_len; i++) {
 		RenderListModel* model = &list->models[i];
-		f32* instance = &instances_ubo[i * 16];
-		mat4_translation(model->position, instance);
+		RenderModelUbo* ubo = &model_ubos[i];
+		mat4_translation(model->position, ubo->transform);
 
 		f32 rotation[16];
 		mat4_rotation(
@@ -230,9 +253,9 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			model->orientation.y, 
 			model->orientation.z, 
 			rotation);
-		mat4_mul(instance, rotation, instance);
+		mat4_mul(ubo->transform, rotation, ubo->transform);
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_INSTANCE].data = (u8*)instances_ubo;
+	renderer->host_buffers[RENDER_HOST_BUFFER_MODEL].data = (u8*)model_ubos;
 
 	// Text ssbo
 	RenderGlyph* text_ssbo = (RenderGlyph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS);
@@ -252,37 +275,53 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	}
 	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)text_ssbo;
 
-	// Render graph
+	// =====================
+	// GENERATE RENDER GRAPH
+	// =====================
 	renderer->graph = (RenderGraph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGraph));
 
-	RenderCommandClear clear = { .color = { list->world.clear_color.r, list->world.clear_color.g, list->world.clear_color.b, 1.0f } };
+	RenderCommandClear clear = { .color = { list->clear_color.r, list->clear_color.g, list->clear_color.b, 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
 	// Draw models
-	// NOW: buffering to anny of these buffers is not working, doesn't seem like.
 	RenderCommandUseProgram use_program = { .program = ASSET_RENDER_PROGRAM_MODEL };
 	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program, sizeof(use_program));
 
-	RenderCommandUseUbo use_ubo_world = { .ubo = RENDER_UBO_WORLD };
-	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_world, sizeof(use_ubo_world));
+	RenderCommandUseUbo use_ubo_camera = { .ubo = RENDER_UBO_CAMERA };
+	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_camera, sizeof(use_ubo_camera));
 
-	RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_INSTANCE };
+	RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_MODEL };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
-	RenderCommandBufferUboData buffer_ubo_data_world = { .ubo = RENDER_UBO_WORLD, .host_buffer_index = RENDER_HOST_BUFFER_WORLD, .host_buffer_offset = 0 };
-	render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_world, sizeof(buffer_ubo_data_world));
+	for(i32 i = 0; i < list->cameras_len; i++) {
+		RenderListCamera* cam = &list->cameras[i];
+		v4 viewport_rect = cam->screen_rect;
+		viewport_rect.x *= platform->window_width;
+		viewport_rect.y *= platform->window_height;
+		viewport_rect.z *= platform->window_width;
+		viewport_rect.w *= platform->window_height;
+		
+		RenderCommandSetViewport set_viewport = { .rect = viewport_rect };
+		render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport, sizeof(set_viewport));
+		
+		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = RENDER_HOST_BUFFER_CAMERA, .host_buffer_offset = sizeof(RenderCameraUbo) * i };
+		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_camera, sizeof(buffer_ubo_data_camera));
 
-	for(i32 i = 0; i < list->models_len; i++) {
-		RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_INSTANCE, .host_buffer_index = RENDER_HOST_BUFFER_INSTANCE, .host_buffer_offset = i * 64 };
-		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
+		for(i32 i = 0; i < list->models_len; i++) {
+			RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = RENDER_HOST_BUFFER_MODEL, .host_buffer_offset = i * 64 };
+			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
 
-		RenderListModel* model = &list->models[i];
-		RenderCommandUseTexture use_texture = { .texture = model->texture };
-		render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
+			RenderListModel* model = &list->models[i];
+			RenderCommandUseTexture use_texture = { .texture = model->texture };
+			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
 
-		RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[model->id] };
-		render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
+			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[model->id] };
+			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
+		}
 	}
+
+	RenderCommandSetViewport set_viewport_text = { .rect = v4_new(0.0f, 0.0f, platform->window_width, platform->window_height) };
+	render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport_text, sizeof(set_viewport_text));
 
 	// Draw text
 	RenderCommandUseProgram use_program_text = { .program = ASSET_RENDER_PROGRAM_TEXT };

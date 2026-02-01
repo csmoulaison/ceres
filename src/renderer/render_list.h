@@ -23,12 +23,13 @@ changes made to the render layer.
 
 #define RENDER_LIST_MAX_MODEL_INSTANCES 4096
 #define RENDER_LIST_MAX_GLYPHS 1024
+#define RENDER_LIST_MAX_CAMERAS 2
 
 typedef struct {
-	v3 clear_color;
-	v3 camera_position;
-	v3 camera_target;
-} RenderListWorld;
+	v3 position;
+	v3 target;
+	v4 screen_rect;
+} RenderListCamera;
 
 typedef struct {
 	v3 position;
@@ -47,7 +48,10 @@ typedef struct {
 } RenderListGlyph;
 
 typedef struct {
-	RenderListWorld world;
+	v3 clear_color;
+
+	RenderListCamera cameras[RENDER_LIST_MAX_CAMERAS];
+	u32 cameras_len;
 
 	RenderListModel models[RENDER_LIST_MAX_MODEL_INSTANCES];
 	u32 models_len;

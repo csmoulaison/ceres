@@ -18,8 +18,12 @@ typedef struct {
 } GamePlayer;
 
 typedef struct {
+	v2 offset;
+} GameCamera;
+
+typedef struct {
 	GamePlayer players[2];
-	v2 camera_offset;
+	GameCamera cameras[2];
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
 	FontData fonts[ASSET_NUM_FONTS];
