@@ -24,6 +24,7 @@
 
 #include "config.c"
 #include "platform/platform.h"
+#include "alsa.c"
 
 #include "generated/asset_handles.h"
 #include "asset_format.h"
@@ -43,6 +44,7 @@ typedef struct {
 	u64 game_lib_last_modified;
 	GameInitFunction* game_init;
 	GameUpdateFunction* game_update;
+	GameGenerateSoundSamplesFunction* game_generate_sound_samples;
 } XlibContext;
 
 typedef struct {
@@ -100,6 +102,8 @@ void xlib_reload_game_code(XlibContext* xlib) {
 		xlib->game_init = dlsym(xlib->game_lib_handle, "game_init");
 		assert(dlerror() == NULL);
 		xlib->game_update = dlsym(xlib->game_lib_handle, "game_update");
+		assert(dlerror() == NULL);
+		xlib->game_generate_sound_samples = dlsym(xlib->game_lib_handle, "game_generate_sound_samples");
 		assert(dlerror() == NULL);
 	}
 
@@ -255,7 +259,9 @@ i32 main(i32 argc, char** argv) {
 	platform->window_width = window_attributes.width;
 	platform->window_height = window_attributes.height;
 
-	// TODO #4: Initialize audio ring buffer and ALSA
+	// Initialize ALSA for sound
+	AlsaContext* alsa = (AlsaContext*)arena_alloc(&arenas.global, sizeof(AlsaContext));
+	alsa_init(alsa);
 
 	// Initialize game, loading the dynamic libraary and initializing it with some
 	// memory we allocate here.
@@ -322,11 +328,17 @@ i32 main(i32 argc, char** argv) {
 
 		xlib->game_update(game_memory, platform->current_event, &game_output, 0.02f);
 
-		// TODO #4: Request sound samples from the game based on a desired latency and
-		// populate the audio ring buffer
-		
+		i32 sound_samples_count = alsa_write_samples_count(alsa);
+		if(sound_samples_count > 0) {
+			i16* sound_buffer = (i16*)arena_alloc(&arenas.frame, sizeof(i16) * 2 * sound_samples_count);
+			printf("sound samples count: %i\n", sound_samples_count);
+			xlib->game_generate_sound_samples(game_memory, sound_buffer, sound_samples_count);
+			alsa_write_samples(alsa, sound_buffer, sound_samples_count);
+		}
+
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
+
 		arena_clear_to_zero(&renderer->frame_arena);
 		arena_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);

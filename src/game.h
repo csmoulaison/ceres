@@ -6,12 +6,21 @@
 #include "renderer/render_list.h"
 #include "input.c"
 
+#define GAME_SOUND_CHANNELS_COUNT 4
+
+typedef struct {
+	f32 phase;
+	f32 frequency;
+	f32 amplitude;
+} GameSoundChannel;
+
 typedef struct {
 	f32 direction;
 	f32 rotation_velocity;
 	f32 strafe_tilt;
 	v2 position;
 	v2 velocity;
+
 	// TODO: Might we want to have this be part of an input handler which just has
 	// a list of button states per player?
 	ButtonState button_states[NUM_BUTTONS];
@@ -28,6 +37,13 @@ typedef struct {
 	u32 key_mappings_len;
 	FontData fonts[ASSET_NUM_FONTS];
 	u8 frame;
+	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
+
+	// NOW: some number (16?) of audio channels which are all sine waves with an
+	// expressive set of controls that allow them to act like other sounds.
+	// 
+	// For instance, a square wave can be created by raising the amplitude and/or
+	// lowering the shelf.
 } GameState;
 
 typedef struct {
@@ -65,18 +81,8 @@ GAME_INIT(game_init_stub) {}
 typedef GAME_UPDATE(GameUpdateFunction);
 GAME_UPDATE(game_update_stub) {}
 
-// NOW: We are addding audio now to the game. Start by creating a function like
-// game_generate_sound_samples(f32* buffer, u32 samples_requested, f32 start_t?)
-//
-// The platform must be able to call this function whenever it wants so that it
-// can request samples relative to its place in a circular audio samples buffer.
-// 
-// To reiterate, upcoming audio samples are stored in a ring buffer which is
-// populated by the game. The closer the audio hardware "position" is to the
-// time of sample generation, the less latency there is between audio and their
-// consequent game effects; but, the lower the latency, the less tolerant the
-// audio is to frame time variance.
-//
-// 
+#define GAME_GENERATE_SOUND_SAMPLES(name) void name(GameMemory* memory, i16* buffer, i32 samples_count)
+typedef GAME_GENERATE_SOUND_SAMPLES(GameGenerateSoundSamplesFunction);
+GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples_stub) {}
 
 #endif // game_h_INCLUDED

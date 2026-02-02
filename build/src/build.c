@@ -52,7 +52,7 @@ i32 main(i32 argc, char** argv) {
 	pack_assets();
 
 	print_header("Compiling platform layer...");
-	system_call("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes");
+	system_call("gcc -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes -lasound");
 
 
 game_only:

@@ -40,6 +40,13 @@ GAME_INIT(game_init) {
 		camera->offset = v2_zero();
 	}
 
+	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
+		GameSoundChannel* channel = &game->sound_channels[i];
+		channel->phase = 0.0f;
+		channel->frequency = 0.0f;
+		channel->amplitude = 0.0f;
+	}
+
 	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
 	assert(file != NULL);
 
@@ -175,6 +182,17 @@ GAME_UPDATE(game_update) {
 
 	}
 
+	// Update sound channels
+	GameSoundChannel* velocity_channel = &game->sound_channels[0];
+	f32 velocity_magnitude = v2_magnitude(game->players[0].velocity);
+	velocity_channel->amplitude = 2000.0f * velocity_magnitude;
+	velocity_channel->frequency = 10.0f * velocity_magnitude;
+
+	GameSoundChannel* rotation_channel = &game->sound_channels[1];
+	f32 rot = game->players[0].rotation_velocity;
+	rotation_channel->amplitude = 2000.0f * rot;
+	rotation_channel->frequency = 100.0f + 10.0f * abs(rot);
+
 	// Populate render list
 	RenderList* list = &output->render_list;
 	render_list_init(list);
@@ -261,4 +279,26 @@ GAME_UPDATE(game_update) {
 	arena_destroy(&ui_arena);
 		
 	game->frame++;
+}
+
+GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
+	GameState* game = &memory->state;
+
+	// NOW: Figure out a good max amplitude for limiting
+	f32 global_shelf = 10000.0f;
+
+	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
+		GameSoundChannel* channel = &game->sound_channels[i];
+		for(i32 i = 0; i < samples_count; i++) {
+			// NOW: Add panning and shelf. Remove hardcoded sample rate, obviously.
+			channel->phase += 2.0f * M_PI * channel->frequency / 48000;
+			if(channel->phase > 2.0f * M_PI) {
+				channel->phase -= 2.0f * M_PI;
+			}
+			f32 sample = channel->amplitude * sinf(channel->phase);
+			buffer[i * 2] += sample;
+			buffer[i * 2 + 1] += sample;
+		}
+	}
+
 }
