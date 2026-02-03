@@ -40,7 +40,5 @@ i32 alsa_write_samples_count(AlsaContext* alsa) {
 }
 
 void alsa_write_samples(AlsaContext* alsa, i16* buffer, i32 sample_count) {
-	printf("alsa write %u samples\n", sample_count);
 	assert(snd_pcm_writei(alsa->pcm, buffer, sample_count) == sample_count);
-	printf("alsa written!\n");
 }

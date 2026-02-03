@@ -6,12 +6,17 @@
 #include "renderer/render_list.h"
 #include "input.c"
 
-#define GAME_SOUND_CHANNELS_COUNT 4
+#define GAME_SOUND_CHANNELS_COUNT 16
 
 typedef struct {
 	f32 phase;
 	f32 frequency;
 	f32 amplitude;
+	f32 shelf;
+	f32 volatility;
+
+	f32 actual_frequency;
+	f32 actual_amplitude;
 } GameSoundChannel;
 
 typedef struct {
@@ -20,6 +25,9 @@ typedef struct {
 	f32 strafe_tilt;
 	v2 position;
 	v2 velocity;
+
+	f32 momentum_cooldown_sound;
+	f32 shoot_cooldown_sound;
 
 	// TODO: Might we want to have this be part of an input handler which just has
 	// a list of button states per player?
@@ -36,7 +44,7 @@ typedef struct {
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
 	FontData fonts[ASSET_NUM_FONTS];
-	u8 frame;
+	u32 frame;
 	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
 
 	// NOW: some number (16?) of audio channels which are all sine waves with an
