@@ -31,6 +31,8 @@ GAME_INIT(game_init) {
 		player->rotation_velocity = 0.0f;
 		player->position = v2_zero();
 		player->velocity = v2_zero();
+		player->shoot_cooldown = 0.0f;
+		player->shoot_cooldown_sound = 0.0f;
 		player->momentum_cooldown_sound = 0.0f;
 
 		for(i32 i = 0; i < NUM_BUTTONS; i++) {
@@ -52,6 +54,12 @@ GAME_INIT(game_init) {
 		channel->actual_amplitude = 0.0f;
 	}
 
+	game->debug_camera.position = v3_new(1.0f, 1.0f, 1.0f);
+	game->debug_camera.pitch = 0.0f;
+	game->debug_camera.yaw = 90.0f;
+	game->debug_camera_mode = false;
+	game->debug_camera_moving = false;
+
 	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
 	assert(file != NULL);
 
@@ -63,6 +71,9 @@ GAME_INIT(game_init) {
 }
 
 GAME_UPDATE(game_update) {
+	// NOW: temp
+	dt *= 0.5;
+	
 	GameState* game = &memory->state;
 
 	// Update input events
@@ -102,6 +113,39 @@ GAME_UPDATE(game_update) {
 		}
 		event = event->next;
 	}
+
+	v3 debug_cam_direction;
+	if(game->debug_camera_mode) {
+		f32 cpitch = cos(game->debug_camera.pitch);
+		f32 spitch = sin(game->debug_camera.pitch);
+		f32 cyaw = cos(game->debug_camera.yaw);
+		f32 syaw = sin(game->debug_camera.yaw);
+
+		v3 debug_cam_direction = v3_normalize(v3_new(cyaw * cpitch, syaw * cpitch, spitch));
+
+		v3 move = v3_zero();
+		if(game->debug_camera_moving) {
+			if(input_button_down(game->players[0].button_states[BUTTON_FORWARD])) {
+				move.x -= 1.0f;
+			}
+			if(input_button_down(game->players[0].button_states[BUTTON_BACK])) {
+				move.x += 1.0f;
+			}
+			if(input_button_down(game->players[0].button_states[BUTTON_TURN_LEFT])) {
+				move.z += 1.0f;
+			}
+			if(input_button_down(game->players[0].button_states[BUTTON_TURN_RIGHT])) {
+				move.z -= 1.0f;
+			}
+			if(input_button_down(game->players[0].button_states[BUTTON_STRAFE_LEFT])) {
+				move.y += 1.0f;
+			}
+			if(input_button_down(game->players[0].button_states[BUTTON_STRAFE_RIGHT])) {
+				move.y -= 1.0f;
+			}
+		}
+		game->debug_camera.position = v3_add(game->debug_camera.position, v3_scale(move, 10.0f * dt));
+	}
 	
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
@@ -111,22 +155,59 @@ GAME_UPDATE(game_update) {
 			output->close_requested = true;
 		}
 
-		// Shooting
-		if(player->shoot_cooldown_sound > 0.0f) {
-			player->shoot_cooldown_sound = lerp(player->shoot_cooldown_sound, 0.0f, 4.0f * dt);
-		}
-		if(input_button_pressed(player->button_states[BUTTON_SHOOT])) {
-			player->shoot_cooldown_sound = 1.0f;
+		if(input_button_pressed(player->button_states[BUTTON_DEBUG])) {
+			game->debug_camera_mode = !game->debug_camera_mode;
 		}
 
-		// Calculate ship rotational acceleration
-		f32 rotate_speed = 32.0f;
-		f32 rot_acceleration = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
-			rot_acceleration += rotate_speed;
+		if(game->debug_camera_mode && input_button_pressed(player->button_states[BUTTON_SHOOT])) {
+			game->debug_camera_moving = true;
 		}
-		if(input_button_down(player->button_states[BUTTON_TURN_RIGHT])) {
-			rot_acceleration -= rotate_speed;
+		if(game->debug_camera_mode && input_button_released(player->button_states[BUTTON_SHOOT])) {
+			game->debug_camera_moving = false;
+		}
+
+		v2 acceleration = v2_zero();
+		v2 direction_vector = player_direction_vector(player);
+		f32 rot_acceleration = 0.0f;
+		f32 strafe_mod = 0.0f;
+		if(!game->debug_camera_moving) {
+			// Shooting
+			if(player->shoot_cooldown_sound > 0.0f) {
+				player->shoot_cooldown_sound = lerp(player->shoot_cooldown_sound, 0.0f, 4.0f * dt);
+			}
+
+			player->shoot_cooldown -= dt;
+			if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
+				player->shoot_cooldown = 0.1f;
+				player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
+			}
+
+			// Calculate ship rotational acceleration
+			f32 rotate_speed = 32.0f;
+			if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
+				rot_acceleration += rotate_speed;
+			}
+			if(input_button_down(player->button_states[BUTTON_TURN_RIGHT])) {
+				rot_acceleration -= rotate_speed;
+			}
+
+			// Forward/back thruster control
+			f32 forward_mod = 0.0f;
+			if(input_button_down(player->button_states[BUTTON_FORWARD])) {
+				forward_mod += 32.0f;
+			}
+			if(input_button_down(player->button_states[BUTTON_BACK])) {
+				forward_mod -= 16.0f;
+			}
+			acceleration = v2_scale(direction_vector, forward_mod);
+
+			// Side thruster control
+			if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT])) {
+				strafe_mod -= 1.0f;
+			}
+			if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT])) {
+				strafe_mod += 1.0f;
+			}
 		}
 
 		// Rotational damping
@@ -138,29 +219,10 @@ GAME_UPDATE(game_update) {
 		player->rotation_velocity += rot_acceleration * dt;
 
 		// Calculate ship acceleration
-		// Forward/back thruster control
-		v2 acceleration = v2_zero();
-
-		v2 direction_vector = player_direction_vector(player);
-		f32 forward_mod = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_FORWARD])) {
-			forward_mod += 32.0f;
-		}
-		if(input_button_down(player->button_states[BUTTON_BACK])) {
-			forward_mod -= 16.0f;
-		}
-		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Side thruster control
 		v2 side_vector = { -direction_vector.y, direction_vector.x };
 		f32 strafe_speed = 32.0f;
-		f32 strafe_mod = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT])) {
-			strafe_mod -= 1.0f;
-		}
-		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT])) {
-			strafe_mod += 1.0f;
-		}
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
 		// TODO: Make strafing tilt curve based off of the same equations as motion 
@@ -208,68 +270,89 @@ GAME_UPDATE(game_update) {
 		ch->frequency = 0.0f;
 		ch->volatility = 0.0f;
 	}
-	
-	GameSoundChannel* velocity_channel = &game->sound_channels[0];
-	f32 v_mag = v2_magnitude(game->players[0].velocity);
-	velocity_channel->amplitude = 2000.0f * v_mag;
-	velocity_channel->frequency = 7.144123f * v_mag;
-	velocity_channel->shelf = 6000.0f;
-	velocity_channel->volatility = 0.002f * v_mag;
 
-	GameSoundChannel* momentum_channel = &game->sound_channels[1];
-	f32 m = game->players[0].momentum_cooldown_sound;
-	momentum_channel->amplitude = 2000.0f * m;
-	momentum_channel->frequency = 3.0f * m;
-	momentum_channel->shelf = 2000.0f;
-	momentum_channel->volatility = 0.01f * m;
+#if 1
+	f32 current_player_velocity;
 
-	GameSoundChannel* rotation_channel = &game->sound_channels[2];
-	f32 rot = game->players[0].rotation_velocity;
-	rotation_channel->amplitude = 2000.0f * rot;
-	rotation_channel->frequency = 10.0f * abs(rot);
-	rotation_channel->shelf = 6000.0f;
-	rotation_channel->volatility = 0.002f * rot;
+	for(i32 i = 0; i < 2; i++) {
+		GamePlayer* player = &game->players[i];
+		f32 v_mag = v2_magnitude(player->velocity);
+		if(i == 0) current_player_velocity = v_mag;
 
-	GameSoundChannel* shoot_channel = &game->sound_channels[3];
-	f32 shoot = game->players[0].shoot_cooldown_sound;
-	rotation_channel->amplitude = 10000.0f * shoot * shoot;
-	rotation_channel->frequency = 1500.0f * shoot * shoot;
-	rotation_channel->shelf = 2000.0f + 2000.0f * shoot;
-	rotation_channel->volatility = 0.2f * shoot;
+		GameSoundChannel* velocity_channel = &game->sound_channels[0 + i * 4];
+		velocity_channel->amplitude = 2000.0f * v_mag;
+		velocity_channel->frequency = 7.144123f * v_mag;
+		velocity_channel->shelf = 6000.0f;
+		velocity_channel->volatility = 0.002f * v_mag;
+
+		GameSoundChannel* momentum_channel = &game->sound_channels[1 + i * 4];
+		f32 m = player->momentum_cooldown_sound;
+		momentum_channel->amplitude = 2000.0f * m;
+		momentum_channel->frequency = 3.0f * m;
+		momentum_channel->shelf = 2000.0f;
+		momentum_channel->volatility = 0.01f * m;
+
+		GameSoundChannel* rotation_channel = &game->sound_channels[2 + i * 4];
+		f32 rot = player->rotation_velocity;
+		rotation_channel->amplitude = 2000.0f * rot;
+		rotation_channel->frequency = 10.0f * abs(rot);
+		rotation_channel->shelf = 6000.0f;
+		rotation_channel->volatility = 0.002f * rot;
+
+		GameSoundChannel* shoot_channel = &game->sound_channels[3 + i * 4];
+		f32 shoot = player->shoot_cooldown_sound;
+		rotation_channel->amplitude = 10000.0f * shoot * shoot;
+		rotation_channel->frequency = 1500.0f * shoot * shoot;
+		rotation_channel->shelf = 2000.0f + 2000.0f * shoot;
+		rotation_channel->volatility = 0.2f * shoot;
+
+		for(i32 j = 0; j < 4; j++) {
+			// NOW: This is 1 player centrist horseshit!
+			GameCamera* camera = &game->cameras[0];
+			GameSoundChannel* ch = &game->sound_channels[j + i * 4];
+			f32 distance = 1.0f + v2_distance(game->players[0].position, player->position);
+			ch->amplitude /= distance * 1.0f;
+			ch->shelf += distance * 100.0f;
+			ch->volatility -= distance * 0.01f;
+			if(ch->volatility < 0.0f) ch->volatility = 0.0f;
+		}
+	}
 
 	i32 mod_phase = 12;
 	i32 mod_half = mod_phase / 2;
+#endif
+
 #if 1
-	GameSoundChannel* music_channel = &game->sound_channels[4];
+	GameSoundChannel* music_channel = &game->sound_channels[8];
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(game->frame / mod_half) % 16];
-	music_channel->amplitude = 4000.0f - (game->frame % mod_half) * 100.0f * freq + v_mag * 2000.0f;
+	music_channel->amplitude = 4000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 2000.0f;
 	music_channel->frequency = freq * 100.0f;
 	music_channel->shelf = 4000.0f;
 	music_channel->volatility = freq * 0.05f - (game->frame % mod_half) * freq * 0.1f;
 
-	GameSoundChannel* ch2 = &game->sound_channels[5];
-	ch2->amplitude = 5000.0f - (game->frame % mod_half) * 100.0f * freq + v_mag * 1000.0f;
+	GameSoundChannel* ch2 = &game->sound_channels[9];
+	ch2->amplitude = 5000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 1000.0f;
 	ch2->frequency = freq * 33.3f;
 	ch2->shelf = 4000.0f;
 	ch2->volatility = freq * 0.05f;
 
-	GameSoundChannel* ch4 = &game->sound_channels[6];
+	GameSoundChannel* ch4 = &game->sound_channels[10];
 	f32 fs4[16] = { 6, 0, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f4 = fs4[(game->frame / mod_phase) % 16];
-	ch4->amplitude = 100.0f + v_mag * 100.0f - (game->frame % mod_phase) * 4000.0f;
+	ch4->amplitude = 100.0f + current_player_velocity * 100.0f - (game->frame % mod_phase) * 4000.0f;
 	ch4->frequency = f4 * ((f32)rand() / RAND_MAX) * 400.0f;
-	ch4->shelf = 5000.0f + v_mag * 100.0f;
+	ch4->shelf = 5000.0f + current_player_velocity * 100.0f;
 	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
 #endif
 
 #if 1
-	GameSoundChannel* ch3 = &game->sound_channels[7];
+	GameSoundChannel* ch3 = &game->sound_channels[11];
 	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
 	ch3->amplitude = 2000.0f * f3 - (game->frame % mod_phase) * 8000.0f;
 	ch3->frequency = f3 * ((f32)rand() / RAND_MAX) * 25.0f;
-	ch3->shelf = 1000.0f + v_mag * 100.0f;
+	ch3->shelf = 1000.0f + current_player_velocity * 100.0f;
 	ch3->volatility = f3 * 0.6f - (game->frame % mod_phase) * 0.2f;
 #endif
 
@@ -288,7 +371,7 @@ GAME_UPDATE(game_update) {
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, pos, rot);
 
-		if(splitscreen || i == 0) {
+		if(!game->debug_camera_mode && (splitscreen || i == 0)) {
 			GameCamera* camera = &game->cameras[i];
 			v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
 			v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
@@ -301,9 +384,24 @@ GAME_UPDATE(game_update) {
 			}
 			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
 		}
+		if(game->debug_camera_mode) {
+			//render_list_add_camera(list, game->debug_camera.position, v3_add(game->debug_camera.position, debug_cam_direction), v4_new(0.0f, 0.0f, 1.0f, 1.0f));
+			render_list_add_camera(list, game->debug_camera.position, v3_add(game->debug_camera.position, v3_new(-1.0f, 0.0f, 0.0f)), v4_new(0.0f, 0.0f, 1.0f, 1.0f));
+		}
+
+		v2 direction = player_direction_vector(player);
+		v2 side = v2_new(-direction.y, direction.x);
+		v2 target = v2_add(player->position, v2_scale(direction, 50.0f));
+
+		v2 laser_pos_1 = v2_add(v2_add(player->position, v2_scale(side, 0.48f)), v2_scale(direction, 0.30f));
+		v2 laser_pos_2 = v2_add(v2_add(player->position, v2_scale(side, -0.48f)), v2_scale(direction, 0.30f));
+
+		render_list_draw_laser(list, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
+		render_list_draw_laser(list, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
 	}
 
-	i32 floor_instances = 512;
+
+	i32 floor_instances = 256;
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
@@ -315,20 +413,22 @@ GAME_UPDATE(game_update) {
 
 	GamePlayer* pl_primary = &game->players[0];
 	GameCamera* cam_primary = &game->cameras[0];
-#define PRINT_VALUES_LEN 5
+#define PRINT_VALUES_LEN 6
 	f32 print_values[PRINT_VALUES_LEN] = {
-		pl_primary->position.x,
-		pl_primary->position.y,
+		game->debug_camera.position.x,
+		game->debug_camera.position.y,
 		pl_primary->velocity.x,
 		pl_primary->velocity.y,
-		pl_primary->momentum_cooldown_sound
+		game->debug_camera_mode,
+		game->debug_camera_moving,
 	};
 	char* print_labels[PRINT_VALUES_LEN] = {
-		"pos_x: ",
-		"pos_y: ",
+		"dbg cam pos_x: ",
+		"dbg cam pos_y: ",
 		"vel_x: ",
 		"vel_y: ",
-		"col_s: "
+		"dbg mode: ",
+		"dbg moving: "
 	};
 	v2 debug_screen_anchor = v2_zero();
 	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {

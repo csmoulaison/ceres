@@ -25,6 +25,7 @@ typedef struct {
 	f32 strafe_tilt;
 	v2 position;
 	v2 velocity;
+	f32 shoot_cooldown;
 
 	f32 momentum_cooldown_sound;
 	f32 shoot_cooldown_sound;
@@ -39,6 +40,12 @@ typedef struct {
 } GameCamera;
 
 typedef struct {
+	v3 position;
+	f32 pitch;
+	f32 yaw;
+} DebugCamera;
+
+typedef struct {
 	GamePlayer players[2];
 	GameCamera cameras[2];
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
@@ -46,6 +53,10 @@ typedef struct {
 	FontData fonts[ASSET_NUM_FONTS];
 	u32 frame;
 	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
+
+	DebugCamera debug_camera;
+	bool debug_camera_mode;
+	bool debug_camera_moving;
 
 	// NOW: some number (16?) of audio channels which are all sine waves with an
 	// expressive set of controls that allow them to act like other sounds.

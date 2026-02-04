@@ -1,9 +1,11 @@
 mesh SHIP data/meshes/ship.obj 
 mesh FLOOR data/meshes/floor.obj
+mesh CYLINDER data/meshes/cylinder.obj
 texture SHIP data/textures/ship.bmp
 texture FLOOR data/textures/metal.bmp
 render_program MODEL ../src/shaders/cube.vert ../src/shaders/cube.frag
 render_program TEXT ../src/shaders/text.vert ../src/shaders/text.frag
+render_program LASER ../src/shaders/laser.vert ../src/shaders/laser.frag
 font OVO_SMALL data/fonts/Ovo-Regular.ttf 24
 font OVO_REGULAR data/fonts/Ovo-Regular.ttf 36
 font OVO_LARGE data/fonts/Ovo-Regular.ttf 48

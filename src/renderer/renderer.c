@@ -257,6 +257,28 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	}
 	renderer->host_buffers[RENDER_HOST_BUFFER_MODEL].data = (u8*)model_ubos;
 
+	// Laser ubo
+	RenderModelUbo* laser_ubos = (RenderModelUbo*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelUbo) * list->lasers_len);
+	for(i32 i = 0; i < list->lasers_len; i++) {
+		RenderListLaser* laser = &list->lasers[i];
+		RenderModelUbo* ubo = &laser_ubos[i];
+
+		v3 line_delta = v3_sub(laser->end, laser->start);
+		mat4_scale(v3_new(v3_magnitude(line_delta), laser->stroke, laser->stroke), ubo->transform);
+
+		f32 rotation[16];
+		v3 line_norm = v3_normalize(line_delta);
+		//v2 2d_delta = v2_new(line_delta.x, line_delta.z);
+		mat4_rotation(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f, rotation);
+
+		f32 translation[16];
+		mat4_translation(laser->start, translation);
+
+		mat4_mul(rotation, ubo->transform, ubo->transform);
+		mat4_mul(translation, ubo->transform, ubo->transform);
+	}
+	renderer->host_buffers[RENDER_HOST_BUFFER_LASER].data = (u8*)laser_ubos;
+
 	// Text ssbo
 	RenderGlyph* text_ssbo = (RenderGlyph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS);
 	for(u32 i = 0; i < ASSET_NUM_FONTS; i++) {
@@ -283,16 +305,13 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	RenderCommandClear clear = { .color = { list->clear_color.r, list->clear_color.g, list->clear_color.b, 1.0f } };
 	render_push_command(renderer, RENDER_COMMAND_CLEAR, &clear, sizeof(clear));
 
-	// Draw models
-	RenderCommandUseProgram use_program = { .program = ASSET_RENDER_PROGRAM_MODEL };
-	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program, sizeof(use_program));
-
 	RenderCommandUseUbo use_ubo_camera = { .ubo = RENDER_UBO_CAMERA };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_camera, sizeof(use_ubo_camera));
 
 	RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_MODEL };
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
+	// Draw viewports
 	for(i32 i = 0; i < list->cameras_len; i++) {
 		RenderListCamera* cam = &list->cameras[i];
 		v4 viewport_rect = cam->screen_rect;
@@ -300,12 +319,16 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		viewport_rect.y *= platform->window_height;
 		viewport_rect.z *= platform->window_width;
 		viewport_rect.w *= platform->window_height;
-		
+
 		RenderCommandSetViewport set_viewport = { .rect = viewport_rect };
 		render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport, sizeof(set_viewport));
 		
 		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = RENDER_HOST_BUFFER_CAMERA, .host_buffer_offset = sizeof(RenderCameraUbo) * i };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_camera, sizeof(buffer_ubo_data_camera));
+
+		// Draw models
+		RenderCommandUseProgram use_program_model = { .program = ASSET_RENDER_PROGRAM_MODEL };
+		render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_model, sizeof(use_program_model));
 
 		for(i32 i = 0; i < list->models_len; i++) {
 			RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = RENDER_HOST_BUFFER_MODEL, .host_buffer_offset = i * 64 };
@@ -318,12 +341,24 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[model->id] };
 			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
 		}
+
+		// Draw lasers
+		RenderCommandUseProgram use_program_laser = { .program = ASSET_RENDER_PROGRAM_LASER };
+		render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_laser, sizeof(use_program_laser));
+
+		for(i32 i = 0; i < list->lasers_len; i++) {
+			RenderCommandBufferUboData buffer_ubo_data_laser = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = RENDER_HOST_BUFFER_LASER, .host_buffer_offset = i * 64 };
+			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_laser, sizeof(buffer_ubo_data_laser));
+
+			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[ASSET_MESH_CYLINDER] };
+			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
+		}
 	}
 
+	// Draw text
 	RenderCommandSetViewport set_viewport_text = { .rect = v4_new(0.0f, 0.0f, platform->window_width, platform->window_height) };
 	render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport_text, sizeof(set_viewport_text));
 
-	// Draw text
 	RenderCommandUseProgram use_program_text = { .program = ASSET_RENDER_PROGRAM_TEXT };
 	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_text, sizeof(use_program_text));
 

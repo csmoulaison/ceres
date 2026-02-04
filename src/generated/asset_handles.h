@@ -8,6 +8,7 @@
 typedef enum {
    ASSET_MESH_SHIP,
    ASSET_MESH_FLOOR,
+   ASSET_MESH_CYLINDER,
    ASSET_NUM_MESHES
 } MeshAssetHandle;
 
@@ -24,6 +25,7 @@ typedef enum {
 typedef enum {
    ASSET_RENDER_PROGRAM_MODEL,
    ASSET_RENDER_PROGRAM_TEXT,
+   ASSET_RENDER_PROGRAM_LASER,
    ASSET_NUM_RENDER_PROGRAMS
 } RenderProgramAssetHandle;
 

@@ -35,6 +35,8 @@ static inline v2 v2_normalize(v2 v);
 static inline v2 v2_scale(v2 v, f32 s);
 static inline v2 v2_add(v2 a, v2 b);
 static inline v2 v2_sub(v2 a, v2 b);
+static inline f32 v2_distance_squared(v2 a, v2 b);
+static inline f32 v2_distance(v2 a, v2 b);
 // Vector3
 static inline v3 v3_new(f32 x, f32 y, f32 z);
 static inline v3 v3_zero();
@@ -45,6 +47,8 @@ static inline f32 v3_magnitude(v3 v);
 static inline v3 v3_scale(v3 v, f32 s);
 static inline v3 v3_normalize(v3 v);
 static inline v3 v3_cross(v3 a, v3 b);
+static inline f32 v3_distance_squared(v3 a, v3 b);
+static inline f32 v3_distance(v3 a, v3 b);
 static inline f32 v3_dot(v3 a, v3 b);
 // Vector4
 static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w);
@@ -61,6 +65,7 @@ void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
 void mat4_lookat(v3 origin, v3 target, v3 up, f32* res);
 void mat4_mul(f32* a, f32* b, f32* res);
 void mat4_translation(v3 v, f32* res);
+void mat4_scale(v3 v, f32* res);
 void mat4_rotation(f32 x, f32 y, f32 z, f32* res);
 void mat4_from_quat(f32* q, f32* res);
 // Quaternions
@@ -123,6 +128,16 @@ static inline v2 v2_add(v2 a, v2 b) {
 
 static inline v2 v2_sub(v2 a, v2 b) {
 	return v2_new(a.x - b.x, a.y - b.y);
+}
+
+static inline f32 v2_distance_squared(v2 a, v2 b) {
+	f32 dx = a.x - b.x;
+	f32 dy = a.y - b.y;
+	return dx * dx + dy * dy;
+}
+
+static inline f32 v2_distance(v2 a, v2 b) {
+	return sqrt(v2_distance_squared(a, b));
 }
 
 static inline v3 v3_new(f32 x, f32 y, f32 z) {
@@ -319,6 +334,16 @@ void mat4_translation(v3 v, f32* res) {
 	res[12] = v.x;
 	res[13] = v.y;
 	res[14] = v.z;
+}
+
+void mat4_scale(v3 v, f32* res) {
+	for(i8 i = 0; i < 16; i++) {
+		res[i] = 0.0f;
+	}
+	res[0] = v.x;
+	res[5] = v.y;
+	res[10] = v.z;
+	res[15] = 1.0f;
 }
 
 void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {

@@ -44,6 +44,14 @@ void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, v3 posi
 	list->models_len++;
 }
 
+void render_list_draw_laser(RenderList* list, v3 start, v3 end, f32 stroke) {
+	RenderListLaser* laser = &list->lasers[list->lasers_len];
+	laser->start = start;
+	laser->end = end;
+	laser->stroke = stroke;
+	list->lasers_len++;
+}
+
 void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v2 screen_anchor, v4 color) {
 	FontData* font = &fonts[font_handle];
 	FontGlyph* font_glyph = &font->glyphs[c];

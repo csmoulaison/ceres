@@ -22,6 +22,7 @@ changes made to the render layer.
 #include "renderer/renderer.h"
 
 #define RENDER_LIST_MAX_MODEL_INSTANCES 4096
+#define RENDER_LIST_MAX_LASERS 256
 #define RENDER_LIST_MAX_GLYPHS 1024
 #define RENDER_LIST_MAX_CAMERAS 2
 
@@ -40,6 +41,12 @@ typedef struct {
 } RenderListModel;
 
 typedef struct {
+	v3 start;
+	v3 end;
+	f32 stroke;
+} RenderListLaser;
+
+typedef struct {
 	v2 screen_anchor;
 	v2 offset;
 	v2 size;
@@ -55,6 +62,9 @@ typedef struct {
 
 	RenderListModel models[RENDER_LIST_MAX_MODEL_INSTANCES];
 	u32 models_len;
+
+	RenderListLaser lasers[RENDER_LIST_MAX_LASERS];
+	u32 lasers_len;
 
 	RenderListGlyph glyph_lists[ASSET_NUM_FONTS][RENDER_LIST_MAX_GLYPHS];
 	u32 glyph_list_lens[ASSET_NUM_FONTS];
