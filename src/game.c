@@ -218,49 +218,59 @@ GAME_UPDATE(game_update) {
 
 	GameSoundChannel* momentum_channel = &game->sound_channels[1];
 	f32 m = game->players[0].momentum_cooldown_sound;
-	momentum_channel->amplitude = 1000.0f * m;
+	momentum_channel->amplitude = 2000.0f * m;
 	momentum_channel->frequency = 3.0f * m;
-	momentum_channel->shelf = 1000.0f;
-	momentum_channel->volatility = 0.2f * m;
+	momentum_channel->shelf = 2000.0f;
+	momentum_channel->volatility = 0.01f * m;
 
 	GameSoundChannel* rotation_channel = &game->sound_channels[2];
 	f32 rot = game->players[0].rotation_velocity;
-	rotation_channel->amplitude = 1000.0f * rot;
+	rotation_channel->amplitude = 2000.0f * rot;
 	rotation_channel->frequency = 10.0f * abs(rot);
-	rotation_channel->shelf = 4000.0f;
+	rotation_channel->shelf = 6000.0f;
 	rotation_channel->volatility = 0.002f * rot;
 
 	GameSoundChannel* shoot_channel = &game->sound_channels[3];
 	f32 shoot = game->players[0].shoot_cooldown_sound;
 	rotation_channel->amplitude = 10000.0f * shoot * shoot;
-	rotation_channel->frequency = 1000.0f * shoot * shoot;
-	rotation_channel->shelf = 6000.0f;
-	rotation_channel->volatility = 0.1f * shoot;
+	rotation_channel->frequency = 1500.0f * shoot * shoot;
+	rotation_channel->shelf = 2000.0f + 2000.0f * shoot;
+	rotation_channel->volatility = 0.2f * shoot;
 
-#if 1
-	i32 mod_phase = 6;
+	i32 mod_phase = 12;
 	i32 mod_half = mod_phase / 2;
+#if 1
 	GameSoundChannel* music_channel = &game->sound_channels[4];
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(game->frame / mod_half) % 16];
-	music_channel->amplitude = 7000.0f - (game->frame % mod_half) * 100.0f * freq;
+	music_channel->amplitude = 4000.0f - (game->frame % mod_half) * 100.0f * freq + v_mag * 2000.0f;
 	music_channel->frequency = freq * 100.0f;
-	music_channel->shelf = 5000.0f;
-	music_channel->volatility = freq * 0.4f;
+	music_channel->shelf = 4000.0f;
+	music_channel->volatility = freq * 0.05f - (game->frame % mod_half) * freq * 0.1f;
 
 	GameSoundChannel* ch2 = &game->sound_channels[5];
-	ch2->amplitude = 7000.0f - (game->frame % mod_half) * 100.0f * freq;
+	ch2->amplitude = 5000.0f - (game->frame % mod_half) * 100.0f * freq + v_mag * 1000.0f;
 	ch2->frequency = freq * 33.3f;
 	ch2->shelf = 4000.0f;
-	ch2->volatility = freq * 0.1f;
+	ch2->volatility = freq * 0.05f;
 
-	GameSoundChannel* ch3 = &game->sound_channels[6];
-	f32 fs3[16] = { 4, 0, 1, 0, 8, 0, 1, 0, 4, 0, 1, 1, 8, 1, 2, 1 };
+	GameSoundChannel* ch4 = &game->sound_channels[6];
+	f32 fs4[16] = { 6, 0, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
+	f32 f4 = fs4[(game->frame / mod_phase) % 16];
+	ch4->amplitude = 100.0f + v_mag * 100.0f - (game->frame % mod_phase) * 4000.0f;
+	ch4->frequency = f4 * ((f32)rand() / RAND_MAX) * 400.0f;
+	ch4->shelf = 5000.0f + v_mag * 100.0f;
+	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
+#endif
+
+#if 1
+	GameSoundChannel* ch3 = &game->sound_channels[7];
+	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
-	ch3->amplitude = 1000.0f * f3 + 4000.0f - (game->frame % mod_phase) * 1000.0f;
+	ch3->amplitude = 2000.0f * f3 - (game->frame % mod_phase) * 8000.0f;
 	ch3->frequency = f3 * ((f32)rand() / RAND_MAX) * 25.0f;
-	ch3->shelf = 4000.0f;
-	ch3->volatility = f3 * 0.2f;
+	ch3->shelf = 1000.0f + v_mag * 100.0f;
+	ch3->volatility = f3 * 0.6f - (game->frame % mod_phase) * 0.2f;
 #endif
 
 	// Populate render list
@@ -293,7 +303,7 @@ GAME_UPDATE(game_update) {
 		}
 	}
 
-	i32 floor_instances = 1024;
+	i32 floor_instances = 512;
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
@@ -368,8 +378,7 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 
 	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
 		GameSoundChannel* channel = &game->sound_channels[i];
-		//channel->actual_frequency = channel->frequency;
-		//channel->actual_amplitude = channel->amplitude;
+		channel->amplitude = clamp(channel->amplitude, 0.0f, channel->amplitude);
 	}
 
 	for(i32 i = 0; i < samples_count; i++) {

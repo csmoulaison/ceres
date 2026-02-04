@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - Audio, with some actual sound effects driven by ship movement
 // - Shooting, with a destroyed ship event.
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
