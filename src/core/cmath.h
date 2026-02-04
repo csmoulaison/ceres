@@ -37,6 +37,7 @@ static inline v2 v2_add(v2 a, v2 b);
 static inline v2 v2_sub(v2 a, v2 b);
 static inline f32 v2_distance_squared(v2 a, v2 b);
 static inline f32 v2_distance(v2 a, v2 b);
+static inline f32 v2_dot(v2 a, v2 b);
 // Vector3
 static inline v3 v3_new(f32 x, f32 y, f32 z);
 static inline v3 v3_zero();
@@ -138,6 +139,10 @@ static inline f32 v2_distance_squared(v2 a, v2 b) {
 
 static inline f32 v2_distance(v2 a, v2 b) {
 	return sqrt(v2_distance_squared(a, b));
+}
+
+static inline f32 v2_dot(v2 a, v2 b) {
+	return a.x * b.x + a.y * b.y;
 }
 
 static inline v3 v3_new(f32 x, f32 y, f32 z) {

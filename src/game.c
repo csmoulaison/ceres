@@ -31,7 +31,9 @@ GAME_INIT(game_init) {
 		player->rotation_velocity = 0.0f;
 		player->position = v2_zero();
 		player->velocity = v2_zero();
+		player->health = 1.0f;
 		player->shoot_cooldown = 0.0f;
+		player->hit_cooldown = 0.0f;
 		player->shoot_cooldown_sound = 0.0f;
 		player->momentum_cooldown_sound = 0.0f;
 
@@ -175,11 +177,35 @@ GAME_UPDATE(game_update) {
 			if(player->shoot_cooldown_sound > 0.0f) {
 				player->shoot_cooldown_sound = lerp(player->shoot_cooldown_sound, 0.0f, 4.0f * dt);
 			}
+			if(player->hit_cooldown > 0.0f) {
+				player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
+			}
 
 			player->shoot_cooldown -= dt;
 			if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
-				player->shoot_cooldown = 0.1f;
+				player->shoot_cooldown = 0.08f;
 				player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
+
+				for(i32 j = 0; j < 2; j++) {
+					if(j == i) continue;
+
+					GamePlayer* other = &game->players[j];
+					v2 direction = player_direction_vector(player);
+					f32 t = v2_dot(direction, v2_sub(other->position, player->position));
+					if(t < 0.5f) continue;
+
+					v2 closest = v2_add(player->position, v2_scale(direction, t));
+					if(v2_distance_squared(closest, other->position) < 1.66f) {
+						other->health -= 0.2f;
+						other->hit_cooldown = 1.0f;
+						if(other->health <= 0.0f) {
+							other->health = 1.0f;
+							other->position = v2_zero();
+							other->velocity = v2_zero();
+							other->hit_cooldown = 1.2f;
+						}
+					}
+				}
 			}
 
 			// Calculate ship rotational acceleration
@@ -274,43 +300,54 @@ GAME_UPDATE(game_update) {
 #if 1
 	f32 current_player_velocity;
 
+#define player_channels 5
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		f32 v_mag = v2_magnitude(player->velocity);
 		if(i == 0) current_player_velocity = v_mag;
 
-		GameSoundChannel* velocity_channel = &game->sound_channels[0 + i * 4];
+		GameSoundChannel* velocity_channel = &game->sound_channels[0 + i * player_channels];
 		velocity_channel->amplitude = 2000.0f * v_mag;
 		velocity_channel->frequency = 7.144123f * v_mag;
 		velocity_channel->shelf = 6000.0f;
 		velocity_channel->volatility = 0.002f * v_mag;
 
-		GameSoundChannel* momentum_channel = &game->sound_channels[1 + i * 4];
+		GameSoundChannel* momentum_channel = &game->sound_channels[1 + i * player_channels];
 		f32 m = player->momentum_cooldown_sound;
 		momentum_channel->amplitude = 2000.0f * m;
 		momentum_channel->frequency = 3.0f * m;
 		momentum_channel->shelf = 2000.0f;
 		momentum_channel->volatility = 0.01f * m;
 
-		GameSoundChannel* rotation_channel = &game->sound_channels[2 + i * 4];
+		GameSoundChannel* rotation_channel = &game->sound_channels[2 + i * player_channels];
 		f32 rot = player->rotation_velocity;
 		rotation_channel->amplitude = 2000.0f * rot;
 		rotation_channel->frequency = 10.0f * abs(rot);
 		rotation_channel->shelf = 6000.0f;
 		rotation_channel->volatility = 0.002f * rot;
 
-		GameSoundChannel* shoot_channel = &game->sound_channels[3 + i * 4];
+		GameSoundChannel* shoot_channel = &game->sound_channels[3 + i * player_channels];
 		f32 shoot = player->shoot_cooldown_sound;
-		rotation_channel->amplitude = 10000.0f * shoot * shoot;
-		rotation_channel->frequency = 1500.0f * shoot * shoot;
-		rotation_channel->shelf = 2000.0f + 2000.0f * shoot;
-		rotation_channel->volatility = 0.2f * shoot;
+		shoot_channel->amplitude = 10000.0f * shoot * shoot;
+		shoot_channel->frequency = 1500.0f * shoot * shoot;
+		shoot_channel->shelf = 2000.0f + 2000.0f * shoot;
+		shoot_channel->volatility = 0.2f * shoot;
 
-		for(i32 j = 0; j < 4; j++) {
-			// NOW: This is 1 player centrist horseshit!
+		GameSoundChannel* hit_channel = &game->sound_channels[4 + i * player_channels];
+		f32 hit = player->hit_cooldown;
+		hit_channel->amplitude = 2500.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f;
+		hit_channel->frequency = 300.0f * hit * hit;
+		hit_channel->shelf = 2000.0f + 2000.0f * hit;
+		hit_channel->volatility = 1.0f * hit;
+
+		for(i32 j = 0; j < player_channels; j++) {
 			GameCamera* camera = &game->cameras[0];
-			GameSoundChannel* ch = &game->sound_channels[j + i * 4];
-			f32 distance = 1.0f + v2_distance(game->players[0].position, player->position);
+			GameSoundChannel* ch = &game->sound_channels[j + i * player_channels];
+
+			f32 distance_1 = 1.0f + v2_distance(game->players[0].position, player->position);
+			f32 distance_2 = 1.0f + v2_distance(game->players[1].position, player->position);
+			f32 distance = fmin(distance_1, distance_2);
+
 			ch->amplitude /= distance * 1.0f;
 			ch->shelf += distance * 100.0f;
 			ch->volatility -= distance * 0.01f;
@@ -323,7 +360,7 @@ GAME_UPDATE(game_update) {
 #endif
 
 #if 1
-	GameSoundChannel* music_channel = &game->sound_channels[8];
+	GameSoundChannel* music_channel = &game->sound_channels[player_channels * 2];
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(game->frame / mod_half) % 16];
 	music_channel->amplitude = 4000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 2000.0f;
@@ -331,13 +368,13 @@ GAME_UPDATE(game_update) {
 	music_channel->shelf = 4000.0f;
 	music_channel->volatility = freq * 0.05f - (game->frame % mod_half) * freq * 0.1f;
 
-	GameSoundChannel* ch2 = &game->sound_channels[9];
+	GameSoundChannel* ch2 = &game->sound_channels[player_channels * 2 + 1];
 	ch2->amplitude = 5000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 1000.0f;
 	ch2->frequency = freq * 33.3f;
 	ch2->shelf = 4000.0f;
 	ch2->volatility = freq * 0.05f;
 
-	GameSoundChannel* ch4 = &game->sound_channels[10];
+	GameSoundChannel* ch4 = &game->sound_channels[player_channels * 2 + 2];
 	f32 fs4[16] = { 6, 0, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f4 = fs4[(game->frame / mod_phase) % 16];
 	ch4->amplitude = 100.0f + current_player_velocity * 100.0f - (game->frame % mod_phase) * 4000.0f;
@@ -347,7 +384,7 @@ GAME_UPDATE(game_update) {
 #endif
 
 #if 1
-	GameSoundChannel* ch3 = &game->sound_channels[11];
+	GameSoundChannel* ch3 = &game->sound_channels[player_channels * 2 + 3];
 	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
 	ch3->amplitude = 2000.0f * f3 - (game->frame % mod_phase) * 8000.0f;
@@ -363,7 +400,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = false;
+	bool splitscreen = true;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -401,9 +438,10 @@ GAME_UPDATE(game_update) {
 	}
 
 
-	i32 floor_instances = 256;
+	i32 floor_instances = 16;
 	for(i32 i = 0; i < floor_instances; i++) {
-		v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
+		//v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
+		v3 floor_pos = v3_new(-15.5f + (i % 4) * 8.0f, 0.0f, -15.5f + (i / 4) * 8.0f);
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}

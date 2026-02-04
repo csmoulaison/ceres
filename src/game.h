@@ -25,7 +25,9 @@ typedef struct {
 	f32 strafe_tilt;
 	v2 position;
 	v2 velocity;
+	f32 health;
 	f32 shoot_cooldown;
+	f32 hit_cooldown;
 
 	f32 momentum_cooldown_sound;
 	f32 shoot_cooldown_sound;

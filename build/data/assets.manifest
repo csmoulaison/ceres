@@ -1,5 +1,5 @@
 mesh SHIP data/meshes/ship.obj 
-mesh FLOOR data/meshes/floor.obj
+mesh FLOOR data/meshes/floor_flat.obj
 mesh CYLINDER data/meshes/cylinder.obj
 texture SHIP data/textures/ship.bmp
 texture FLOOR data/textures/metal.bmp
