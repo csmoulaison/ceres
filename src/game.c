@@ -345,7 +345,7 @@ GAME_UPDATE(game_update) {
 			f32 distance_1 = 1.0f + v2_distance(game->players[0].position, player->position);
 			f32 distance_2 = 1.0f + v2_distance(game->players[1].position, player->position);
 			f32 distance = fmin(distance_1, distance_2);
-			// NOW: For singleplayer case.
+			// TODO: This is for singleplayer case.
 			distance = distance_1;
 
 

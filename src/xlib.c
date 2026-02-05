@@ -1,12 +1,10 @@
 // NOW: < LIST: I think our order is as follows:
-// - Shooting, with a destroyed ship event.
+// - Level format and collisions
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
-// - Two player splitscreen
-// - Networking
 // - A game with lives and a game over screen, then restart
-// - Level format and collisions
 // - Fiedler frames
+// - Networking
 // 
 // - Controller input in here somewhere
 // - Menu and session flow
