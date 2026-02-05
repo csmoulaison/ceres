@@ -35,7 +35,7 @@ i32 alsa_write_samples_count(AlsaContext* alsa) {
 	snd_pcm_sframes_t delay;
 	ALSA_VERIFY(snd_pcm_avail_delay(alsa->pcm, &available, &delay));
 
-	// NOW: Make sure we have enough frames available.
+	// TODO: Make sure we have enough frames available.
 	return ALSA_LATENCY_SAMPLES - delay;
 }
 

@@ -14,6 +14,7 @@ typedef struct {
 	f32 amplitude;
 	f32 shelf;
 	f32 volatility;
+	f32 pan;
 
 	f32 actual_frequency;
 	f32 actual_amplitude;
@@ -59,12 +60,6 @@ typedef struct {
 	DebugCamera debug_camera;
 	bool debug_camera_mode;
 	bool debug_camera_moving;
-
-	// NOW: some number (16?) of audio channels which are all sine waves with an
-	// expressive set of controls that allow them to act like other sounds.
-	// 
-	// For instance, a square wave can be created by raising the amplitude and/or
-	// lowering the shelf.
 } GameState;
 
 typedef struct {

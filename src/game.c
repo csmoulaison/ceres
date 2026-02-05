@@ -52,6 +52,7 @@ GAME_INIT(game_init) {
 		channel->amplitude = 0.0f;
 		channel->shelf = 0.0f;
 		channel->volatility = 0.0f;
+		channel->pan = 0.0f;
 		channel->actual_frequency = 0.0f;
 		channel->actual_amplitude = 0.0f;
 	}
@@ -73,9 +74,6 @@ GAME_INIT(game_init) {
 }
 
 GAME_UPDATE(game_update) {
-	// NOW: temp
-	dt *= 0.5;
-	
 	GameState* game = &memory->state;
 
 	// Update input events
@@ -209,7 +207,7 @@ GAME_UPDATE(game_update) {
 			}
 
 			// Calculate ship rotational acceleration
-			f32 rotate_speed = 32.0f;
+			f32 rotate_speed = 24.0f;
 			if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
 				rot_acceleration += rotate_speed;
 			}
@@ -237,7 +235,7 @@ GAME_UPDATE(game_update) {
 		}
 
 		// Rotational damping
-		f32 rot_damping = 2.0f;
+		f32 rot_damping = 1.5f;
 		rot_acceleration += player->rotation_velocity * -rot_damping;
 
 		// Apply rotational acceleration
@@ -335,10 +333,10 @@ GAME_UPDATE(game_update) {
 
 		GameSoundChannel* hit_channel = &game->sound_channels[4 + i * player_channels];
 		f32 hit = player->hit_cooldown;
-		hit_channel->amplitude = 2500.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f;
-		hit_channel->frequency = 300.0f * hit * hit;
+		hit_channel->amplitude = 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f;
+		hit_channel->frequency = 200.0f * hit * hit;
 		hit_channel->shelf = 2000.0f + 2000.0f * hit;
-		hit_channel->volatility = 1.0f * hit;
+		hit_channel->volatility = 2.0f * hit * ((f32)rand() / RAND_MAX);
 
 		for(i32 j = 0; j < player_channels; j++) {
 			GameCamera* camera = &game->cameras[0];
@@ -347,15 +345,19 @@ GAME_UPDATE(game_update) {
 			f32 distance_1 = 1.0f + v2_distance(game->players[0].position, player->position);
 			f32 distance_2 = 1.0f + v2_distance(game->players[1].position, player->position);
 			f32 distance = fmin(distance_1, distance_2);
+			// NOW: For singleplayer case.
+			distance = distance_1;
+
 
 			ch->amplitude /= distance * 1.0f;
 			ch->shelf += distance * 100.0f;
 			ch->volatility -= distance * 0.01f;
+			ch->pan = (game->players[0].position.y - player->position.y) * 0.2f;
 			if(ch->volatility < 0.0f) ch->volatility = 0.0f;
 		}
 	}
 
-	i32 mod_phase = 12;
+	i32 mod_phase = 20;
 	i32 mod_half = mod_phase / 2;
 #endif
 
@@ -375,11 +377,11 @@ GAME_UPDATE(game_update) {
 	ch2->volatility = freq * 0.05f;
 
 	GameSoundChannel* ch4 = &game->sound_channels[player_channels * 2 + 2];
-	f32 fs4[16] = { 6, 0, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
+	f32 fs4[16] = { 6, 1, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f4 = fs4[(game->frame / mod_phase) % 16];
-	ch4->amplitude = 100.0f + current_player_velocity * 100.0f - (game->frame % mod_phase) * 4000.0f;
+	ch4->amplitude = 100.0f + current_player_velocity * 400.0f - (game->frame % mod_phase) * 4000.0f;
 	ch4->frequency = f4 * ((f32)rand() / RAND_MAX) * 400.0f;
-	ch4->shelf = 5000.0f + current_player_velocity * 100.0f;
+	ch4->shelf = 4000.0f + current_player_velocity * 50.0f;
 	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
 #endif
 
@@ -400,7 +402,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = true;
+	bool splitscreen = false;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -513,6 +515,7 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 
 	// NOW: Figure out a good max amplitude for limiting
 	f32 global_shelf = 30000.0f;
+	f32 global_attenuation = 0.62f;
 
 	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
 		GameSoundChannel* channel = &game->sound_channels[i];
@@ -527,7 +530,7 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 			GameSoundChannel* channel = &game->sound_channels[j];
 			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
 			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
-			// NOW: Add panning and shelf. Remove hardcoded sample rate, obviously.
+			// NOW: Remove hardcoded sample rate.
 			channel->phase += 2.0f * M_PI * channel->actual_frequency / 48000;
 			if(channel->phase > 2.0f * M_PI) {
 				channel->phase -= 2.0f * M_PI;
@@ -536,13 +539,24 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 			if(sample > channel->shelf) sample = channel->shelf;
 			if(sample < -channel->shelf) sample = -channel->shelf;
 			sample += sample * ((f32)rand() / RAND_MAX) * channel->volatility;
-			buffer[i * 2] += sample;
-			buffer[i * 2 + 1] += sample;
+
+			channel->pan = clamp(channel->pan, -1.0f, 1.0f);
+			f32 actual_pan = (channel->pan + 1.0f) / 2.0f;
+			assert(actual_pan >= 0.0f && actual_pan <= 1.0f);
+			buffer[i * 2] += sample * global_attenuation * (1.0f - actual_pan);
+			buffer[i * 2 + 1] += sample * global_attenuation * actual_pan;
 		}
 		if(buffer[i * 2] > global_shelf) buffer[i * 2] = global_shelf;
 		if(buffer[i * 2 + 1] > global_shelf) buffer[i * 2 + 1] = global_shelf;
 		if(buffer[i * 2] < -global_shelf) buffer[i * 2] = -global_shelf;
 		if(buffer[i * 2 + 1] < -global_shelf) buffer[i * 2 + 1] = -global_shelf;
+
+		if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
+			printf("Global shelf reached (up)\n");
+		}
+		if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
+			printf("Global shelf reached (up)\n");
+		}
 	}
 
 }
