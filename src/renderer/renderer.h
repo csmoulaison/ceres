@@ -7,12 +7,12 @@
 
 typedef enum {
 	RENDER_UBO_CAMERA = 0,
-	RENDER_UBO_MODEL,
 	NUM_RENDER_UBOS
 } RenderUboType;
 
 typedef enum {
 	RENDER_SSBO_TEXT = 0,
+	RENDER_SSBO_MODEL,
 	NUM_RENDER_SSBOS
 } RenderSsboType;
 

@@ -402,7 +402,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = false;
+	bool splitscreen = true;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -440,10 +440,10 @@ GAME_UPDATE(game_update) {
 	}
 
 
-	i32 floor_instances = 16;
+	i32 floor_length = 64;
+	i32 floor_instances = floor_length * floor_length;
 	for(i32 i = 0; i < floor_instances; i++) {
-		//v3 floor_pos = v3_new(-15.5f + (i % 32), 0.0f, -15.5f + (i / 32));
-		v3 floor_pos = v3_new(-15.5f + (i % 4) * 8.0f, 0.0f, -15.5f + (i / 4) * 8.0f);
+		v3 floor_pos = v3_new(-32.5f + (i % floor_length), 0.0f, -32.5f + (i / floor_length));
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
 		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
 	}

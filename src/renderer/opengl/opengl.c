@@ -258,7 +258,7 @@ void gl_update(Renderer* renderer, Platform* platform) {
 				glBindVertexArray(mesh->vao);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
 				// TODO: take out magic number of 6. I believe its the number of vertex attributes * lens
-				glDrawArraysInstanced(GL_TRIANGLES, 0, 6, data->count);
+				glDrawArraysInstanced(GL_TRIANGLES, 0, mesh->vertices_len, data->count);
 				glDisable(GL_BLEND);
 			} break;
 			default: break;

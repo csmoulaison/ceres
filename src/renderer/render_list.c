@@ -20,7 +20,16 @@ changes made to the render layer.
 #include "font.h"
 
 void render_list_init(RenderList* list) {
-	*list = (RenderList){};
+	list->models_len = 0;
+	for(i32 i = 0; i < ASSET_NUM_MESHES; i++) {
+		list->model_lens_by_type[i] = 0;
+	}
+	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
+		list->glyph_list_lens[i] = 0;
+		list->glyph_list_textures[i] = 0;
+	}
+	list->cameras_len = 0;
+	list->lasers_len = 0;
 }
 
 void render_list_set_clear_color(RenderList* list, v3 clear_color) {
@@ -28,6 +37,7 @@ void render_list_set_clear_color(RenderList* list, v3 clear_color) {
 }
 
 void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_rect) {
+	assert(list->cameras_len < RENDER_LIST_MAX_CAMERAS);
 	RenderListCamera* camera = &list->cameras[list->cameras_len];
 	camera->position = position;
 	camera->target = target;
@@ -36,15 +46,19 @@ void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_
 }
 
 void render_list_draw_model(RenderList* list, i32 model_id, i32 texture, v3 position, v3 orientation) {
+	assert(list->models_len < RENDER_LIST_MAX_MODELS);
 	RenderListModel* model = &list->models[list->models_len];
 	model->id = model_id;
 	model->texture = texture;
 	model->position = position;
 	model->orientation = orientation;
 	list->models_len++;
+	list->model_lens_by_type[model_id]++;
 }
 
+// NOW: Laser is just a regular model like all the others.
 void render_list_draw_laser(RenderList* list, v3 start, v3 end, f32 stroke) {
+	assert(list->lasers_len < RENDER_LIST_MAX_LASERS);
 	RenderListLaser* laser = &list->lasers[list->lasers_len];
 	laser->start = start;
 	laser->end = end;
@@ -53,6 +67,8 @@ void render_list_draw_laser(RenderList* list, v3 start, v3 end, f32 stroke) {
 }
 
 void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v2 screen_anchor, v4 color) {
+	assert(list->glyph_list_lens[font_handle] < RENDER_LIST_MAX_GLYPHS_PER_FONT);
+
 	FontData* font = &fonts[font_handle];
 	FontGlyph* font_glyph = &font->glyphs[c];
 	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
