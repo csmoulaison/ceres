@@ -29,6 +29,7 @@ static inline f32 clamp(f32 v, f32 min, f32 max);
 static inline f32 move_to_zero(f32 value, f32 amount);
 // Vector2
 static inline v2 v2_new(f32 x, f32 y);
+static inline v2 v2_identity();
 static inline v2 v2_zero();
 static inline void v2_copy(f32* dst, v2 v);
 static inline v2 v2_normalize(v2 v);
@@ -40,6 +41,7 @@ static inline f32 v2_distance(v2 a, v2 b);
 static inline f32 v2_dot(v2 a, v2 b);
 // Vector3
 static inline v3 v3_new(f32 x, f32 y, f32 z);
+static inline v3 v3_identity();
 static inline v3 v3_zero();
 static inline void v3_copy(f32* dst, v3 v);
 static inline v3 v3_add(v3 a, v3 b);
@@ -54,6 +56,7 @@ static inline f32 v3_dot(v3 a, v3 b);
 // Vector4
 static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w);
 static inline v4 v4_zero();
+static inline v4 v4_identity();
 static inline void v4_copy(f32* dst, v4 v);
 // Radians
 static inline f32 radians_from_degrees(f32 degrees);
@@ -95,6 +98,10 @@ static inline f32 move_to_zero(f32 value, f32 amount) {
 
 static inline v2 v2_new(f32 x, f32 y) {
 	return (v2){ x, y };
+}
+
+static inline v2 v2_identity() {
+	return v2_new(1.0f, 1.0f);
 }
 
 static inline v2 v2_zero() {
@@ -147,6 +154,10 @@ static inline f32 v2_dot(v2 a, v2 b) {
 
 static inline v3 v3_new(f32 x, f32 y, f32 z) {
 	return (v3){x, y, z};
+}
+
+static inline v3 v3_identity() {
+	return v3_new(1.0f, 1.0f, 1.0f);
 }
 
 static inline v3 v3_zero() {
@@ -212,6 +223,10 @@ static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w) {
 
 static inline v4 v4_zero() {
 	return v4_new(0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+static inline v4 v4_identity() {
+	return v4_new(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 static inline void v4_copy(f32* dst, v4 v) {

@@ -399,6 +399,9 @@ GAME_UPDATE(game_update) {
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
+	u8 ship_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 2);
+	u8 laser_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
+
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
@@ -408,7 +411,7 @@ GAME_UPDATE(game_update) {
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		f32 tilt = player->strafe_tilt + clamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
-		render_list_draw_model(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, pos, rot);
+		render_list_draw_model(list, ship_instance_type, pos, rot);
 
 		if(!game->debug_camera_mode && (splitscreen || i == 0)) {
 			GameCamera* camera = &game->cameras[i];
@@ -435,17 +438,18 @@ GAME_UPDATE(game_update) {
 		v2 laser_pos_1 = v2_add(v2_add(player->position, v2_scale(side, 0.48f)), v2_scale(direction, 0.30f));
 		v2 laser_pos_2 = v2_add(v2_add(player->position, v2_scale(side, -0.48f)), v2_scale(direction, 0.30f));
 
-		render_list_draw_laser(list, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
-		render_list_draw_laser(list, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
+		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
+		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
 	}
 
 
 	i32 floor_length = 64;
 	i32 floor_instances = floor_length * floor_length;
+	u8 floor_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(-32.5f + (i % floor_length), 0.0f, -32.5f + (i / floor_length));
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
-		render_list_draw_model(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos, floor_rot);
+		render_list_draw_model(list, floor_instance_type, floor_pos, floor_rot);
 	}
 
 	Arena ui_arena;

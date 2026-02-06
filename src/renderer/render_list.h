@@ -21,10 +21,13 @@ changes made to the render layer.
 
 #include "renderer/renderer.h"
 
-#define RENDER_LIST_MAX_MODELS 8196
+#define RENDER_LIST_MAX_INSTANCE_TYPES 32
+#define RENDER_LIST_MAX_TRANSFORMS 8196
 #define RENDER_LIST_MAX_LASERS 32
 #define RENDER_LIST_MAX_GLYPHS_PER_FONT 512
 #define RENDER_LIST_MAX_CAMERAS 2
+
+typedef u8 RenderListInstanceArray;
 
 typedef struct {
 	v3 position;
@@ -33,17 +36,15 @@ typedef struct {
 } RenderListCamera;
 
 typedef struct {
-	v3 position;
-	v3 orientation;
-	i8 id;
-	i8 texture;
-} RenderListModel;
+	f32 transform[16];
+} RenderListTransform;
 
 typedef struct {
-	v3 start;
-	v3 end;
-	f32 stroke;
-} RenderListLaser;
+	u8 model;
+	u8 texture;
+	u16 instances_len;
+	u16 transform_index_offset;
+} RenderListInstanceType;
 
 typedef struct {
 	v2 screen_anchor;
@@ -59,14 +60,12 @@ typedef struct {
 	RenderListCamera cameras[RENDER_LIST_MAX_CAMERAS];
 	u32 cameras_len;
 
-	RenderListModel models[RENDER_LIST_MAX_MODELS];
-	u32 models_len;
-	u32 model_lens_by_type[ASSET_NUM_MESHES];
+	RenderListTransform transforms[RENDER_LIST_MAX_TRANSFORMS];
+	u32 transforms_len;
+	u32 transform_index_offset;
 
-	// TODO: The laser handling stuff should be done on the game end, adding scale
-	// as an option to regular instance rendering.
-	RenderListLaser lasers[RENDER_LIST_MAX_LASERS];
-	u32 lasers_len;
+	RenderListInstanceType instance_types[RENDER_LIST_MAX_INSTANCE_TYPES];
+	u32 instance_types_len;
 
 	RenderListGlyph glyph_lists[ASSET_NUM_FONTS][RENDER_LIST_MAX_GLYPHS_PER_FONT];
 	u32 glyph_list_lens[ASSET_NUM_FONTS];

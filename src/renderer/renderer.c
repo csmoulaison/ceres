@@ -183,7 +183,7 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 
 		switch(i) {
 			case RENDER_SSBO_MODEL: {
-				ssbo->size = sizeof(RenderModelTransform) * RENDER_LIST_MAX_MODELS;
+				ssbo->size = sizeof(RenderListTransform) * RENDER_LIST_MAX_TRANSFORMS;
 				ssbo->binding = 0;
 			} break;
 			case RENDER_SSBO_TEXT: {
@@ -250,6 +250,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
 
 	// Model ssbos
+	/*
 	RenderModelTransform* model_ssbos = (RenderModelTransform*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelTransform) * list->models_len);
 
 	u32 model_ssbo_offsets_by_type[ASSET_NUM_MESHES];
@@ -275,29 +276,8 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			rotation);
 		m4_mul(ssbo->transform, rotation, ssbo->transform);
 	}
-	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)model_ssbos);
-
-	// Laser ubo
-	RenderModelTransform* laser_ubos = (RenderModelTransform*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelTransform) * list->lasers_len);
-	for(i32 i = 0; i < list->lasers_len; i++) {
-		RenderListLaser* laser = &list->lasers[i];
-		RenderModelTransform* ubo = &laser_ubos[i];
-
-		v3 line_delta = v3_sub(laser->end, laser->start);
-		m4_scale(v3_new(v3_magnitude(line_delta), laser->stroke, laser->stroke), ubo->transform);
-
-		f32 rotation[16];
-		v3 line_norm = v3_normalize(line_delta);
-		//v2 2d_delta = v2_new(line_delta.x, line_delta.z);
-		m4_rotation(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f, rotation);
-
-		f32 translation[16];
-		m4_translation(laser->start, translation);
-
-		m4_mul(rotation, ubo->transform, ubo->transform);
-		m4_mul(translation, ubo->transform, ubo->transform);
-	}
-	u8 laser_host_buffer = render_push_host_buffer(renderer, (u8*)laser_ubos);
+	*/
+	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)list->transforms);
 
 	// Text ssbo
 	RenderGlyph* text_ssbo = (RenderGlyph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
@@ -350,19 +330,8 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		RenderCommandUseSsbo use_ssbo_model = { .ssbo = RENDER_SSBO_MODEL };
 		render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_model, sizeof(use_ssbo_model));
 
+		/*
 		for(i32 i = 0; i < ASSET_NUM_MESHES; i++) {
-			/*
-			RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = model_host_buffer, .host_buffer_offset = i * 64 };
-			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
-
-			RenderListModel* model = &list->models[i];
-			RenderCommandUseTexture use_texture = { .texture = model->texture };
-			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
-
-			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[model->id] };
-			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
-			*/
-
 			if(list->model_lens_by_type[i] < 1) break;
 
 			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
@@ -387,26 +356,30 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			RenderCommandDrawMeshInstanced draw_mesh_instanced_model = { .mesh = renderer->model_to_mesh_map[i], .count = list->model_lens_by_type[i] };
 			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_model, sizeof(draw_mesh_instanced_model));
 		}
-
-		// NOW: Get lasers working as same as other instanced stuff. Implement scaling
-		// as a regular part of model transforms. The calculations for doing so are to
-		// be derived on the game side.
-		 
-		/* Draw lasers
-		RenderCommandUseProgram use_program_laser = { .program = ASSET_RENDER_PROGRAM_LASER };
-		render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_laser, sizeof(use_program_laser));
-
-		//RenderCommandUseUbo use_ubo_instance = { .ubo = RENDER_UBO_MODEL };
-		//render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
-
-		for(i32 i = 0; i < list->lasers_len; i++) {
-			RenderCommandBufferUboData buffer_ubo_data_laser = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = laser_host_buffer, .host_buffer_offset = i * 64 };
-			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_laser, sizeof(buffer_ubo_data_laser));
-
-			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[ASSET_MESH_CYLINDER] };
-			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH, &draw_mesh, sizeof(draw_mesh));
-		}
 		*/
+
+		for(i32 i = 0; i < list->instance_types_len; i++) {
+			RenderListInstanceType* type = &list->instance_types[i];
+			assert(type->instances_len > 0);
+
+			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
+				.ssbo = RENDER_SSBO_MODEL, 
+				.size = sizeof(RenderListTransform) * type->instances_len, 
+				.host_buffer_index = model_host_buffer, 
+				.host_buffer_offset = sizeof(RenderListTransform) * type->transform_index_offset
+			};
+			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_model, sizeof(buffer_ssbo_data_model));
+
+			// TODO: Might be nice to make the transform lists have a 1:1 with the asset
+			// handles again and use texture arrays to switch between different textures.
+			// This would just go back into the RenderListTransform and be passed to the
+			// ssbo.
+			RenderCommandUseTexture use_texture = { .texture = type->texture };
+			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
+
+			RenderCommandDrawMeshInstanced draw_mesh_instanced_model = { .mesh = renderer->model_to_mesh_map[type->model], .count = type->instances_len };
+			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_model, sizeof(draw_mesh_instanced_model));
+		}
 	}
 
 	// Draw text
