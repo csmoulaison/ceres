@@ -57,6 +57,8 @@ typedef struct {
 	u32 frame;
 	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
 
+	u8 level[64 * 64];
+
 	DebugCamera debug_camera;
 	bool debug_camera_mode;
 	bool debug_camera_moving;

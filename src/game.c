@@ -4,6 +4,7 @@
 #include "game.h"
 #include "renderer/render_list.c"
 #include "ui_text.c"
+#include "level.c"
 
 v2 player_direction_vector(GamePlayer* player) {
 	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
@@ -71,6 +72,15 @@ GAME_INIT(game_init) {
 		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
 	}
 
+	for(i32 i = 0; i < 64 * 64; i++) {
+		i32 x = i % 64;
+		i32 y = i / 64;
+		if(x < 12 || x > 51 || y < 12 || y > 51) {
+			game->level[i] = 1 + rand() / (RAND_MAX / 3);
+		} else {
+			game->level[i] = level[i];
+		}
+	}
 }
 
 GAME_UPDATE(game_update) {
@@ -198,7 +208,9 @@ GAME_UPDATE(game_update) {
 						other->hit_cooldown = 1.0f;
 						if(other->health <= 0.0f) {
 							other->health = 1.0f;
-							other->position = v2_zero();
+							f32 pos = -18.0f;
+							if(i == 0) pos = -pos;
+							other->position = v2_new(-pos, pos);
 							other->velocity = v2_zero();
 							other->hit_cooldown = 1.2f;
 						}
@@ -405,7 +417,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = true;
+	bool splitscreen = false;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -450,6 +462,15 @@ GAME_UPDATE(game_update) {
 		v3 floor_pos = v3_new(-32.5f + (i % floor_length), 0.0f, -32.5f + (i / floor_length));
 		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
 		render_list_draw_model(list, floor_instance_type, floor_pos, floor_rot);
+	}
+
+
+	u8 cube_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 1024);
+	for(i32 i = 0; i < floor_instances; i++) {
+		for(i32 j = 1; j <= game->level[i]; j++) {
+			v3 floor_pos = v3_new(-32.0f + (i % floor_length), (f32)j - 1.0f, -32.5f + (i / floor_length));
+			render_list_draw_model(list, cube_instance_type, floor_pos, v3_zero());
+		}
 	}
 
 	Arena ui_arena;
@@ -501,12 +522,12 @@ GAME_UPDATE(game_update) {
 	v2 title_position = v2_new(32.0f, -32.0f);
 	v2 title_inner_anchor = v2_new(0.0f, 1.0f);
 	v2 title_screen_anchor = v2_new(0.0f, 1.0f);
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Sector Seven or some shit",
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Level editing",
 		title_position, title_inner_anchor, title_screen_anchor, color, &ui_arena);
 
 	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
 	title_position.y -= 64.0f;
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "A game about love, life, and loss.",
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: collision handling.",
 		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_arena);
 
 	arena_destroy(&ui_arena);

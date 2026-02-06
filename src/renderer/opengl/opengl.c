@@ -147,11 +147,13 @@ void gl_init(Renderer* renderer, RenderBackendInitData* init, Arena* render_aren
 			printf("Channel count %u in texture data not supported.\n", texture_data->channel_count);
 			panic();
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, format, texture_data->width, texture_data->height, 0, format, GL_UNSIGNED_BYTE, texture_data->pixel_data);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, format, texture_data->width, texture_data->height, 0, format, GL_UNSIGNED_BYTE, texture_data->pixel_data);
+		glGenerateMipmap(GL_TEXTURE_2D);
 
 		texture_data = texture_data->next;
 		texture_index++;

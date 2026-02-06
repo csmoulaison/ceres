@@ -12,7 +12,7 @@ void main()
 {
 	vec3 light_pos = vec3(200.0f, 100.5f, 400.0f);
 	vec3 light_color = vec3(1.0f, 1.0f, 1.0f);
-	vec3 ambient = vec3(0.1f, 0.1f, 0.1f);
+	vec3 ambient = vec3(0.2f, 0.2f, 0.2f);
 
 	vec3 norm = normalize(normal);
 	vec3 light_direction = normalize(light_pos - frag_pos);
@@ -20,7 +20,8 @@ void main()
 	vec3 diffuse = diff * light_color;
 
 	vec3 result = ambient + diffuse;
-    frag_color = vec4(result, 1.0f) * texture(tex, tex_uv) + vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
+    frag_color = vec4(result, 1.0f) * texture(tex, tex_uv);
+    // vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
     //frag_color = vec4(result, 1.0f);
 	//frag_color = vec4(1.0f);
     //frag_color = texture(tex, tex_uv);

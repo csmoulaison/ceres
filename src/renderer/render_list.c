@@ -55,7 +55,7 @@ u8 render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i3
 	RenderListInstanceType* type = &list->instance_types[list->instance_types_len];
 	list->instance_types_len++;
 	type->model = model;
-	type->texture = model;
+	type->texture = texture;
 	type->transform_index_offset = list->transform_index_offset;
 	list->transform_index_offset += count;
 	return list->instance_types_len - 1;
