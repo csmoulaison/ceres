@@ -236,15 +236,15 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		RenderListCamera* cam = &list->cameras[i];
 		RenderCameraUbo* ubo = &camera_ubos[i];
 		f32 perspective[16];
-		mat4_perspective(
+		m4_perspective(
 			radians_from_degrees(75.0f), 
 			(cam->screen_rect.z * (f32)platform->window_width) / (cam->screen_rect.w * (f32)platform->window_height),
 			100.00f, 0.05f, perspective);
 		f32 view[16];
-		mat4_identity(view);
+		m4_identity(view);
 		v3 up = v3_new(0.0f, 1.0f, 0.0f);
-		mat4_lookat(cam->position, cam->target, up, view);
-		mat4_mul(perspective, view, ubo->projection);
+		m4_lookat(cam->position, cam->target, up, view);
+		m4_mul(perspective, view, ubo->projection);
 		ubo->position = cam->position;
 	}
 	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
@@ -266,14 +266,14 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		RenderModelTransform* ssbo = &model_ssbos[model_ssbo_offsets_by_type[model->id] + model_ssbo_lens_by_type[model->id]];
 		model_ssbo_lens_by_type[model->id]++;
 
-		mat4_translation(model->position, ssbo->transform);
+		m4_translation(model->position, ssbo->transform);
 		f32 rotation[16];
-		mat4_rotation(
+		m4_rotation(
 			model->orientation.x, 
 			model->orientation.y, 
 			model->orientation.z, 
 			rotation);
-		mat4_mul(ssbo->transform, rotation, ssbo->transform);
+		m4_mul(ssbo->transform, rotation, ssbo->transform);
 	}
 	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)model_ssbos);
 
@@ -284,18 +284,18 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		RenderModelTransform* ubo = &laser_ubos[i];
 
 		v3 line_delta = v3_sub(laser->end, laser->start);
-		mat4_scale(v3_new(v3_magnitude(line_delta), laser->stroke, laser->stroke), ubo->transform);
+		m4_scale(v3_new(v3_magnitude(line_delta), laser->stroke, laser->stroke), ubo->transform);
 
 		f32 rotation[16];
 		v3 line_norm = v3_normalize(line_delta);
 		//v2 2d_delta = v2_new(line_delta.x, line_delta.z);
-		mat4_rotation(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f, rotation);
+		m4_rotation(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f, rotation);
 
 		f32 translation[16];
-		mat4_translation(laser->start, translation);
+		m4_translation(laser->start, translation);
 
-		mat4_mul(rotation, ubo->transform, ubo->transform);
-		mat4_mul(translation, ubo->transform, ubo->transform);
+		m4_mul(rotation, ubo->transform, ubo->transform);
+		m4_mul(translation, ubo->transform, ubo->transform);
 	}
 	u8 laser_host_buffer = render_push_host_buffer(renderer, (u8*)laser_ubos);
 

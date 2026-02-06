@@ -61,14 +61,14 @@ static inline f32 radians_from_degrees(f32 degrees);
 // These are all column major.
 // 
 // TODO: Make res (dst) the first parameter rather than last.
-void mat4_identity(f32* res);
-void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
-void mat4_lookat(v3 origin, v3 target, v3 up, f32* res);
-void mat4_mul(f32* a, f32* b, f32* res);
-void mat4_translation(v3 v, f32* res);
-void mat4_scale(v3 v, f32* res);
-void mat4_rotation(f32 x, f32 y, f32 z, f32* res);
-void mat4_from_quat(f32* q, f32* res);
+void m4_identity(f32* res);
+void m4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
+void m4_lookat(v3 origin, v3 target, v3 up, f32* res);
+void m4_mul(f32* a, f32* b, f32* res);
+void m4_translation(v3 v, f32* res);
+void m4_scale(v3 v, f32* res);
+void m4_rotation(f32 x, f32 y, f32 z, f32* res);
+void m4_from_quat(f32* q, f32* res);
 // Quaternions
 void quat_mult(f32* r, f32* s, f32* res);
 void quat_inverse(f32* q, f32* res);
@@ -225,7 +225,7 @@ static inline f32 radians_from_degrees(f32 degrees) {
 	return degrees * 0.0174533;
 }
 
-void mat4_identity(f32* res) {
+void m4_identity(f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -235,7 +235,7 @@ void mat4_identity(f32* res) {
 	res[15] = 1.0f;
 }
 
-void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
+void m4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
 	assert(zfar != znear);
 
 	f32 rad = fovy;
@@ -251,7 +251,7 @@ void mat4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res) {
 	res[14] = - (2.0f * zfar * znear) / (zfar - znear);
 }
 
-void mat4_lookat(v3 origin, v3 target, v3 up, f32* res) {
+void m4_lookat(v3 origin, v3 target, v3 up, f32* res) {
 	v3 dir = v3_sub(target, origin);
 	v3 f = v3_normalize(dir);
 	v3 u = v3_normalize(up); 
@@ -273,7 +273,7 @@ void mat4_lookat(v3 origin, v3 target, v3 up, f32* res) {
 	res[14] = v3_dot(f, origin);
 }
 
-void mat4_mul(f32* a, f32* b, f32* res) {
+void m4_mul(f32* a, f32* b, f32* res) {
 	// TODO: just do the algorithm
 	f32 a00 = a[0];
 	f32 a01 = a[1];
@@ -327,7 +327,7 @@ void mat4_mul(f32* a, f32* b, f32* res) {
 	res[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
 }
 
-void mat4_translation(v3 v, f32* res) {
+void m4_translation(v3 v, f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -341,7 +341,7 @@ void mat4_translation(v3 v, f32* res) {
 	res[14] = v.z;
 }
 
-void mat4_scale(v3 v, f32* res) {
+void m4_scale(v3 v, f32* res) {
 	for(i8 i = 0; i < 16; i++) {
 		res[i] = 0.0f;
 	}
@@ -351,7 +351,7 @@ void mat4_scale(v3 v, f32* res) {
 	res[15] = 1.0f;
 }
 
-void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
+void m4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	f32 cosx = cos(x);
 	f32 cosy = cos(y);
 	f32 cosz = cos(z);
@@ -377,7 +377,7 @@ void mat4_rotation(f32 x, f32 y, f32 z, f32* res) {
     res[15] = 1;
 }
 
-void mat4_from_quat(f32* q, f32* res) {
+void m4_from_quat(f32* q, f32* res) {
 	res[0] = q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
 	res[1] = 2.0f * q[1] * q[2] + 2.0f * q[0] * q[3];
 	res[2] = 2.0f * q[1] * q[3] - 2.0f * q[0] * q[2];
