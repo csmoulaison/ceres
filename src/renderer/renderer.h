@@ -4,6 +4,7 @@
 #include "renderer/primitive_vbo_data.h"
 
 #define RENDER_MAX_VERTEX_ATTRIBUTES 16
+#define RENDER_MAX_HOST_BUFFERS 16
 
 typedef enum {
 	RENDER_UBO_CAMERA = 0,
@@ -15,19 +16,6 @@ typedef enum {
 	RENDER_SSBO_MODEL,
 	NUM_RENDER_SSBOS
 } RenderSsboType;
-
-typedef enum {
-	RENDER_HOST_BUFFER_CAMERA = 0,
-	RENDER_HOST_BUFFER_MODEL,
-	RENDER_HOST_BUFFER_LASER,
-	RENDER_HOST_BUFFER_TEXT,
-	NUM_RENDER_HOST_BUFFERS
-} RenderHostBufferType;
-
-// Renderer (not backend) side references to data
-typedef struct {
-	u8* data;
-} RenderHostBuffer;
 
 typedef enum {
 	GRAPHICS_API_OPENGL
@@ -123,7 +111,9 @@ typedef struct {
 
 	u32 model_to_mesh_map[ASSET_NUM_MESHES];
 	u32 primitive_to_mesh_map[NUM_RENDER_PRIMITIVES];
-	RenderHostBuffer host_buffers[NUM_RENDER_HOST_BUFFERS];
+
+	u8* host_buffers[RENDER_MAX_HOST_BUFFERS];
+	u8 host_buffers_len;
 } Renderer;
 
 // Initialization data which is only used during renderer startup. Right now

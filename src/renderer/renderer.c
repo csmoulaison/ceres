@@ -34,6 +34,14 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 	}
 }
 
+i32 render_push_host_buffer(Renderer* renderer, u8* data) {
+	strict_assert(RENDER_MAX_HOST_BUFFERS < 255);
+	assert(renderer->host_buffers_len < RENDER_MAX_HOST_BUFFERS);
+	renderer->host_buffers[renderer->host_buffers_len] = (u8*)data;
+	renderer->host_buffers_len++;
+	return renderer->host_buffers_len - 1;
+}
+
 void render_push_mesh_init_data(
 	RenderMeshInitData* mesh, 
 	f32* vertex_data, 
@@ -220,6 +228,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 	// =========================
 	// PREPARE HOST DATA BUFFERS
 	// =========================
+	renderer->host_buffers_len = 0;
 
 	// Camera ubo
 	RenderCameraUbo* camera_ubos = (RenderCameraUbo*)arena_alloc(&renderer->frame_arena, sizeof(RenderCameraUbo) * list->cameras_len);
@@ -238,7 +247,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		mat4_mul(perspective, view, ubo->projection);
 		ubo->position = cam->position;
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_CAMERA].data = (u8*)camera_ubos;
+	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
 
 	// Model ssbos
 	RenderModelTransform* model_ssbos = (RenderModelTransform*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelTransform) * list->models_len);
@@ -266,7 +275,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			rotation);
 		mat4_mul(ssbo->transform, rotation, ssbo->transform);
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_MODEL].data = (u8*)model_ssbos;
+	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)model_ssbos);
 
 	// Laser ubo
 	RenderModelTransform* laser_ubos = (RenderModelTransform*)arena_alloc(&renderer->frame_arena, sizeof(RenderModelTransform) * list->lasers_len);
@@ -288,7 +297,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		mat4_mul(rotation, ubo->transform, ubo->transform);
 		mat4_mul(translation, ubo->transform, ubo->transform);
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_LASER].data = (u8*)laser_ubos;
+	u8 laser_host_buffer = render_push_host_buffer(renderer, (u8*)laser_ubos);
 
 	// Text ssbo
 	RenderGlyph* text_ssbo = (RenderGlyph*)arena_alloc(&renderer->frame_arena, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
@@ -306,7 +315,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			render_glyph->color = list_glyph->color;
 		}
 	}
-	renderer->host_buffers[RENDER_HOST_BUFFER_TEXT].data = (u8*)text_ssbo;
+	u8 text_host_buffer = render_push_host_buffer(renderer, (u8*)text_ssbo);
 
 	// =====================
 	// GENERATE RENDER GRAPH
@@ -331,7 +340,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		RenderCommandSetViewport set_viewport = { .rect = viewport_rect };
 		render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport, sizeof(set_viewport));
 		
-		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = RENDER_HOST_BUFFER_CAMERA, .host_buffer_offset = sizeof(RenderCameraUbo) * i };
+		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = camera_host_buffer, .host_buffer_offset = sizeof(RenderCameraUbo) * i };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_camera, sizeof(buffer_ubo_data_camera));
 
 		// Draw models
@@ -343,7 +352,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 
 		for(i32 i = 0; i < ASSET_NUM_MESHES; i++) {
 			/*
-			RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = RENDER_HOST_BUFFER_MODEL, .host_buffer_offset = i * 64 };
+			RenderCommandBufferUboData buffer_ubo_data_instance = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = model_host_buffer, .host_buffer_offset = i * 64 };
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_instance, sizeof(buffer_ubo_data_instance));
 
 			RenderListModel* model = &list->models[i];
@@ -359,7 +368,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
 				.ssbo = RENDER_SSBO_MODEL, 
 				.size = sizeof(RenderModelTransform) * list->model_lens_by_type[i], 
-				.host_buffer_index = RENDER_HOST_BUFFER_MODEL, 
+				.host_buffer_index = model_host_buffer, 
 				.host_buffer_offset = sizeof(RenderModelTransform) * model_ssbo_offsets_by_type[i]
 			};
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_model, sizeof(buffer_ssbo_data_model));
@@ -369,7 +378,9 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			//
 			// Avoiding this would require us to do something like bindless rendering or
 			// a texture array, which would mean the textures are laid out next to each
-			// other in memory on a per mesh basis. 
+			// other in memory on a per mesh basis.
+			//
+			// For now, we can also just have them be a part of the render list.
 			RenderCommandUseTexture use_texture = { .texture = i };
 			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, sizeof(use_texture));
 
@@ -389,7 +400,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 		//render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_instance, sizeof(use_ubo_instance));
 
 		for(i32 i = 0; i < list->lasers_len; i++) {
-			RenderCommandBufferUboData buffer_ubo_data_laser = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = RENDER_HOST_BUFFER_LASER, .host_buffer_offset = i * 64 };
+			RenderCommandBufferUboData buffer_ubo_data_laser = { .ubo = RENDER_UBO_MODEL, .host_buffer_index = laser_host_buffer, .host_buffer_offset = i * 64 };
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_laser, sizeof(buffer_ubo_data_laser));
 
 			RenderCommandDrawMesh draw_mesh = { .mesh = renderer->model_to_mesh_map[ASSET_MESH_CYLINDER] };
@@ -414,7 +425,7 @@ void render_prepare_frame_data(Renderer* renderer, Platform* platform, RenderLis
 			RenderCommandBufferSsboData buffer_ssbo_data_text = { 
 				.ssbo = RENDER_SSBO_TEXT, 
 				.size = sizeof(RenderGlyph) * list->glyph_list_lens[i], 
-				.host_buffer_index = RENDER_HOST_BUFFER_TEXT, 
+				.host_buffer_index = text_host_buffer, 
 				.host_buffer_offset = text_buffer_offset 
 			};
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, sizeof(buffer_ssbo_data_text));

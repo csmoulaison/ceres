@@ -224,22 +224,22 @@ void gl_update(Renderer* renderer, Platform* platform) {
 			case RENDER_COMMAND_BUFFER_UBO_DATA: {
 				RenderCommandBufferUboData* data = (RenderCommandBufferUboData*)cmd->data;
 				GlUbo* ubo = &gl->ubos[data->ubo];
-				RenderHostBuffer* host_buffer = &renderer->host_buffers[data->host_buffer_index];
-				assert(host_buffer->data != NULL);
+				u8* host_buffer = renderer->host_buffers[data->host_buffer_index];
+				assert(host_buffer != NULL);
 
 				glBindBuffer(GL_UNIFORM_BUFFER, ubo->id);
 				void* mapped_buffer = glMapBuffer(GL_UNIFORM_BUFFER, GL_WRITE_ONLY);
-				memcpy(mapped_buffer, host_buffer->data + data->host_buffer_offset, ubo->size);
+				memcpy(mapped_buffer, host_buffer + data->host_buffer_offset, ubo->size);
 				glUnmapBuffer(GL_UNIFORM_BUFFER);
 			} break;
 			case RENDER_COMMAND_BUFFER_SSBO_DATA: {
 				RenderCommandBufferSsboData* data = (RenderCommandBufferSsboData*)cmd->data;
 				GlSsbo* ssbo = &gl->ssbos[data->ssbo];
-				RenderHostBuffer* host_buffer = &renderer->host_buffers[data->host_buffer_index];
-				assert(host_buffer->data != NULL);
+				u8* host_buffer = renderer->host_buffers[data->host_buffer_index];
+				assert(host_buffer != NULL);
 
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo->id);
-				glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, data->size, host_buffer->data + data->host_buffer_offset);
+				glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, data->size, host_buffer + data->host_buffer_offset);
 			} break;
 			case RENDER_COMMAND_DRAW_MESH: {
 				RenderCommandDrawMesh* data = (RenderCommandDrawMesh*)cmd->data;
