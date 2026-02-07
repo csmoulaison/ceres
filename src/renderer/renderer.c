@@ -122,7 +122,8 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 		RenderMeshInitData* mesh = &init->meshes[mesh_index];
 		u32 vert_attrib_sizes[1] = { 2 };
 		u32 vert_attribs_len = 1;
-		u32 vertices_len = sizeof(render_primitives[i]) * sizeof(f32);
+		// TODO: Remove the magic number here only used for quad primitive
+		u32 vertices_len = 6;
 		render_push_mesh_init_data(mesh, render_primitives[i], vertices_len, render_primitives_indices[i], 1, vert_attrib_sizes, vert_attribs_len, init_arena);
 
 		if(mesh_index == init->meshes_len - 1) {

@@ -346,5 +346,6 @@ i32 main(i32 argc, char** argv) {
 		platform->frames_since_init++;
 	}
 
+	arena_destroy(&arenas.global);
 	return 0;
 }
