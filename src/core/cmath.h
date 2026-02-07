@@ -27,6 +27,8 @@ typedef struct {
 } v4;
 
 // Scalar
+static inline f32 f32_min(f32 a, f32 b);
+static inline f32 f32_max(f32 a, f32 b);
 static inline f32 clamp(f32 v, f32 min, f32 max);
 static inline f32 move_to_zero(f32 value, f32 amount);
 // Vector2
@@ -38,6 +40,11 @@ static inline v2 v2_normalize(v2 v);
 static inline v2 v2_scale(v2 v, f32 s);
 static inline v2 v2_add(v2 a, v2 b);
 static inline v2 v2_sub(v2 a, v2 b);
+static inline v2 v2_mult(v2 a, v2 b);
+static inline v2 v2_div(v2 a, v2 b);
+static inline v2 v2_abs(v2 a);
+static inline v2 v2_max(v2 a, v2 b);
+static inline v2 v2_min(v2 a, v2 b);
 static inline f32 v2_distance_squared(v2 a, v2 b);
 static inline f32 v2_distance(v2 a, v2 b);
 static inline f32 v2_dot(v2 a, v2 b);
@@ -80,6 +87,16 @@ void quat_inverse(f32* q, f32* res);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
+static inline f32 f32_min(f32 a, f32 b) {
+	if(a > b) return b;
+	return a;
+}
+
+static inline f32 f32_max(f32 a, f32 b) {
+	if(a < b) return b;
+	return a;
+}
+
 static inline f32 clamp(f32 v, f32 min, f32 max) {
 	if(v < min) return min;
 	if(v > max) return max;
@@ -115,7 +132,6 @@ static inline void v2_copy(f32* dst, v2 v) {
 	dst[1] = v.y;
 }
 
-
 static inline f32 v2_magnitude(v2 v) {
 	return sqrt(v.x * v.x + v.y * v.y);
 }
@@ -138,6 +154,26 @@ static inline v2 v2_add(v2 a, v2 b) {
 
 static inline v2 v2_sub(v2 a, v2 b) {
 	return v2_new(a.x - b.x, a.y - b.y);
+}
+
+static inline v2 v2_mult(v2 a, v2 b) {
+	return v2_new(a.x * b.x, a.y * b.y);
+}
+
+static inline v2 v2_div(v2 a, v2 b) {
+	return v2_new(a.x / b.x, a.y / b.y);
+}
+
+static inline v2 v2_abs(v2 a) {
+	return v2_new(fabs(a.x), fabs(a.y));
+}
+
+static inline v2 v2_min(v2 a, v2 b) {
+	return v2_new(f32_min(a.x, b.x), f32_min(a.y, b.y));
+}
+
+static inline v2 v2_max(v2 a, v2 b) {
+	return v2_new(f32_max(a.x, b.x), f32_max(a.y, b.y));
 }
 
 static inline f32 v2_distance_squared(v2 a, v2 b) {

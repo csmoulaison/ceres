@@ -201,8 +201,8 @@ GAME_UPDATE(game_update) {
 						other->hit_cooldown = 1.0f;
 						if(other->health <= 0.0f) {
 							other->health = 1.0f;
-							f32 pos = 14.0f;
-							if(i == 0) pos = 50.0f;
+							f32 pos = 4.0f;
+							if(i == 0) pos = 48.0f;
 							other->position = v2_new(pos, pos);
 							other->velocity = v2_zero();
 							other->hit_cooldown = 1.2f;
@@ -449,9 +449,9 @@ GAME_UPDATE(game_update) {
 		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
 
 		// NOW: Debug player velocity line.
-		//v3 vel_laser_start = v3_new(player->position.x, 0.5f, player->position.y);
-		//v3 vel_laser_end = v3_add(vel_laser_start, v3_new(player->velocity.x, 0.0f, player->velocity.y));
-		//render_list_draw_laser(list, laser_instance_type, vel_laser_start, vel_laser_end, 0.05f);
+		v3 vel_laser_start = v3_new(player->position.x, 0.5f, player->position.y);
+		v3 vel_laser_end = v3_add(vel_laser_start, v3_new(player->velocity.x, 0.0f, player->velocity.y));
+		render_list_draw_laser(list, laser_instance_type, vel_laser_start, vel_laser_end, 0.05f);
 	}
 
 	i32 floor_length = 64;
