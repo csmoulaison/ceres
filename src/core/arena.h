@@ -88,7 +88,7 @@ void* arena_alloc(Arena* arena, u64 size)
 	assert(arena->data != NULL);
 	if(arena->index + size >= arena->capacity) {
 #if DEBUG_ARENA
-		printf("%s: Arena overflow! Capacity: %u, Requested: %u\n", arena->debug_name, arena->index + size, arena->capacity);
+		printf("%s: Arena overflow! Capacity: %lu, Requested: %lu\n", arena->debug_name, arena->index + size, arena->capacity);
 #endif
 		panic();
 	}

@@ -35,7 +35,7 @@ void render_push_command(Renderer* renderer, RenderCommandType type, void* data,
 }
 
 i32 render_push_host_buffer(Renderer* renderer, u8* data) {
-	strict_assert(RENDER_MAX_HOST_BUFFERS < 255);
+	strict_assert(renderer->host_buffers_len < 255);
 	assert(renderer->host_buffers_len < RENDER_MAX_HOST_BUFFERS);
 	renderer->host_buffers[renderer->host_buffers_len] = (u8*)data;
 	renderer->host_buffers_len++;
@@ -122,7 +122,6 @@ Renderer* render_init(RenderBackendInitData* init, Arena* init_arena, Arena* ren
 		RenderMeshInitData* mesh = &init->meshes[mesh_index];
 		u32 vert_attrib_sizes[1] = { 2 };
 		u32 vert_attribs_len = 1;
-		f32* vertex_data = render_primitives[i];
 		u32 vertices_len = sizeof(render_primitives[i]) * sizeof(f32);
 		render_push_mesh_init_data(mesh, render_primitives[i], vertices_len, render_primitives_indices[i], 1, vert_attrib_sizes, vert_attribs_len, init_arena);
 

@@ -13,6 +13,9 @@
 //   whether a more iterable asset pipeline is in order with regards to .blend
 //   files and similar things.
 
+// This is to get ctim in the stat struct while still compiling with c99
+#define _POSIX_C_SOURCE 200809L
+
 #define CSM_CORE_IMPLEMENTATION
 #include "core/core.h"
 
@@ -53,7 +56,7 @@ typedef struct {
 
 void push_game_event(Platform* platform, GameEventType type, void* data, u64 data_bytes, Arena* arena) {
 	GameEvent* event = (GameEvent*)arena_alloc(arena, sizeof(GameEvent));
-	event->next == NULL;
+	event->next = NULL;
 	event->type = type;
 	event->data = arena_alloc(arena, sizeof(data_bytes));
 	memcpy(event->data, data, data_bytes);
@@ -80,7 +83,7 @@ void xlib_reload_game_code(XlibContext* xlib) {
 		char copy_fname[256];
 		time_t t;
 		time(&t);
-		sprintf(copy_fname, "./shiptastic_%u.so", t);
+		sprintf(copy_fname, "./shiptastic_%li.so", t);
 		//struct tm* tm;
 		//tm = localtime(&t);
 		//strftime(cpy_fname, sizeof(cpy_fname), "", tm);

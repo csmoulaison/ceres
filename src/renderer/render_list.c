@@ -49,8 +49,8 @@ void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_
 u8 render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i32 count) {
 	assert(list->transforms_len + count < RENDER_LIST_MAX_TRANSFORMS);
 	assert(list->instance_types_len < RENDER_LIST_MAX_INSTANCE_TYPES);
-	strict_assert(RENDER_LIST_MAX_TRANSFORMS < 65535);
-	strict_assert(RENDER_LIST_MAX_INSTANCE_TYPES < 255);
+	strict_assert(list->transforms_len < 65535);
+	strict_assert(list->instance_types_len < 255);
 
 	RenderListInstanceType* type = &list->instance_types[list->instance_types_len];
 	list->instance_types_len++;
@@ -103,7 +103,7 @@ void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle f
 	assert(list->glyph_list_lens[font_handle] < RENDER_LIST_MAX_GLYPHS_PER_FONT);
 
 	FontData* font = &fonts[font_handle];
-	FontGlyph* font_glyph = &font->glyphs[c];
+	FontGlyph* font_glyph = &font->glyphs[(u8)c];
 	RenderListGlyph* list_glyph = &list->glyph_lists[font_handle][list->glyph_list_lens[font_handle]];
 	list->glyph_list_lens[font_handle] += 1;
 	// TODO: this is quite unideal, setting every time we draw a single glyph, when

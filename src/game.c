@@ -124,15 +124,7 @@ GAME_UPDATE(game_update) {
 		event = event->next;
 	}
 
-	v3 debug_cam_direction;
 	if(game->debug_camera_mode) {
-		f32 cpitch = cos(game->debug_camera.pitch);
-		f32 spitch = sin(game->debug_camera.pitch);
-		f32 cyaw = cos(game->debug_camera.yaw);
-		f32 syaw = sin(game->debug_camera.yaw);
-
-		v3 debug_cam_direction = v3_normalize(v3_new(cyaw * cpitch, syaw * cpitch, spitch));
-
 		v3 move = v3_zero();
 		if(game->debug_camera_moving) {
 			if(input_button_down(game->players[0].button_states[BUTTON_FORWARD])) {
@@ -257,7 +249,7 @@ GAME_UPDATE(game_update) {
 		// Calculate ship acceleration
 
 		// Side thruster control
-		v2 side_vector = { -direction_vector.y, direction_vector.x };
+		v2 side_vector = v2_new(-direction_vector.y, direction_vector.x);
 		f32 strafe_speed = 32.0f;
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
@@ -351,7 +343,6 @@ GAME_UPDATE(game_update) {
 		hit_channel->volatility = 2.0f * hit * ((f32)rand() / RAND_MAX);
 
 		for(i32 j = 0; j < player_channels; j++) {
-			GameCamera* camera = &game->cameras[0];
 			GameSoundChannel* ch = &game->sound_channels[j + i * player_channels];
 
 			f32 distance_1 = 1.0f + v2_distance(game->players[0].position, player->position);
@@ -477,7 +468,6 @@ GAME_UPDATE(game_update) {
 	arena_init(&ui_arena, MEGABYTE, NULL, "UI");
 
 	GamePlayer* pl_primary = &game->players[0];
-	GameCamera* cam_primary = &game->cameras[0];
 #define PRINT_VALUES_LEN 6
 	f32 print_values[PRINT_VALUES_LEN] = {
 		game->debug_camera.position.x,

@@ -14,11 +14,10 @@ TextLinePlacements ui_text_line_placements(FontData* fonts, FontAssetHandle font
 	result.y = (f32*)arena_alloc(arena, sizeof(f32) * result.len);
 
 	FontData* font = &fonts[font_handle];
-	f32 line_width = 0;
 	f32 cur_x = position.x;
 	for(i32 i = 0; i < result.len; i++) {
 		char c = text[i];
-		FontGlyph* glyph = &font->glyphs[c];
+		FontGlyph* glyph = &font->glyphs[(u8)c];
 
 		result.x[i] = cur_x + glyph->bearing[0];
 		result.y[i] = position.y - (glyph->size[1] - glyph->bearing[1]);
@@ -40,8 +39,6 @@ TextLinePlacements ui_text_line_placements(FontData* fonts, FontAssetHandle font
 
 void ui_draw_text_line(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char* text, v2 position, v2 inner_anchor, v2 screen_anchor, v4 color, Arena* arena) {
 	TextLinePlacements placements = ui_text_line_placements(fonts, font_handle, text, position, inner_anchor, arena);
-
-	FontData* font = &fonts[font_handle];
 	for(i32 j = 0; j < placements.len; j++) {
 		v2 position = v2_new(placements.x[j], placements.y[j]);
 		render_list_draw_glyph(list, fonts, font_handle, text[j], position, screen_anchor, color);

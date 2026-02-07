@@ -1,4 +1,5 @@
 #include <alsa/asoundlib.h>
+#include <alloca.h>
 
 #define ALSA_SAMPLE_RATE 48000
 #define ALSA_LATENCY_SAMPLES ALSA_SAMPLE_RATE / 10
@@ -23,7 +24,7 @@ void alsa_init(AlsaContext* alsa) {
 	ALSA_VERIFY(snd_pcm_hw_params_any(alsa->pcm, hw_params));
 	ALSA_VERIFY(snd_pcm_hw_params_set_access(alsa->pcm, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED));
 	ALSA_VERIFY(snd_pcm_hw_params_set_format(alsa->pcm, hw_params, SND_PCM_FORMAT_S16_LE));
-	i32 sample_rate = ALSA_SAMPLE_RATE;
+	u32 sample_rate = ALSA_SAMPLE_RATE;
 	ALSA_VERIFY(snd_pcm_hw_params_set_rate_near(alsa->pcm, hw_params, &sample_rate, 0));
 	ALSA_VERIFY(snd_pcm_hw_params_set_channels(alsa->pcm, hw_params, 2));
 	ALSA_VERIFY(snd_pcm_hw_params(alsa->pcm, hw_params));

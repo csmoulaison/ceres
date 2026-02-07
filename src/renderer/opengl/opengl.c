@@ -53,7 +53,7 @@ u32 gl_compile_shader(const char* src, i32 src_len,  GLenum type) {
 	return shader;
 }
 
-void gl_init_buffer(i32* id, u64 size, GLenum target, GLenum usage) {
+void gl_init_buffer(u32* id, u64 size, GLenum target, GLenum usage) {
 	glGenBuffers(1, id);
 	glBindBuffer(target, *id);
 	glBufferData(target, size, NULL, usage);

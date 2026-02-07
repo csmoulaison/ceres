@@ -1,6 +1,8 @@
 #ifndef cmath_h_INCLUDED
 #define cmath_h_INCLUDED
 
+#define M_PI 3.14159265358979323846
+
 typedef struct {
 	union {
 		struct { f32 x; f32 y; };
@@ -97,7 +99,7 @@ static inline f32 move_to_zero(f32 value, f32 amount) {
 }
 
 static inline v2 v2_new(f32 x, f32 y) {
-	return (v2){ x, y };
+	return (v2){{{ x, y }}};
 }
 
 static inline v2 v2_identity() {
@@ -153,7 +155,7 @@ static inline f32 v2_dot(v2 a, v2 b) {
 }
 
 static inline v3 v3_new(f32 x, f32 y, f32 z) {
-	return (v3){x, y, z};
+	return (v3){{{ x, y, z }}};
 }
 
 static inline v3 v3_identity() {
@@ -218,7 +220,7 @@ static inline f32 v3_distance(v3 a, v3 b) {
 }
 
 static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w) {
-	return (v4){ x, y, z, w };
+	return (v4){{{ x, y, z, w }}};
 }
 
 static inline v4 v4_zero() {
@@ -374,17 +376,17 @@ void m4_rotation(f32 x, f32 y, f32 z, f32* res) {
 	f32 siny = sin(y);
 	f32 sinz = sin(z);
 
-    res[0] = cos(y) * cos(x);
-    res[1] = cos(z) * sin(x) + sin(z) * sin(y) * cos(x);
-    res[2] = sin(z) * sin(x) - cos(z) * sin(y) * cos(x);
+    res[0] = cosy * cosx;
+    res[1] = cosz * sinx + sinz * siny * cosx;
+    res[2] = sinz * sinx - cosz * siny * cosx;
     res[3] = 0;
-    res[4] = -cos(y) * sin(x);
-    res[5] = cos(z)* cos(x) - sin(z)* sin(y) * sin(x);
-    res[6] = sin(z)* cos(x) + cos(z)* sin(y) * sin(x);
+    res[4] = -cosy * sinx;
+    res[5] = cosz * cosx - sinz* siny * sinx;
+    res[6] = sinz * cosx + cosz* siny * sinx;
     res[7] = 0;
-    res[8] = sin(y);
-    res[9] = -sin(z) * cos(y);
-    res[10] = cos(z) * cos(y);
+    res[8] = siny;
+    res[9] = -sinz * cosy;
+    res[10] = cosz * cosy;
     res[11] = 0;
     res[12] = 0;
     res[13] = 0;

@@ -59,29 +59,29 @@ typedef struct {
 } RenderCommandSetViewport;
 
 typedef struct {
-	i32 program;
+	u32 program;
 } RenderCommandUseProgram;
 
 typedef struct {
-	i32 ubo;
+	u32 ubo;
 } RenderCommandUseUbo;
 
 typedef struct {
-	i32 ssbo;
+	u32 ssbo;
 } RenderCommandUseSsbo;
 
 typedef struct {
-	i32 texture;
+	u32 texture;
 } RenderCommandUseTexture;
 
 typedef struct {
-	i32 ubo;
+	u32 ubo;
 	u32 host_buffer_index;
 	u64 host_buffer_offset;
 } RenderCommandBufferUboData;
 
 typedef struct {
-	i32 ssbo;
+	u32 ssbo;
 	u64 size;
 	u32 host_buffer_index;
 	u64 host_buffer_offset;
