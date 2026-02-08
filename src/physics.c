@@ -1,34 +1,3 @@
-/*
-
-	Physics levels are split up into 16x16 chunks with cube placed statically into
-	their corresponding chunk and their positions represented as a single 8 bit 
-	integer, 4 bits per position in the chunk.
-
-	The level asset has statically sub-allocated within a static_cubes array each
-	individual cube position as well as offsets into the array for each chunk, so
-	individual chunks can be quickly accessed.
-
-	Seperately, each chunk also stores dynamic objects in a statically sized array,
-	and each dynamic objects checking against collisions will check in the 3x3 set
-	of chunks surrounding them, doing further broad phase detection by checking if
-	the other object is within some relevant distance.
-
-	Other level geometry needs modeling as well. It would probably be best to have
-	a function of 2d position (3d if we can has tunnels) returning a y floor 
-	position.
-
-#define PHYSICS_MAX_STATIC_CUBES 2048
-
-typedef struct {
-
-} PhysicsCube;
-
-typedef struct {
-
-	u8 static_cubes[PHYSICS_MAX_STATIC_CUBES];
-} PhysicsLevel;
-*/
-
 void physics_resolve_velocities(GameState* game) {
 	f32 radius = 0.5f;
 	for(i32 i = 0; i < 2; i++) {

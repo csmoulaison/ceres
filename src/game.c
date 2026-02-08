@@ -6,15 +6,15 @@
 #include "ui_text.c"
 #include "physics.c"
 #include "level.c"
-
-v2 player_direction_vector(GamePlayer* player) {
-	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
-}
+#include "game_active.c"
+#include "level_editor.c"
 
 GAME_INIT(game_init) {
 	GameState* game = &memory->state;
+	game->mode = GAME_ACTIVE;
 	game->frame = 0;
 
+	// NOW: Does this need doing here instead of just on platform layer?
 	fast_random_init();
 
 	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
@@ -60,12 +60,6 @@ GAME_INIT(game_init) {
 		channel->actual_frequency = 0.0f;
 		channel->actual_amplitude = 0.0f;
 	}
-
-	game->debug_camera.position = v3_new(1.0f, 1.0f, 1.0f);
-	game->debug_camera.pitch = 0.0f;
-	game->debug_camera.yaw = 90.0f;
-	game->debug_camera_mode = false;
-	game->debug_camera_moving = false;
 
 	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
 	assert(file != NULL);
@@ -127,175 +121,32 @@ GAME_UPDATE(game_update) {
 		event = event->next;
 	}
 
-	if(game->debug_camera_mode) {
-		v3 move = v3_zero();
-		if(game->debug_camera_moving) {
-			if(input_button_down(game->players[0].button_states[BUTTON_FORWARD])) {
-				move.x -= 1.0f;
-			}
-			if(input_button_down(game->players[0].button_states[BUTTON_BACK])) {
-				move.x += 1.0f;
-			}
-			if(input_button_down(game->players[0].button_states[BUTTON_TURN_LEFT])) {
-				move.z += 1.0f;
-			}
-			if(input_button_down(game->players[0].button_states[BUTTON_TURN_RIGHT])) {
-				move.z -= 1.0f;
-			}
-			if(input_button_down(game->players[0].button_states[BUTTON_STRAFE_LEFT])) {
-				move.y += 1.0f;
-			}
-			if(input_button_down(game->players[0].button_states[BUTTON_STRAFE_RIGHT])) {
-				move.y -= 1.0f;
-			}
-		}
-		game->debug_camera.position = v3_add(game->debug_camera.position, v3_scale(move, 10.0f * dt));
+	// Quit control
+	if(input_button_down(game->players[0].button_states[BUTTON_QUIT])) {
+		output->close_requested = true;
 	}
-	
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
 
-		// Quit control
-		if(input_button_down(player->button_states[BUTTON_QUIT])) {
-			output->close_requested = true;
-		}
-
-		if(input_button_pressed(player->button_states[BUTTON_DEBUG])) {
-			game->debug_camera_mode = !game->debug_camera_mode;
-		}
-
-		if(game->debug_camera_mode && input_button_pressed(player->button_states[BUTTON_SHOOT])) {
-			game->debug_camera_moving = true;
-		}
-		if(game->debug_camera_mode && input_button_released(player->button_states[BUTTON_SHOOT])) {
-			game->debug_camera_moving = false;
-		}
-
-		v2 acceleration = v2_zero();
-		v2 direction_vector = player_direction_vector(player);
-		f32 rot_acceleration = 0.0f;
-		f32 strafe_mod = 0.0f;
-		if(!game->debug_camera_moving) {
-			// Shooting
-			if(player->shoot_cooldown_sound > 0.0f) {
-				player->shoot_cooldown_sound = lerp(player->shoot_cooldown_sound, 0.0f, 4.0f * dt);
-			}
-			if(player->hit_cooldown > 0.0f) {
-				player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
-			}
-
-			player->shoot_cooldown -= dt;
-			if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
-				player->shoot_cooldown = 0.08f;
-				player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
-
-				for(i32 j = 0; j < 2; j++) {
-					if(j == i) continue;
-
-					GamePlayer* other = &game->players[j];
-					v2 direction = player_direction_vector(player);
-					f32 t = v2_dot(direction, v2_sub(other->position, player->position));
-					if(t < 0.5f) continue;
-
-					v2 closest = v2_add(player->position, v2_scale(direction, t));
-					if(v2_distance_squared(closest, other->position) < 1.66f) {
-						other->health -= 0.2f;
-						other->hit_cooldown = 1.0f;
-						if(other->health <= 0.0f) {
-							other->health = 1.0f;
-							f32 pos = 14.0f;
-							if(i == 0) pos = 50.0f;
-							other->position = v2_new(pos, pos);
-							other->velocity = v2_zero();
-							other->hit_cooldown = 1.2f;
-						}
-					}
-				}
-			}
-
-			// Calculate ship rotational acceleration
-			f32 rotate_speed = 16.0f;
-			if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
-				rot_acceleration += rotate_speed;
-			}
-			if(input_button_down(player->button_states[BUTTON_TURN_RIGHT])) {
-				rot_acceleration -= rotate_speed;
-			}
-
-			// Forward/back thruster control
-			f32 forward_mod = 0.0f;
-			if(input_button_down(player->button_states[BUTTON_FORWARD])) {
-				forward_mod += 32.0f;
-			}
-			if(input_button_down(player->button_states[BUTTON_BACK])) {
-				forward_mod -= 16.0f;
-			}
-			acceleration = v2_scale(direction_vector, forward_mod);
-
-			// Side thruster control
-			if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT])) {
-				strafe_mod -= 1.0f;
-			}
-			if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT])) {
-				strafe_mod += 1.0f;
-			}
-		}
-
-		// Rotational damping
-		f32 rot_damping = 1.2f;
-		rot_acceleration += player->rotation_velocity * -rot_damping;
-
-		// Apply rotational acceleration
-		player->direction = 0.5f * rot_acceleration * dt * dt + player->rotation_velocity * dt + player->direction;
-		player->rotation_velocity += rot_acceleration * dt;
-
-		// Calculate ship acceleration
-
-		// Side thruster control
-		v2 side_vector = v2_new(-direction_vector.y, direction_vector.x);
-		f32 strafe_speed = 32.0f;
-		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
-
-		// TODO: Make strafing tilt curve based off of the same equations as motion 
-		f32 strafe_tilt_target = -strafe_mod * 0.66f;
-		player->strafe_tilt = lerp(player->strafe_tilt, strafe_tilt_target, dt * 6.0f);
-
-		// Damp acceleration
-		f32 damping = 1.4f;
-		acceleration = v2_add(acceleration, v2_scale(player->velocity, -damping));
-
-		// Apply acceleration to position
-		// (acceleration / 2) * dt^2 + velocity * t + position
-		v2 accel_dt = v2_scale(v2_scale(acceleration, 0.5f), dt * dt);
-		v2 velocity_dt = v2_scale(player->velocity, dt);
-
-		player->position = v2_add(player->position, v2_add(accel_dt, velocity_dt));
-
-		// RESOLVE VELOCITIES!!
-		physics_resolve_velocities(game);
-
-		// Update player velocity
-		player->velocity = v2_add(player->velocity, v2_scale(acceleration, dt));
-
-		f32 ship_energy = v2_magnitude(player->velocity) + abs(player->rotation_velocity);
-		if(player->momentum_cooldown_sound < ship_energy) {
-			player->momentum_cooldown_sound = lerp(player->momentum_cooldown_sound, ship_energy, 10.0f * dt);
+	if(input_button_pressed(game->players[0].button_states[BUTTON_DEBUG])) {
+		if(game->mode != GAME_LEVEL_EDITOR) {
+			game->level_editor.cursor_x = (u32)game->players[0].position.x;
+			game->level_editor.cursor_y = (u32)game->players[0].position.y;
+			game->mode = GAME_LEVEL_EDITOR;
 		} else {
-			player->momentum_cooldown_sound = lerp(player->momentum_cooldown_sound, 0.0f, 1.0f * dt);
+			game->mode = GAME_ACTIVE;
 		}
+	}
 
-		// Update camera
-		// 
-		// TODO: Not every player will necessarily get a camera in the future. Bots
-		// and online play, for instance.
-		GameCamera* camera = &game->cameras[i];
-		f32 camera_lookahead = 4.0f;
-		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
 
-		f32 camera_speed_mod = 2.0f;
-		v2 camera_target_delta = v2_sub(camera_target_offset, camera->offset);
-		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
-		camera->offset = v2_add(camera->offset, camera_target_delta);
+	switch(game->mode) {
+		case GAME_ACTIVE: {
+			game_active_update(game, dt);
+		} break;
+#if GAME_EDITOR_TOOLS
+		case GAME_LEVEL_EDITOR: {
+			level_editor_update(game);
+		} break;
+#endif
+		default: break;
 	}
 
 	// Update sound channels
@@ -423,23 +274,6 @@ GAME_UPDATE(game_update) {
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
 		render_list_draw_model(list, ship_instance_type, pos, rot);
 
-		if(!game->debug_camera_mode && (splitscreen || i == 0)) {
-			GameCamera* camera = &game->cameras[i];
-			v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
-			v3 cam_pos = v3_new(cam_target.x + 4.0f, 8.0f, cam_target.z);
-			f32 gap = 0.0025f;
-			v4 screen_rect;
-			if(splitscreen) {
-				screen_rect = v4_new(0.5f * i + gap * i, 0.0f, 0.5f - gap * (1 - i), 1.0f);
-			} else {
-				screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-			}
-			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
-		}
-		if(game->debug_camera_mode) {
-			render_list_add_camera(list, game->debug_camera.position, v3_add(game->debug_camera.position, v3_new(-1.0f, 0.0f, 0.0f)), v4_new(0.0f, 0.0f, 1.0f, 1.0f));
-		}
-
 		v2 direction = player_direction_vector(player);
 		v2 side = v2_new(-direction.y, direction.x);
 		v2 target = v2_add(player->position, v2_scale(direction, 50.0f));
@@ -464,34 +298,59 @@ GAME_UPDATE(game_update) {
 		render_list_draw_model_aligned(list, floor_instance_type, floor_pos);
 	}
 
-
 	u8 cube_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 1024);
 	for(i32 i = 0; i < floor_instances; i++) {
 		for(i32 j = 1; j <= game->level[i]; j++) {
-			v3 floor_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
-			render_list_draw_model_aligned(list, cube_instance_type, floor_pos);
+			v3 cube_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
+			render_list_draw_model_aligned(list, cube_instance_type, cube_pos);
 		}
+	}
+
+	switch(game->mode) {
+		case GAME_ACTIVE: {
+			for(i32 i = 0; i < 2; i++) {
+				if(splitscreen || i == 0) {
+					GameCamera* camera = &game->cameras[i];
+					GamePlayer* player = &game->players[i];
+					v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
+					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f);
+					f32 gap = 0.0025f;
+					v4 screen_rect;
+					if(splitscreen) {
+						screen_rect = v4_new(0.5f * i + gap * i, 0.0f, 0.5f - gap * (1 - i), 1.0f);
+					} else {
+						screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
+					}
+					render_list_add_camera(list, cam_pos, cam_target, screen_rect);
+				}
+			}
+		} break;
+#if GAME_EDITOR_TOOLS
+		case GAME_LEVEL_EDITOR: {
+			LevelEditor* editor = &game->level_editor;
+			v3 cam_pos = v3_new((f32)editor->cursor_x, 8.0f, (f32)editor->cursor_y - 4.0f);
+			v3 cam_target = v3_new((f32)editor->cursor_x, 0.0f, (f32)editor->cursor_y);
+			v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
+			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
+
+			v3 cube_pos = v3_new(editor->cursor_x, 0.0f, editor->cursor_y);
+			render_list_draw_model_aligned(list, cube_instance_type, cube_pos);
+		} break;
+#endif
+		default: break;
 	}
 
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 
 	GamePlayer* pl_primary = &game->players[0];
-#define PRINT_VALUES_LEN 6
+#define PRINT_VALUES_LEN 2
 	f32 print_values[PRINT_VALUES_LEN] = {
-		game->debug_camera.position.x,
-		game->debug_camera.position.y,
 		pl_primary->velocity.x,
-		pl_primary->velocity.y,
-		game->debug_camera_mode,
-		game->debug_camera_moving,
+		pl_primary->velocity.y
 	};
 	char* print_labels[PRINT_VALUES_LEN] = {
-		"dbg cam pos_x: ",
-		"dbg cam pos_y: ",
 		"vel_x: ",
-		"vel_y: ",
-		"dbg mode: ",
-		"dbg moving: "
+		"vel_y: "
 	};
 	v2 debug_screen_anchor = v2_zero();
 	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {

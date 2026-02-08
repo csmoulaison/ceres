@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - Memory refactor
 // - Level format and updated physics state
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
@@ -354,7 +353,7 @@ i32 main(i32 argc, char** argv) {
 		platform->frames_since_init++;
 	}
 
-	free(global_memory);
-	free(renderer->backend);
+	//free(global_memory);
+	//free(renderer->backend);
 	return 0;
 }

@@ -8,6 +8,15 @@
 
 #define GAME_SOUND_CHANNELS_COUNT 16
 #define GAME_UI_MEMSIZE MEGABYTE
+#define GAME_EDITOR_TOOLS true
+
+#if GAME_EDITOR_TOOLS
+typedef struct {
+	u32 cursor_x;
+	u32 cursor_y;
+	u32 cursor_object;
+} LevelEditor;
+#endif
 
 typedef struct {
 	f32 phase;
@@ -49,7 +58,16 @@ typedef struct {
 	f32 yaw;
 } DebugCamera;
 
+typedef enum {
+	GAME_ACTIVE,
+#if GAME_EDITOR_TOOLS
+	GAME_LEVEL_EDITOR
+#endif
+} GameMode;
+
 typedef struct {
+	GameMode mode;
+
 	GamePlayer players[2];
 	GameCamera cameras[2];
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
@@ -60,9 +78,9 @@ typedef struct {
 
 	u8 level[64 * 64];
 
-	DebugCamera debug_camera;
-	bool debug_camera_mode;
-	bool debug_camera_moving;
+#if GAME_EDITOR_TOOLS
+	LevelEditor level_editor;
+#endif
 } GameState;
 
 typedef struct {
