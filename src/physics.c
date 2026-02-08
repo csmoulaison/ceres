@@ -1,52 +1,32 @@
 /*
 
-	DETECTING COLLISIONS
+	Physics levels are split up into 16x16 chunks with cube placed statically into
+	their corresponding chunk and their positions represented as a single 8 bit 
+	integer, 4 bits per position in the chunk.
 
-	AABB/Circle colliisons are what we care about at the moment. Our initial idea 
-	is to first test circle radius against corners, then test against sides as if
-	the circle was an AABB.
+	The level asset has statically sub-allocated within a static_cubes array each
+	individual cube position as well as offsets into the array for each chunk, so
+	individual chunks can be quickly accessed.
 
-	There are three scenarios to cover, as far as I can tell:
+	Seperately, each chunk also stores dynamic objects in a statically sized array,
+	and each dynamic objects checking against collisions will check in the 3x3 set
+	of chunks surrounding them, doing further broad phase detection by checking if
+	the other object is within some relevant distance.
 
-		XXX
-		XXX         Testing against corners works here.
-		XXX
-			O
+	Other level geometry needs modeling as well. It would probably be best to have
+	a function of 2d position (3d if we can has tunnels) returning a y floor 
+	position.
 
-		XXX
-		XXX O       Testing against sides works here.
-		XXX
+#define PHYSICS_MAX_STATIC_CUBES 2048
 
-		XXX
-		X           Testing against sides works here.
-		X O
+typedef struct {
 
-	So it seems like this idea will work, barring some unconsidered edge case.
+} PhysicsCube;
 
+typedef struct {
 
-	RESOLVING COLLISIONS
-
-	Our first idea is to bounce the ship off the walls proportionally to its speed 
-	and accounting for penetration distance, with some energy lost on collision.
-
-	In the side case, we flip the velocity axis which is perpendicular to the 
-	collision, leaving the other unchanged, aside from energy loss.
-
-	In outside corner case where our velocity is directly inverse to the corner
-	normal, we flip the velocity on both axes.
-
-	We need a continuity between these two cases, because there is a distinct 
-	threshold in the way you hit a corner which would suddenly flip from corner
-	testing to AABB testing, and so we need to attenuate the flippedness each axis
-	by how perpendicular we are to the matching side.
-
-	We iteratively solve these collisions so that cases like inside corners are 
-	handled. Iterate as many times as it takes (up to some maximum) to not be 
-	inside something. In the case of multiple collisions resulting from a given 
-	movement, as in a close inside corner case, we choose whichever collision 
-	happens first and iterate from there, which might result in a double bounce 
-	happening internally within the same simulation frame.
-
+	u8 static_cubes[PHYSICS_MAX_STATIC_CUBES];
+} PhysicsLevel;
 */
 
 void physics_resolve_velocities(GameState* game) {

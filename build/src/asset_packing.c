@@ -20,7 +20,7 @@ typedef struct {
 } ManifestArgument;
 
 typedef struct {
-	void (*request_asset_list)(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena);
+	void (*request_asset_list)(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, StackAllocator* stack);
 	void (*pack_asset)(void* info, void* asset);
 } AssetCallbacks;
 
@@ -42,8 +42,8 @@ void pack_assets() {
 	// final asset pack data buffer. The list of assets in the manifest isn't 1:1
 	// with the final list in the pack. For instance, manifest fonts create both a
 	// "font" asset and a texture asset.
-	Arena arena;
-	arena_init(&arena, MEGABYTE * 64, NULL, "AssetInfo");
+	void* stack_memory = calloc(1, MEGABYTE * 64);
+	StackAllocator stack = stack_init(stack_memory, MEGABYTE * 64, "AssetInfo");
 	AssetInfoList infos_list;
 	for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 		infos_list.counts_by_type[i] = 0;
@@ -70,7 +70,7 @@ void pack_assets() {
 		for(i32 i = 0; i < NUM_ASSET_TYPES; i++) {
 			if(strcmp(manifest_key, asset_type_to_manifest_key[i]) == 0) {
 				type = i;
-				asset_callbacks_by_type[type].request_asset_list(&infos_list, handle, args_len, args, &arena);
+				asset_callbacks_by_type[type].request_asset_list(&infos_list, handle, args_len, args, &stack);
 				break;
 			}
 		}
@@ -90,7 +90,7 @@ void pack_assets() {
 	}
 
 	// Calculate the size of the asset pack buffer and store asset buffer offsets
-	AssetPack* pack = (AssetPack*)arena_alloc(&arena, sizeof(AssetPack) + total_buffer_size);
+	AssetMemory* pack = (AssetMemory*)stack_alloc(&stack, sizeof(AssetMemory) + total_buffer_size);
 	u64 buffer_pos = 0;
 
 	// NOW: Genericize this.
@@ -144,7 +144,7 @@ void pack_assets() {
 	FILE* out_file = fopen("../bin/data/assets.pack", "w");
 	assert(out_file != NULL);
 
-	fwrite(pack, sizeof(AssetPack) + total_buffer_size, 1, out_file);
+	fwrite(pack, sizeof(AssetMemory) + total_buffer_size, 1, out_file);
 	fclose(out_file);
 
 	// TODO: Print out the assets!

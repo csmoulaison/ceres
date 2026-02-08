@@ -1,5 +1,5 @@
-#ifndef asset_formtat_h_INCLUDED
-#define asset_formtat_h_INCLUDED
+#ifndef asset_format_h_INCLUDED
+#define asset_format_h_INCLUDED
 
 // NOW: This just ended up making dirty memory because there are no bounds
 // checks in place anywhere. Do some checking in the packing code.
@@ -12,20 +12,18 @@
 
 typedef struct {
 	// NOW: counts not needed eh if we are putting those in the thing.
-	u8 meshes_len;
 	u64 mesh_buffer_offsets[MAX_MESH_ASSETS];
-
-	u8 textures_len;
 	u64 texture_buffer_offsets[MAX_TEXTURE_ASSETS];
-
-	u8 render_programs_len;
 	u64 render_program_buffer_offsets[MAX_RENDER_PROGRAM_ASSETS];
-
-	u8 fonts_len;
 	u64 font_buffer_offsets[MAX_FONT_ASSETS];
 
+	u8 meshes_len;
+	u8 textures_len;
+	u8 render_programs_len;
+	u8 fonts_len;
+
 	u8 buffer[];
-} AssetPack;
+} AssetMemory;
 
 typedef struct {
 	union {
@@ -66,5 +64,17 @@ typedef struct {
 	// FontGlyph * glyphs_len
 	FontGlyph buffer[];
 } FontAsset;
+
+/*
+#define ASSET_BUFFER_MEMSIZE sizeof(MeshAsset) * MAX_MESH_ASSETS \
+	+ sizeof(TextureAsset) * MAX_TEXTURE_ASSETS \
+	+ sizeof(RenderProgramAsset) * MAX_RENDER_PROGRAM_ASSETS \
+	+ sizeof(FontAsset) * MAX_FONT_ASSETS
+*/
+
+// NOW: This didn't allocate enough memory with the above memsize. The second
+// loaded mesh was junk data during render initialization, so it wasn't really
+// even close.
+#define ASSET_BUFFER_MEMSIZE MEGABYTE * 64
 
 #endif // asset_format_h_INCLUDED

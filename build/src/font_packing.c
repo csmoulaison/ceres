@@ -21,8 +21,8 @@ typedef struct {
 	GlyphInfo glyphs[FONT_CHARS_LEN];
 } FontInfo;
 
-void calculate_font_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
-	FontInfo* info = (FontInfo*)arena_alloc(arena, sizeof(FontInfo));
+void calculate_font_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, StackAllocator* stack) {
+	FontInfo* info = (FontInfo*)stack_alloc(stack, sizeof(FontInfo));
 	assert(args_len == 2);
 	strcpy(info->filename, args[0].text);
 	info->font_size = atoi(args[1].text);
@@ -45,7 +45,7 @@ void calculate_font_assets(AssetInfoList* list, char* handle, i32 args_len, Mani
 		g->advance = (u32)ft_face->glyph->advance.x;
 
 		u32 bm_size = sizeof(u8) * g->size[0] * g->size[1];
-		g->bitmap_pixels = (u8*)arena_alloc(arena, bm_size);
+		g->bitmap_pixels = (u8*)stack_alloc(stack, bm_size);
 		memcpy(g->bitmap_pixels, ft_face->glyph->bitmap.buffer, bm_size);
 
 	}
@@ -106,9 +106,9 @@ try_pack_again:
 
 	// If we made it here, we found a good atlas size, so it's time to allocate
 	// space and render glyphs to the buffer
-	TextureInfo* t_info = (TextureInfo*)arena_alloc(arena, sizeof(TextureInfo));
+	TextureInfo* t_info = (TextureInfo*)stack_alloc(stack, sizeof(TextureInfo));
 	t_info->source_type = TEXTURE_SOURCE_BUFFER;
-	t_info->buffer = (u8*)arena_alloc(arena, sizeof(u8) * info->atlas_width * info->atlas_width);
+	t_info->buffer = (u8*)stack_alloc(stack, sizeof(u8) * info->atlas_width * info->atlas_width);
 	t_info->buffer_width = info->atlas_width;
 	t_info->buffer_height = info->atlas_width;
 	t_info->channel_count = 1;

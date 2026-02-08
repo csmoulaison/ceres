@@ -3,6 +3,9 @@
 
 #include "renderer/primitive_vbo_data.h"
 
+#define RENDER_INIT_MEMSIZE MEGABYTE * 32
+#define RENDER_TRANSIENT_MEMSIZE MEGABYTE * 4
+
 #define RENDER_MAX_VERTEX_ATTRIBUTES 16
 #define RENDER_MAX_HOST_BUFFERS 16
 
@@ -47,7 +50,7 @@ typedef struct RenderCommand {
 typedef struct {
 	RenderCommand* root;
 	RenderCommand* tail;
-} RenderGraph;
+} RenderCommandList;
 
 // Render command types
 typedef struct {
@@ -96,25 +99,20 @@ typedef struct {
 	i32 count;
 } RenderCommandDrawMeshInstanced;
 
-// Key here is the data oriented approach. The association between the index of
-// a resource is known by the host of the renderer, either by hardcoded enums or
-// a loaded data format that keeps track of the linkages.
 typedef struct {
 	void* backend;
-	GraphicsApi graphics_api;
-	RenderGraph* graph;
+	GraphicsApi api;
 	i32 frames_since_init;
-
-	Arena persistent_arena;
-	Arena viewport_arena;
-	Arena frame_arena;
 
 	u32 model_to_mesh_map[ASSET_NUM_MESHES];
 	u32 primitive_to_mesh_map[NUM_RENDER_PRIMITIVES];
 
 	u8* host_buffers[RENDER_MAX_HOST_BUFFERS];
 	u8 host_buffers_len;
-} Renderer;
+
+	RenderCommandList commands;
+	u8 transient[RENDER_TRANSIENT_MEMSIZE];
+} RenderMemory;
 
 // Initialization data which is only used during renderer startup. Right now
 // these are being populated manually, but we want to move towards loading these
@@ -163,19 +161,18 @@ typedef struct RenderSsboInitData {
 
 typedef struct {
 	RenderProgramInitData* programs;
-	u32 programs_len;
-
 	RenderMeshInitData* meshes;
-	u32 meshes_len;
-
 	RenderTextureInitData* textures;
-	u32 textures_len;
-
 	RenderUboInitData* ubos;
-	u32 ubos_len;
-
 	RenderSsboInitData* ssbos;
+
+	u32 meshes_len;
+	u32 programs_len;
+	u32 textures_len;
+	u32 ubos_len;
 	u32 ssbos_len;
-} RenderBackendInitData;
+
+	u8 memory[RENDER_INIT_MEMSIZE];
+} RenderInitMemory;
 
 #endif // renderer_h_INCLUDED

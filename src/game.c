@@ -19,8 +19,8 @@ GAME_INIT(game_init) {
 
 	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
 		FontData* font = &game->fonts[i];
-		FontAsset* f_asset = (FontAsset*)&asset_pack->buffer[asset_pack->font_buffer_offsets[i]];
-		TextureAsset* t_asset = (TextureAsset*)&asset_pack->buffer[asset_pack->texture_buffer_offsets[f_asset->texture_id]];
+		FontAsset* f_asset = (FontAsset*)&assets->buffer[assets->font_buffer_offsets[i]];
+		TextureAsset* t_asset = (TextureAsset*)&assets->buffer[assets->texture_buffer_offsets[f_asset->texture_id]];
 
 		font->texture_id = f_asset->texture_id;
 		font->texture_width = t_asset->width;
@@ -367,7 +367,7 @@ GAME_UPDATE(game_update) {
 		}
 	}
 
-	i32 mod_phase = 20;
+	i32 mod_phase = 8;
 	i32 mod_half = mod_phase / 2;
 #endif
 
@@ -415,7 +415,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = true;
+	bool splitscreen = false;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -473,8 +473,7 @@ GAME_UPDATE(game_update) {
 		}
 	}
 
-	Arena ui_arena;
-	arena_init(&ui_arena, MEGABYTE, NULL, "UI");
+	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 
 	GamePlayer* pl_primary = &game->players[0];
 #define PRINT_VALUES_LEN 6
@@ -502,7 +501,7 @@ GAME_UPDATE(game_update) {
 		v2 debug_position = v2_new(32.0f, 12.0f + (PRINT_VALUES_LEN - i) * 24.0f);
 		v2 debug_inner_anchor = v2_zero();
 		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_MONO_SMALL, str,
-			debug_position, debug_inner_anchor, &ui_arena);
+			debug_position, debug_inner_anchor, &ui_stack);
 
 		f32 gb_mod = 1.0f;
 		for(i32 j = 0; j < placements.len; j++) {
@@ -522,15 +521,13 @@ GAME_UPDATE(game_update) {
 	v2 title_inner_anchor = v2_new(0.0f, 1.0f);
 	v2 title_screen_anchor = v2_new(0.0f, 1.0f);
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Level editing",
-		title_position, title_inner_anchor, title_screen_anchor, color, &ui_arena);
+		title_position, title_inner_anchor, title_screen_anchor, color, &ui_stack);
 
 	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
 	title_position.y -= 64.0f;
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: collision handling.",
-		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_arena);
+		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_stack);
 
-	arena_destroy(&ui_arena);
-		
 	game->frame++;
 }
 

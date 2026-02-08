@@ -13,4 +13,4 @@
 //   - Updates the game
 //   - Updates the renderer
 //   - Swap buffer
-//   - Clears transient arena memory
+//   - Clears transient memory

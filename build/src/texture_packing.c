@@ -18,8 +18,8 @@ typedef struct {
 	u32 buffer_height;
 } TextureInfo;
 
-void calculate_texture_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
-	TextureInfo* info = (TextureInfo*)arena_alloc(arena, sizeof(TextureInfo));
+void calculate_texture_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, StackAllocator* stack) {
+	TextureInfo* info = (TextureInfo*)stack_alloc(stack, sizeof(TextureInfo));
 	info->source_type = TEXTURE_SOURCE_BMP;
 	assert(args_len == 1);
 	strcpy(info->filename, args[0].text);

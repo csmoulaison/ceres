@@ -13,7 +13,7 @@
 
 #include "primitives.h"
 #include "assert.h"
-#include "arena.h"
+#include "stack.h"
 #include "serialize.h"
 #include "string.h"
 #include "rect.h"

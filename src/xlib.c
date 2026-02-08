@@ -1,10 +1,12 @@
 // NOW: < LIST: I think our order is as follows:
-// - Level format and collisions
+// - Memory refactor
+// - Level format and updated physics state
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames
-// - Networking
+// - Menu, so we can have two buttons, one for local and one for ...
+// - ... Networking
 // 
 // - Controller input in here somewhere
 // - Menu and session flow
@@ -45,20 +47,28 @@ typedef struct {
 	GameInitFunction* game_init;
 	GameUpdateFunction* game_update;
 	GameGenerateSoundSamplesFunction* game_generate_sound_samples;
-} XlibContext;
+} XlibMemory;
 
 typedef struct {
-	Arena global;
-	Arena frame;
-	Arena render;
-	Arena render_init;
-} MemoryArenas;
+	RenderInitMemory render;
+} InitMemory;
 
-void push_game_event(Platform* platform, GameEventType type, void* data, u64 data_bytes, Arena* arena) {
-	GameEvent* event = (GameEvent*)arena_alloc(arena, sizeof(GameEvent));
+typedef struct {
+	Platform platform;
+	XlibMemory xlib;
+	GameMemory game;
+	RenderMemory renderer;
+	AlsaMemory alsa;
+	// NOTE: For now, AssetMemory must be kept at the end of the struct, as we
+	// allocate the asset buffer memory size along with the GlobalMemory size.
+	AssetMemory assets;
+} GlobalMemory;
+
+void push_game_event(Platform* platform, GameEventType type, void* data, u64 data_bytes, StackAllocator* stack) {
+	GameEvent* event = (GameEvent*)stack_alloc(stack, sizeof(GameEvent));
 	event->next = NULL;
 	event->type = type;
-	event->data = arena_alloc(arena, sizeof(data_bytes));
+	event->data = stack_alloc(stack, sizeof(data_bytes));
 	memcpy(event->data, data, data_bytes);
 
 	if(platform->head_event == NULL) {
@@ -69,7 +79,7 @@ void push_game_event(Platform* platform, GameEventType type, void* data, u64 dat
 	platform->current_event = event;
 }
 
-void xlib_reload_game_code(XlibContext* xlib) {
+void xlib_reload_game_code(XlibMemory* xlib) {
 	struct stat game_lib_stat;
 	stat("shiptastic.so", &game_lib_stat);
 
@@ -106,20 +116,24 @@ void xlib_reload_game_code(XlibContext* xlib) {
 		xlib->game_generate_sound_samples = dlsym(xlib->game_lib_handle, "game_generate_sound_samples");
 		assert(dlerror() == NULL);
 	}
-
 }
 
 i32 main(i32 argc, char** argv) {
-	// TODO #27 (Win32 Build): Memory arenas are common to both platforms.
-	MemoryArenas arenas;
-	arena_init(&arenas.global, GLOBAL_ARENA_SIZE, NULL, "Global");
-	arena_init(&arenas.frame, GLOBAL_FRAME_ARENA_SIZE, &arenas.global, "GlobalFrame");
-	arena_init(&arenas.render, RENDER_ARENA_SIZE, &arenas.global, "Render");
-	arena_init(&arenas.render_init, RENDER_INIT_ARENA_SIZE, NULL, "RenderInit");
+	InitMemory* init_memory = (InitMemory*)calloc(1, sizeof(InitMemory));
+	RenderInitMemory* render_init_memory = &init_memory->render;
 
-	Platform* platform = (Platform*)arena_alloc(&arenas.global, sizeof(Platform));
-	XlibContext* xlib = (XlibContext*)arena_alloc(&arenas.global, sizeof(XlibContext));
+	// NOW: after we are running again, put all this stuff into init functions for
+	// each memory domain.
+	GlobalMemory* global_memory = (GlobalMemory*)calloc(1, sizeof(GlobalMemory) + ASSET_BUFFER_MEMSIZE);
+	Platform* platform = &global_memory->platform;
+	XlibMemory* xlib = &global_memory->xlib;
+	GameMemory* game = &global_memory->game;
+	RenderMemory* renderer = &global_memory->renderer;
+	AlsaMemory* alsa = &global_memory->alsa;
+	AssetMemory* assets = &global_memory->assets;
+
 	platform->backend = xlib;
+	renderer->backend = calloc(1, sizeof(GlMemory));
 
 	xlib->display = XOpenDisplay("");
 	if(!xlib->display) { panic(); }
@@ -247,15 +261,11 @@ i32 main(i32 argc, char** argv) {
 	platform->viewport_update_requested = true;
 
 	// Load asset pack file
-	// TODO #27 (Win32 Build): Asset packs and render initialization is common to
-	// both platforms.
-	AssetPack* asset_pack = asset_pack_load(&arenas.global);
+	asset_pack_load(assets);
 
 	// Initialize open GL before getting window attributes.
-	RenderBackendInitData* init_data = (RenderBackendInitData*)arena_alloc(&arenas.render_init, sizeof(RenderBackendInitData));
-	Renderer* renderer = render_init(init_data, &arenas.render_init, &arenas.render, asset_pack);
-	gl_init(renderer, init_data, &arenas.render, &arenas.render_init);
-	arena_destroy(&arenas.render_init);
+	render_init(renderer, render_init_memory, assets);
+	gl_init(renderer, render_init_memory);
 
 	XWindowAttributes window_attributes;
 	XGetWindowAttributes(xlib->display, xlib->window, &window_attributes);
@@ -263,7 +273,6 @@ i32 main(i32 argc, char** argv) {
 	platform->window_height = window_attributes.height;
 
 	// Initialize ALSA for sound
-	AlsaContext* alsa = (AlsaContext*)arena_alloc(&arenas.global, sizeof(AlsaContext));
 	alsa_init(alsa);
 
 	// Initialize game, loading the dynamic libraary and initializing it with some
@@ -271,13 +280,10 @@ i32 main(i32 argc, char** argv) {
 	xlib->game_lib_last_modified = 0;
 	xlib_reload_game_code(xlib);
 
-	// TODO #27 (Win32 Build): Game initialization is common across platforms.
-	Arena game_arena;
-	arena_init(&game_arena, GAME_ARENA_SIZE, &arenas.global, "Game");
-	GameMemory* game_memory = (GameMemory*)arena_alloc(&game_arena, sizeof(GameMemory));
-
-	xlib->game_init(game_memory, asset_pack);
+	xlib->game_init(game, assets);
 	GameOutput game_output = {};
+
+	free(init_memory);
 
 	platform->frames_since_init = 0;
 	while(!game_output.close_requested) {
@@ -285,6 +291,7 @@ i32 main(i32 argc, char** argv) {
 		
 		platform->head_event = NULL;
 		platform->current_event = NULL;
+		StackAllocator event_stack = stack_init(platform->event_memory, GAME_EVENTS_MEMSIZE, "GameEvents");
 
 		while(XPending(xlib->display)) {
 			XEvent event;
@@ -302,7 +309,7 @@ i32 main(i32 argc, char** argv) {
 				} break;
 				case KeyPress: {
 					u64 keysym = XLookupKeysym(&(event.xkey), 0);
-					push_game_event(platform, GAME_EVENT_KEY_DOWN, &keysym, sizeof(u64), &arenas.frame);
+					push_game_event(platform, GAME_EVENT_KEY_DOWN, &keysym, sizeof(u64), &event_stack);
 				} break;
 				case KeyRelease: {
 					// X11 natively repeats key events when the key is held down. We could turn
@@ -321,7 +328,7 @@ i32 main(i32 argc, char** argv) {
 
 					if(!is_repeat_key) {
 						u64 keysym = XLookupKeysym(&(event.xkey), 0);
-						push_game_event(platform, GAME_EVENT_KEY_UP, &keysym, sizeof(u64), &arenas.frame);
+						push_game_event(platform, GAME_EVENT_KEY_UP, &keysym, sizeof(u64), &event_stack);
 					}
 				} break;
 				default: break;
@@ -329,24 +336,25 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		xlib->game_update(game_memory, platform->current_event, &game_output, 0.010f);
+		xlib->game_update(game, platform->current_event, &game_output, 0.016f);
 
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {
-			i16* sound_buffer = (i16*)arena_alloc(&arenas.frame, sizeof(i16) * 2 * sound_samples_count);
-			xlib->game_generate_sound_samples(game_memory, sound_buffer, sound_samples_count);
-			alsa_write_samples(alsa, sound_buffer, sound_samples_count);
+			// TODO: Fix glitchy audio on quit
+			xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
+			//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
 		}
 
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
 
-		arena_clear_to_zero(&renderer->frame_arena);
-		arena_clear_to_zero(&arenas.frame);
+		//stack_clear_to_zero(&renderer->frame_arena);
+		//stack_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);
 		platform->frames_since_init++;
 	}
 
-	arena_destroy(&arenas.global);
+	free(global_memory);
+	free(renderer->backend);
 	return 0;
 }

@@ -12,8 +12,8 @@ typedef struct {
 	u32 bit_offset;
 
 	char* data;
-	Arena* arena;
-	u64 arena_offset;
+	StackAllocator* stack;
+	u64 stack_offset;
 } Bitstream;
 
 typedef struct {
@@ -21,7 +21,7 @@ typedef struct {
 	char* data;
 } SerializeResult;
 
-Bitstream bitstream_init(SerializeMode mode, char* data, Arena* arena);
+Bitstream bitstream_init(SerializeMode mode, char* data, StackAllocator* stack);
 SerializeResult serialize_result(Bitstream* stream);
 void serialize_bool(Bitstream* stream, bool* value);
 void serialize_u8(Bitstream* stream, u8* value);
@@ -31,21 +31,21 @@ void serialize_f32(Bitstream* stream, f32* value);
 
 #ifdef CSM_CORE_IMPLEMENTATION
 
-Bitstream bitstream_init(SerializeMode mode, char* data, Arena* arena)
+Bitstream bitstream_init(SerializeMode mode, char* data, StackAllocator* stack)
 {
-	assert((arena == NULL && mode == SERIALIZE_MODE_READ) || 
-		   (arena != NULL && mode == SERIALIZE_MODE_WRITE));
+	assert((stack == NULL && mode == SERIALIZE_MODE_READ) || 
+		   (stack != NULL && mode == SERIALIZE_MODE_WRITE));
 
 	Bitstream stream = (Bitstream) {
 		.mode = mode, 
 		.byte_offset = 0,
 		.bit_offset = 0,
-		.arena = arena,
-		.arena_offset = 0
+		.stack = stack,
+		.stack_offset = 0
 	};
 	if(stream.mode == SERIALIZE_MODE_WRITE) {
-		stream.data = (char*)arena_head(arena);
-		stream.arena_offset = arena->index;
+		stream.data = (char*)stack_head(stack);
+		stream.stack_offset = stack->index;
 	} else {
 		stream.data = data;
 	}
@@ -75,9 +75,9 @@ void bitstream_advance_bit(u32* byte_off, u32* bit_off)
 
 void bitstream_write_bits(Bitstream* stream, char* value, u32 size_bits)
 {
-	u64 new_size_min = stream->arena_offset + stream->byte_offset + size_bits / 8;
-	if(stream->arena->index <= new_size_min) {
-		arena_alloc(stream->arena, new_size_min - stream->arena->index);
+	u64 new_size_min = stream->stack_offset + stream->byte_offset + size_bits / 8;
+	if(stream->stack->index <= new_size_min) {
+		stack_alloc(stream->stack, new_size_min - stream->stack->index);
 	}
 
 	u32 val_byte_off = 0;

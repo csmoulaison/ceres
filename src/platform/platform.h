@@ -1,5 +1,7 @@
 #include "game.h"
 
+#define GAME_EVENTS_MEMSIZE sizeof(GameEvent) * 256
+
 typedef struct {
 	void* backend;
 
@@ -10,4 +12,5 @@ typedef struct {
 
 	GameEvent* head_event;
 	GameEvent* current_event;
+	u8 event_memory[GAME_EVENTS_MEMSIZE];
 } Platform;

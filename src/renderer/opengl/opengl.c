@@ -1,6 +1,8 @@
 #include "GL/gl3w.h"
 #include "renderer/renderer.h"
 
+#define GL_BUFFER_MEMSIZE MEGABYTE * 2
+
 typedef struct {
 	u32 id;
 } GlProgram;
@@ -34,7 +36,8 @@ typedef struct {
 	GlTexture* textures;
 	GlUbo* ubos;
 	GlSsbo* ssbos;
-} OpenGl;
+	u8 buffer[GL_BUFFER_MEMSIZE];
+} GlMemory;
 
 u32 gl_compile_shader(const char* src, i32 src_len,  GLenum type) {
 	u32 shader = glCreateShader(type);
@@ -60,12 +63,10 @@ void gl_init_buffer(u32* id, u64 size, GLenum target, GLenum usage) {
 	glBindBuffer(target, 0);
 }
 
-void gl_init(Renderer* renderer, RenderBackendInitData* init, Arena* render_arena, Arena* init_arena) {
-	renderer->backend = arena_alloc(&renderer->persistent_arena, sizeof(OpenGl));
-	OpenGl* gl = (OpenGl*)renderer->backend;
+void gl_init(RenderMemory* renderer, RenderInitMemory* init) {
+	GlMemory* gl = (GlMemory*)renderer->backend;
 
 	if(gl3wInit() != 0) { panic(); }
-
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 	//glDisable(GL_CULL_FACE);
@@ -73,11 +74,12 @@ void gl_init(Renderer* renderer, RenderBackendInitData* init, Arena* render_aren
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	gl->programs = (GlProgram*)arena_alloc(&renderer->persistent_arena, sizeof(GlProgram) * init->programs_len);
-	gl->meshes = (GlMesh*)arena_alloc(&renderer->persistent_arena, sizeof(GlMesh) * init->meshes_len);
-	gl->textures = (GlTexture*)arena_alloc(&renderer->persistent_arena, sizeof(GlTexture) * init->textures_len);
-	gl->ubos = (GlUbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlUbo) * init->ubos_len);
-	gl->ssbos = (GlSsbo*)arena_alloc(&renderer->persistent_arena, sizeof(GlSsbo) * init->ssbos_len);
+	StackAllocator buffer_stack = stack_init(gl->buffer, GL_BUFFER_MEMSIZE, "GlBuffer");
+	gl->programs = (GlProgram*)stack_alloc(&buffer_stack, sizeof(GlProgram) * init->programs_len);
+	gl->meshes = (GlMesh*)stack_alloc(&buffer_stack, sizeof(GlMesh) * init->meshes_len);
+	gl->textures = (GlTexture*)stack_alloc(&buffer_stack, sizeof(GlTexture) * init->textures_len);
+	gl->ubos = (GlUbo*)stack_alloc(&buffer_stack, sizeof(GlUbo) * init->ubos_len);
+	gl->ssbos = (GlSsbo*)stack_alloc(&buffer_stack, sizeof(GlSsbo) * init->ssbos_len);
 
 	RenderProgramInitData* program_data = init->programs;
 	i32 program_index = 0;
@@ -184,15 +186,15 @@ void gl_init(Renderer* renderer, RenderBackendInitData* init, Arena* render_aren
 	glViewport(0, 0, 1, 1);
 }
 
-void gl_update(Renderer* renderer, Platform* platform) {
-	OpenGl* gl = (OpenGl*)renderer->backend;
+void gl_update(RenderMemory* renderer, Platform* platform) {
+	GlMemory* gl = (GlMemory*)renderer->backend;
 	
 	if(platform->viewport_update_requested) {
 		glViewport(0, 0, platform->window_width, platform->window_height);
 		platform->viewport_update_requested = false;
 	}
 
-	RenderCommand* cmd = renderer->graph->root;
+	RenderCommand* cmd = renderer->commands.root;
 	while(cmd != NULL) {
 		assert(cmd->data != NULL);
 		switch(cmd->type) {

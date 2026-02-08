@@ -5,8 +5,8 @@ typedef struct {
 	i32 frag_src_len;
 } RenderProgramInfo;
 
-void calculate_render_program_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
-	RenderProgramInfo* info = (RenderProgramInfo*)arena_alloc(arena, sizeof(RenderProgramInfo));
+void calculate_render_program_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, StackAllocator* stack) {
+	RenderProgramInfo* info = (RenderProgramInfo*)stack_alloc(stack, sizeof(RenderProgramInfo));
 	assert(args_len == 2);
 	strcpy(info->vert_filename, args[0].text);
 	strcpy(info->frag_filename, args[1].text);

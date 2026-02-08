@@ -9,8 +9,8 @@ typedef struct {
 	u32 face_lines;
 } MeshInfo;
 
-void calculate_mesh_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, Arena* arena) {
-	MeshInfo* info = (MeshInfo*)arena_alloc(arena, sizeof(MeshInfo));
+void calculate_mesh_assets(AssetInfoList* list, char* handle, i32 args_len, ManifestArgument* args, StackAllocator* stack) {
+	MeshInfo* info = (MeshInfo*)stack_alloc(stack, sizeof(MeshInfo));
 	assert(args_len == 1);
 	strcpy(info->filename, args[0].text);
 
@@ -50,20 +50,20 @@ void pack_mesh_asset(void* p_info, void* p_asset) {
 	MeshAsset* asset = (MeshAsset*)p_asset;
 
 	// Allocate temporary buffers and populate them with file data.
-	Arena tmp_arena;
-	arena_init(&tmp_arena, MEGABYTE * 64, NULL, "TmpMeshLoad");
+	void* tmp_stack_memory = calloc(1, MEGABYTE * 64);
+	StackAllocator tmp_stack = stack_init(tmp_stack_memory, MEGABYTE * 64, "TmpMeshLoad");
 
 	// x, y, z | x, y, z | ...
-	f32* tmp_vertices = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 3 * info->vertex_lines);
+	f32* tmp_vertices = (f32*)stack_alloc(&tmp_stack, sizeof(f32) * 3 * info->vertex_lines);
 	u32 tmp_vertices_len = 0;
 	// u, v | u, v | ...
-	f32* tmp_uvs = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 2 * info->uv_lines);
+	f32* tmp_uvs = (f32*)stack_alloc(&tmp_stack, sizeof(f32) * 2 * info->uv_lines);
 	u32 tmp_uvs_len = 0;
 	// x, y, z | x, y, z | ...
-	f32* tmp_normals = (f32*)arena_alloc(&tmp_arena, sizeof(f32) * 3 * info->normal_lines);
+	f32* tmp_normals = (f32*)stack_alloc(&tmp_stack, sizeof(f32) * 3 * info->normal_lines);
 	u32 tmp_normals_len = 0;
 	// v1: vert, uv, norm, v2: vert, uv, norm, v3: vert, uv, norm | v1: vert, uv ...
-	i32* tmp_faces = (i32*)arena_alloc(&tmp_arena, sizeof(i32) * 9 * info->face_lines);
+	i32* tmp_faces = (i32*)stack_alloc(&tmp_stack, sizeof(i32) * 9 * info->face_lines);
 	u32 tmp_faces_len = 0;
 
 	FILE* file = fopen(info->filename, "r");
@@ -137,5 +137,5 @@ void pack_mesh_asset(void* p_info, void* p_asset) {
 		memcpy(vert->normal, &tmp_normals[face_norm_idx * 3], sizeof(f32) * 3);
 	}
 
-	arena_destroy(&tmp_arena);
+	free(tmp_stack_memory);
 }

@@ -7,6 +7,7 @@
 #include "input.c"
 
 #define GAME_SOUND_CHANNELS_COUNT 16
+#define GAME_UI_MEMSIZE MEGABYTE
 
 typedef struct {
 	f32 phase;
@@ -65,11 +66,12 @@ typedef struct {
 } GameState;
 
 typedef struct {
-} GameScratch;
+	u8 ui_memory[GAME_UI_MEMSIZE];
+} GameTransient;
 
 typedef struct {
 	GameState state;
-	GameScratch scratch;
+	GameTransient transient;
 } GameMemory;
 
 typedef struct {
@@ -91,7 +93,7 @@ typedef struct GameEvent {
 	void* data;
 } GameEvent;
 
-#define GAME_INIT(name) void name(GameMemory* memory, AssetPack* asset_pack)
+#define GAME_INIT(name) void name(GameMemory* memory, AssetMemory* assets)
 typedef GAME_INIT(GameInitFunction);
 GAME_INIT(game_init_stub) {}
 

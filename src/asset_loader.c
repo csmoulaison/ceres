@@ -1,4 +1,4 @@
-AssetPack* asset_pack_load(Arena* arena) {
+void asset_pack_load(AssetMemory* pack) {
 	FILE* file = fopen(ASSET_PACK_FILENAME, "r");
 	assert(file != NULL);
 
@@ -6,7 +6,6 @@ AssetPack* asset_pack_load(Arena* arena) {
 	u64 pack_size = ftell(file);
 	fseek(file, 0, SEEK_SET);
 
-	AssetPack* pack = (AssetPack*)arena_alloc(arena, pack_size);
 	fread(pack, pack_size, 1, file);
 
 	if(pack->meshes_len > 255) {
@@ -25,5 +24,4 @@ AssetPack* asset_pack_load(Arena* arena) {
 		printf("\033[31mThere are more than 255 fonts in the asset pack! Ensure they aren't being indexed with 8 bits.\033[0m\n");
 		panic();
 	}
-	return pack;
 }
