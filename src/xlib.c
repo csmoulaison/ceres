@@ -125,6 +125,7 @@ i32 main(i32 argc, char** argv) {
 	if(!xlib->display) { panic(); }
 
 	srand(time(NULL));
+	fast_random_init();
 
 	// GLX (OpenGL+Xlib) specific stuff. The control flow for this can't really be
 	// abstracted now, only refactored to specifics if/when we get another API going.
@@ -328,13 +329,13 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		xlib->game_update(game_memory, platform->current_event, &game_output, 0.015f);
+		xlib->game_update(game_memory, platform->current_event, &game_output, 0.010f);
 
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {
 			i16* sound_buffer = (i16*)arena_alloc(&arenas.frame, sizeof(i16) * 2 * sound_samples_count);
 			xlib->game_generate_sound_samples(game_memory, sound_buffer, sound_samples_count);
-			//alsa_write_samples(alsa, sound_buffer, sound_samples_count);
+			alsa_write_samples(alsa, sound_buffer, sound_samples_count);
 		}
 
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);

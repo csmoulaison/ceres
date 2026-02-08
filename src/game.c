@@ -15,6 +15,8 @@ GAME_INIT(game_init) {
 	GameState* game = &memory->state;
 	game->frame = 0;
 
+	fast_random_init();
+
 	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
 		FontData* font = &game->fonts[i];
 		FontAsset* f_asset = (FontAsset*)&asset_pack->buffer[asset_pack->font_buffer_offsets[i]];
@@ -212,7 +214,7 @@ GAME_UPDATE(game_update) {
 			}
 
 			// Calculate ship rotational acceleration
-			f32 rotate_speed = 24.0f;
+			f32 rotate_speed = 16.0f;
 			if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
 				rot_acceleration += rotate_speed;
 			}
@@ -240,7 +242,7 @@ GAME_UPDATE(game_update) {
 		}
 
 		// Rotational damping
-		f32 rot_damping = 1.5f;
+		f32 rot_damping = 1.2f;
 		rot_acceleration += player->rotation_velocity * -rot_damping;
 
 		// Apply rotational acceleration
@@ -417,7 +419,7 @@ GAME_UPDATE(game_update) {
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
-		f32 tilt = player->strafe_tilt + clamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
+		f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
 		render_list_draw_model(list, ship_instance_type, pos, rot);
 
@@ -459,8 +461,7 @@ GAME_UPDATE(game_update) {
 	u8 floor_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(i % floor_length, 0.0f, i / floor_length);
-		v3 floor_rot = v3_new(0.0f , 0.0f, 0.0f);
-		render_list_draw_model(list, floor_instance_type, floor_pos, floor_rot);
+		render_list_draw_model_aligned(list, floor_instance_type, floor_pos);
 	}
 
 
@@ -468,7 +469,7 @@ GAME_UPDATE(game_update) {
 	for(i32 i = 0; i < floor_instances; i++) {
 		for(i32 j = 1; j <= game->level[i]; j++) {
 			v3 floor_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
-			render_list_draw_model(list, cube_instance_type, floor_pos, v3_zero());
+			render_list_draw_model_aligned(list, cube_instance_type, floor_pos);
 		}
 	}
 
@@ -540,46 +541,49 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	f32 global_shelf = 30000.0f;
 	f32 global_attenuation = 0.62f;
 
+	f32 channel_rates[GAME_SOUND_CHANNELS_COUNT];
 	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
 		GameSoundChannel* channel = &game->sound_channels[i];
-		channel->amplitude = clamp(channel->amplitude, 0.0f, channel->amplitude);
+		channel->amplitude = fclamp(channel->amplitude, 0.0f, channel->amplitude);
+		channel->pan = fclamp(channel->pan, -1.0f, 1.0f);
+		channel->pan = (channel->pan + 1.0f) / 2.0f;
+
+		channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.8f);
+		channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.8f);
+
+		if(channel->phase > 2.0f * M_PI) {
+			channel->phase -= 2.0f * M_PI;
+		}
+
+		// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
+		channel_rates[i] = 2.0f * M_PI * channel->actual_frequency / 48000;
 	}
 
 	for(i32 i = 0; i < samples_count; i++) {
 		buffer[i * 2] = 0.0f;
 		buffer[i * 2 + 1] = 0.0f;
 		for(i32 j = 0; j < GAME_SOUND_CHANNELS_COUNT; j++) {
-		//for(i32 j = 0; j < 4; j++) {
 			GameSoundChannel* channel = &game->sound_channels[j];
-			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
-			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
-			// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
-			channel->phase += 2.0f * M_PI * channel->actual_frequency / 48000;
-			if(channel->phase > 2.0f * M_PI) {
-				channel->phase -= 2.0f * M_PI;
-			}
+
+			channel->phase += channel_rates[j];
 			f32 sample = channel->actual_amplitude * sinf(channel->phase);
-			if(sample > channel->shelf) sample = channel->shelf;
-			if(sample < -channel->shelf) sample = -channel->shelf;
-			sample += sample * ((f32)rand() / RAND_MAX) * channel->volatility;
+			sample = fclamp(sample, -channel->shelf, channel->shelf);
+			sample += sample * fast_random_f32() * channel->volatility;
 
-			channel->pan = clamp(channel->pan, -1.0f, 1.0f);
-			f32 actual_pan = (channel->pan + 1.0f) / 2.0f;
-			assert(actual_pan >= 0.0f && actual_pan <= 1.0f);
-			buffer[i * 2] += sample * global_attenuation * (1.0f - actual_pan);
-			buffer[i * 2 + 1] += sample * global_attenuation * actual_pan;
+			buffer[i * 2] += sample * (1.0f - channel->pan);
+			buffer[i * 2 + 1] += sample * channel->pan;
 		}
-		if(buffer[i * 2] > global_shelf) buffer[i * 2] = global_shelf;
-		if(buffer[i * 2 + 1] > global_shelf) buffer[i * 2 + 1] = global_shelf;
-		if(buffer[i * 2] < -global_shelf) buffer[i * 2] = -global_shelf;
-		if(buffer[i * 2 + 1] < -global_shelf) buffer[i * 2 + 1] = -global_shelf;
 
-		if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
-			printf("Global shelf reached (up)\n");
-		}
-		if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
-			printf("Global shelf reached (up)\n");
-		}
+		buffer[i * 2] *= global_attenuation;
+		buffer[i * 2] = fclamp(buffer[i * 2], -global_shelf, global_shelf);
+		buffer[i * 2 + 1] *= global_attenuation;
+		buffer[i * 2 + 1] = fclamp(buffer[i * 2 + 1], -global_shelf, global_shelf);
+
+		//if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
+		//	printf("Global shelf reached (up)\n");
+		//}
+		//if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
+		//	printf("Global shelf reached (up)\n");
+		//}
 	}
-
 }

@@ -52,12 +52,13 @@ i32 main(i32 argc, char** argv) {
 	pack_assets();
 
 	print_header("Compiling platform layer...");
-	system_call("gcc -std=c99 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes -lasound");
+	//-fsanitize=address -fno-omit-frame-pointer 
+	system_call("gcc -std=c99 -Wall -Werror -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes -lasound");
 
 game_only:
 	print_header("Compiling game layer...");
-	system_call("gcc -std=c99 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer -g -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
-	system_call("gcc -std=c99 -Wall -Werror -fsanitize=address -fno-omit-frame-pointer -g -shared intermediate/shiptastic.o -o ../bin/shiptastic_tmp.so -I ../extern/ -I ../src/ -lm");
+	system_call("gcc -std=c99 -Wall -Werror -g -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
+	system_call("gcc -std=c99 -Wall -Werror -g -shared intermediate/shiptastic.o -o ../bin/shiptastic_tmp.so -I ../extern/ -I ../src/ -lm");
 	system_call("mv ../bin/shiptastic_tmp.so ../bin/shiptastic.so");
 	system_call_ignore_result("rm ../bin/shiptastic_*");
 

@@ -61,8 +61,6 @@ void physics_resolve_velocities(GameState* game) {
 
 			// NOW: remove magic 64 for level grid length
 			i32 cube_index = (i32)y * 64 + (i32)x;
-			//printf("%u ", game->level[cube_index]);
-			//if(j % 5 == 4) printf("\n");
 			if(game->level[cube_index] == 0) continue;
 
 			//v2 cube_pos = v2_new((i32)x - 0.5f, (i32)y - 0.5f);
@@ -76,7 +74,6 @@ void physics_resolve_velocities(GameState* game) {
 
 			//f32 penetration_depth = radius - v2_magnitude(delta);
 			//v2 penetration_vector = v2_scale(v2_normalize(delta), penetration_depth);
-			//printf("pen vector %f %f\n", penetration_vector.x, penetration_vector.y);
 			//player->position = v2_sub(player->position, penetration_vector);
 
 			v2 relative_center = v2_sub(player->position, v2_new((i32)x, (i32)y));
@@ -92,8 +89,6 @@ void physics_resolve_velocities(GameState* game) {
 			if(offset_from_corner.y > offset_from_corner.x) {
 				contact_normal = v2_new(1.0f, -1.0f);
 			}
-
-			printf("penetration %f\n", penetration);
 
 			if(penetration < 0.0f) {
 				player->position = v2_add(player->position, v2_scale(v2_normalize(player->velocity), penetration * 1.2f));

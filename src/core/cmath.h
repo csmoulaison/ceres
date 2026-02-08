@@ -29,7 +29,7 @@ typedef struct {
 // Scalar
 static inline f32 f32_min(f32 a, f32 b);
 static inline f32 f32_max(f32 a, f32 b);
-static inline f32 clamp(f32 v, f32 min, f32 max);
+static inline f32 fclamp(f32 v, f32 min, f32 max);
 static inline f32 move_to_zero(f32 value, f32 amount);
 // Vector2
 static inline v2 v2_new(f32 x, f32 y);
@@ -77,7 +77,7 @@ void m4_identity(f32* res);
 void m4_perspective(f32 fovy, f32 aspect, f32 zfar, f32 znear, f32* res);
 void m4_lookat(v3 origin, v3 target, v3 up, f32* res);
 void m4_mul(f32* a, f32* b, f32* res);
-void m4_translation(v3 v, f32* res);
+static inline void m4_translation(v3 v, f32* res);
 void m4_scale(v3 v, f32* res);
 void m4_rotation(f32 x, f32 y, f32 z, f32* res);
 void m4_from_quat(f32* q, f32* res);
@@ -97,7 +97,7 @@ static inline f32 f32_max(f32 a, f32 b) {
 	return a;
 }
 
-static inline f32 clamp(f32 v, f32 min, f32 max) {
+static inline f32 fclamp(f32 v, f32 min, f32 max) {
 	if(v < min) return min;
 	if(v > max) return max;
 	return v;
@@ -380,18 +380,23 @@ void m4_mul(f32* a, f32* b, f32* res) {
 	res[15] = a03 * b30 + a13 * b31 + a23 * b32 + a33 * b33;
 }
 
-void m4_translation(v3 v, f32* res) {
-	for(i8 i = 0; i < 16; i++) {
-		res[i] = 0.0f;
-	}
+static inline void m4_translation(v3 v, f32* res) {
 	res[0] = 1.0f;
+	res[1] = 0.0f;
+	res[2] = 0.0f;
+	res[3] = 0.0f;
+	res[4] = 0.0f;
 	res[5] = 1.0f;
+	res[6] = 0.0f;
+	res[7] = 0.0f;
+	res[8] = 0.0f;
+	res[9] = 0.0f;
 	res[10] = 1.0f;
-	res[15] = 1.0f;
-
+	res[11] = 0.0f;
 	res[12] = v.x;
 	res[13] = v.y;
 	res[14] = v.z;
+	res[15] = 1.0f;
 }
 
 void m4_scale(v3 v, f32* res) {

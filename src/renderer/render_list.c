@@ -83,6 +83,11 @@ void render_list_draw_model(RenderList* list, u8 instance_type, v3 position, v3 
 	m4_mul(transform, rotation, transform);
 }
 
+void render_list_draw_model_aligned(RenderList* list, u8 instance_type, v3 position) {
+	f32* transform = render_list_push_instance(list, instance_type);
+	m4_translation(position, transform);
+}
+
 void render_list_draw_laser(RenderList* list, u8 instance_type, v3 start, v3 end, f32 stroke) {
 	f32* transform = render_list_push_instance(list, instance_type);
 	v3 line_delta = v3_sub(end, start);
