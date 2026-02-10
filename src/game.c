@@ -328,8 +328,8 @@ GAME_UPDATE(game_update) {
 #if GAME_EDITOR_TOOLS
 		case GAME_LEVEL_EDITOR: {
 			LevelEditor* editor = &game->level_editor;
-			v3 cam_pos = v3_new((f32)editor->cursor_x, 8.0f, (f32)editor->cursor_y - 4.0f);
-			v3 cam_target = v3_new((f32)editor->cursor_x, 0.0f, (f32)editor->cursor_y);
+			v3 cam_pos = v3_new((f32)editor->camera_position.x, 8.0f, (f32)editor->camera_position.y - 4.0f);
+			v3 cam_target = v3_new((f32)editor->camera_position.x, 0.0f, (f32)editor->camera_position.y);
 			v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
 			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
 

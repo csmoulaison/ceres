@@ -12,6 +12,7 @@
 
 #if GAME_EDITOR_TOOLS
 typedef struct {
+	v2 camera_position;
 	u32 cursor_x;
 	u32 cursor_y;
 	u32 cursor_object;
