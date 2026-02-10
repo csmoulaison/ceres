@@ -218,11 +218,11 @@ GAME_UPDATE(game_update) {
 		}
 	}
 
-	i32 mod_phase = 8;
-	i32 mod_half = mod_phase / 2;
 #endif
 
-#if 1
+	i32 mod_phase = 8;
+	i32 mod_half = mod_phase / 2;
+#if 0
 	GameSoundChannel* music_channel = &game->sound_channels[player_channels * 2];
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(game->frame / mod_half) % 16];
@@ -246,7 +246,7 @@ GAME_UPDATE(game_update) {
 	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
 #endif
 
-#if 1
+#if 0
 	GameSoundChannel* ch3 = &game->sound_channels[player_channels * 2 + 3];
 	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
@@ -384,7 +384,7 @@ GAME_UPDATE(game_update) {
 
 	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
 	title_position.y -= 64.0f;
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: collision handling.",
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: serialization of level data.",
 		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_stack);
 
 	game->frame++;
