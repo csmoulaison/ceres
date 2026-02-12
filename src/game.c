@@ -69,13 +69,17 @@ GAME_INIT(game_init) {
 		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
 	}
 
-	for(i32 i = 0; i < 64 * 64; i++) {
-		i32 x = i % 64;
-		i32 y = i / 64;
+	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
+	game->level.side_length = level_asset->side_length;
+	u16 side_length = game->level.side_length;
+	assert(side_length <= MAX_GAME_LEVEL_SIDE_LENGTH);
+	for(i32 i = 0; i < side_length * side_length; i++) {
+		i32 x = i % side_length;
+		i32 y = i / side_length;
 		if(x < 12 || x > 51 || y < 12 || y > 51) {
-			game->level[i] = 1 + rand() / (RAND_MAX / 3);
+			game->level.tiles[i] = 1 + rand() / (RAND_MAX / 3);
 		} else {
-			game->level[i] = level[i];
+			game->level.tiles[i] = level_asset->buffer[i];
 		}
 	}
 }
@@ -125,17 +129,6 @@ GAME_UPDATE(game_update) {
 	if(input_button_down(game->players[0].button_states[BUTTON_QUIT])) {
 		output->close_requested = true;
 	}
-
-	if(input_button_pressed(game->players[0].button_states[BUTTON_DEBUG])) {
-		if(game->mode != GAME_LEVEL_EDITOR) {
-			game->level_editor.cursor_x = (u32)game->players[0].position.x;
-			game->level_editor.cursor_y = (u32)game->players[0].position.y;
-			game->mode = GAME_LEVEL_EDITOR;
-		} else {
-			game->mode = GAME_ACTIVE;
-		}
-	}
-
 
 	switch(game->mode) {
 		case GAME_ACTIVE: {
@@ -220,9 +213,9 @@ GAME_UPDATE(game_update) {
 
 #endif
 
-	i32 mod_phase = 8;
+	i32 mod_phase = 12;
 	i32 mod_half = mod_phase / 2;
-#if 0
+#if 1
 	GameSoundChannel* music_channel = &game->sound_channels[player_channels * 2];
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(game->frame / mod_half) % 16];
@@ -230,12 +223,14 @@ GAME_UPDATE(game_update) {
 	music_channel->frequency = freq * 100.0f;
 	music_channel->shelf = 4000.0f;
 	music_channel->volatility = freq * 0.05f - (game->frame % mod_half) * freq * 0.1f;
+	music_channel->pan = 0.0f;
 
 	GameSoundChannel* ch2 = &game->sound_channels[player_channels * 2 + 1];
 	ch2->amplitude = 5000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 1000.0f;
 	ch2->frequency = freq * 33.3f;
 	ch2->shelf = 4000.0f;
 	ch2->volatility = freq * 0.05f;
+	ch2->pan = 0.0f;
 
 	GameSoundChannel* ch4 = &game->sound_channels[player_channels * 2 + 2];
 	f32 fs4[16] = { 6, 1, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
@@ -244,9 +239,10 @@ GAME_UPDATE(game_update) {
 	ch4->frequency = f4 * ((f32)rand() / RAND_MAX) * 400.0f;
 	ch4->shelf = 4000.0f + current_player_velocity * 50.0f;
 	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
+	ch4->pan = 0.0f;
 #endif
 
-#if 0
+#if 1
 	GameSoundChannel* ch3 = &game->sound_channels[player_channels * 2 + 3];
 	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
@@ -254,6 +250,7 @@ GAME_UPDATE(game_update) {
 	ch3->frequency = f3 * ((f32)rand() / RAND_MAX) * 25.0f;
 	ch3->shelf = 1000.0f + current_player_velocity * 100.0f;
 	ch3->volatility = f3 * 0.6f - (game->frame % mod_phase) * 0.2f;
+	ch3->pan = 0.0f;
 #endif
 
 	// Populate render list
@@ -290,7 +287,7 @@ GAME_UPDATE(game_update) {
 		//render_list_draw_laser(list, laser_instance_type, vel_laser_start, vel_laser_end, 0.05f);
 	}
 
-	i32 floor_length = 64;
+	i32 floor_length = game->level.side_length;
 	i32 floor_instances = floor_length * floor_length;
 	u8 floor_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 	for(i32 i = 0; i < floor_instances; i++) {
@@ -300,7 +297,7 @@ GAME_UPDATE(game_update) {
 
 	u8 cube_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 1024);
 	for(i32 i = 0; i < floor_instances; i++) {
-		for(i32 j = 1; j <= game->level[i]; j++) {
+		for(i32 j = 1; j <= game->level.tiles[i]; j++) {
 			v3 cube_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
 			render_list_draw_model_aligned(list, cube_instance_type, cube_pos);
 		}
@@ -435,11 +432,11 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		buffer[i * 2 + 1] *= global_attenuation;
 		buffer[i * 2 + 1] = fclamp(buffer[i * 2 + 1], -global_shelf, global_shelf);
 
-		//if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
-		//	printf("Global shelf reached (up)\n");
-		//}
-		//if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
-		//	printf("Global shelf reached (up)\n");
-		//}
+		if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
+			printf("Global shelf reached (up)\n");
+		}
+		if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
+			printf("Global shelf reached (up)\n");
+		}
 	}
 }

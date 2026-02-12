@@ -335,13 +335,13 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		xlib->game_update(game, platform->current_event, &game_output, 0.016f);
+		xlib->game_update(game, platform->current_event, &game_output, 0.01f);
 
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {
 			// TODO: Fix glitchy audio on quit
 			xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
-			//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
+			alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
 		}
 
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);

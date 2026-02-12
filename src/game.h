@@ -9,6 +9,7 @@
 #define GAME_SOUND_CHANNELS_COUNT 16
 #define GAME_UI_MEMSIZE MEGABYTE
 #define GAME_EDITOR_TOOLS true
+#define MAX_GAME_LEVEL_SIDE_LENGTH 1024
 
 #if GAME_EDITOR_TOOLS
 typedef struct {
@@ -67,17 +68,24 @@ typedef enum {
 } GameMode;
 
 typedef struct {
+	u16 side_length;
+	u8 tiles[MAX_GAME_LEVEL_SIDE_LENGTH * MAX_GAME_LEVEL_SIDE_LENGTH];
+} GameLevel;
+
+typedef struct {
 	GameMode mode;
+	GameLevel level;
 
 	GamePlayer players[2];
 	GameCamera cameras[2];
+
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
-	FontData fonts[ASSET_NUM_FONTS];
-	u32 frame;
+
 	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
 
-	u8 level[64 * 64];
+	FontData fonts[ASSET_NUM_FONTS];
+	u32 frame;
 
 #if GAME_EDITOR_TOOLS
 	LevelEditor level_editor;

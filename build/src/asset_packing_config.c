@@ -16,6 +16,7 @@ typedef enum {
 	ASSET_TYPE_TEXTURE,
 	ASSET_TYPE_RENDER_PROGRAM,
 	ASSET_TYPE_FONT,
+	ASSET_TYPE_LEVEL,
 	NUM_ASSET_TYPES
 } AssetType;
 
@@ -27,26 +28,30 @@ char* asset_type_to_manifest_key[NUM_ASSET_TYPES] = {
 	"mesh",
 	"texture",
 	"render_program",
-	"font"
+	"font",
+	"level"
 };
 
 char* asset_type_to_macro_prefix[NUM_ASSET_TYPES] = {
 	"MESH",
 	"TEXTURE",
 	"RENDER_PROGRAM",
-	"FONT"
+	"FONT",
+	"LEVEL"
 };
 
 char* asset_type_to_macro_plural[NUM_ASSET_TYPES] = {
 	"MESHES",
 	"TEXTURES",
 	"RENDER_PROGRAMS",
-	"FONTS"
+	"FONTS",
+	"LEVELS"
 };
 
 char* asset_type_to_pascal_case[NUM_ASSET_TYPES] = {
 	"Mesh",
 	"Texture",
 	"RenderProgram",
-	"Font"
+	"Font",
+	"Level"
 };

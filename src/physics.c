@@ -8,22 +8,8 @@ void physics_resolve_velocities(GameState* game) {
 			f32 x = player->position.x + (j % 5) - 1.0f;
 			f32 y = player->position.y + (j / 5) - 1.0f;
 
-			// NOW: remove magic 64 for level grid length
-			i32 cube_index = (i32)y * 64 + (i32)x;
-			if(game->level[cube_index] == 0) continue;
-
-			//v2 cube_pos = v2_new((i32)x - 0.5f, (i32)y - 0.5f);
-			//v2 nearest = v2_max(cube_pos, v2_min(player->position, v2_add(cube_pos, v2_new(1.0f, 1.0f))));
-			//v2 delta = v2_sub(player->position, nearest);
-
-			//if(v2_dot(player->velocity, delta) < 0.0f) {
-			//	f32 tan_velocity = v2_dot(v2_normalize(delta), player->velocity) * 2.0f;
-			//	player->velocity = v2_sub(player->velocity, v2_new(tan_velocity, tan_velocity));
-			//}
-
-			//f32 penetration_depth = radius - v2_magnitude(delta);
-			//v2 penetration_vector = v2_scale(v2_normalize(delta), penetration_depth);
-			//player->position = v2_sub(player->position, penetration_vector);
+			i32 cube_index = (i32)y * game->level.side_length + (i32)x;
+			if(game->level.tiles[cube_index] == 0) continue;
 
 			v2 relative_center = v2_sub(player->position, v2_new((i32)x, (i32)y));
 			v2 offset_from_corner = v2_sub(v2_abs(relative_center), v2_new(0.5f, 0.5f));

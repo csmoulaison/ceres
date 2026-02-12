@@ -2,6 +2,7 @@
 #include "texture_packing.c"
 #include "render_program_packing.c"
 #include "font_packing.c"
+#include "level_packing.c"
 
 // REQUIRED: Callback functions which define the packing logic of the different
 // asset types.
@@ -16,5 +17,6 @@ AssetCallbacks asset_callbacks_by_type[NUM_ASSET_TYPES] = {
 	{ .request_asset_list = calculate_mesh_assets, .pack_asset = pack_mesh_asset },
 	{ .request_asset_list = calculate_texture_assets, .pack_asset = pack_texture_asset },
 	{ .request_asset_list = calculate_render_program_assets, .pack_asset = pack_render_program_asset },
-	{ .request_asset_list = calculate_font_assets, .pack_asset = pack_font_asset }
+	{ .request_asset_list = calculate_font_assets, .pack_asset = pack_font_asset },
+	{ .request_asset_list = calculate_level_assets, .pack_asset = pack_level_asset }
 };

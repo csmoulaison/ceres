@@ -99,12 +99,14 @@ void pack_assets() {
 	asset_counts[ASSET_TYPE_TEXTURE] = &pack->textures_len;
 	asset_counts[ASSET_TYPE_RENDER_PROGRAM] = &pack->render_programs_len;
 	asset_counts[ASSET_TYPE_FONT] = &pack->fonts_len;
+	asset_counts[ASSET_TYPE_LEVEL] = &pack->levels_len;
 
 	u64* asset_offset_lists[NUM_ASSET_TYPES];
 	asset_offset_lists[ASSET_TYPE_MESH] = pack->mesh_buffer_offsets;
 	asset_offset_lists[ASSET_TYPE_TEXTURE] = pack->texture_buffer_offsets;
 	asset_offset_lists[ASSET_TYPE_RENDER_PROGRAM] = pack->render_program_buffer_offsets;
 	asset_offset_lists[ASSET_TYPE_FONT] = pack->font_buffer_offsets;
+	asset_offset_lists[ASSET_TYPE_LEVEL] = pack->level_buffer_offsets;
 
 	FILE* generated_file = fopen(GENERATED_ASSET_HANDLES_FILENAME, "w");
 	assert(generated_file != NULL);

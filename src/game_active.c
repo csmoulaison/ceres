@@ -19,6 +19,7 @@ void game_active_update(GameState* game, f32 dt) {
 			player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
 		}
 
+
 		player->shoot_cooldown -= dt;
 		if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
 			player->shoot_cooldown = 0.08f;
@@ -130,5 +131,11 @@ void game_active_update(GameState* game, f32 dt) {
 		v2 camera_target_delta = v2_sub(camera_target_offset, camera->offset);
 		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
 		camera->offset = v2_add(camera->offset, camera_target_delta);
+	}
+
+	if(input_button_pressed(game->players[0].button_states[BUTTON_DEBUG])) {
+		game->level_editor.cursor_x = (u32)game->players[0].position.x;
+		game->level_editor.cursor_y = (u32)game->players[0].position.y;
+		game->mode = GAME_LEVEL_EDITOR;
 	}
 }

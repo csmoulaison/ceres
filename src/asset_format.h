@@ -7,6 +7,7 @@
 #define MAX_TEXTURE_ASSETS 16
 #define MAX_RENDER_PROGRAM_ASSETS 8
 #define MAX_FONT_ASSETS 12
+#define MAX_LEVEL_ASSETS 8
 
 #include "font.h"
 
@@ -16,11 +17,13 @@ typedef struct {
 	u64 texture_buffer_offsets[MAX_TEXTURE_ASSETS];
 	u64 render_program_buffer_offsets[MAX_RENDER_PROGRAM_ASSETS];
 	u64 font_buffer_offsets[MAX_FONT_ASSETS];
+	u64 level_buffer_offsets[MAX_LEVEL_ASSETS];
 
 	u8 meshes_len;
 	u8 textures_len;
 	u8 render_programs_len;
 	u8 fonts_len;
+	u8 levels_len;
 
 	u8 buffer[];
 } AssetMemory;
@@ -64,6 +67,11 @@ typedef struct {
 	// FontGlyph * glyphs_len
 	FontGlyph buffer[];
 } FontAsset;
+
+typedef struct {
+	u16 side_length;
+	u8 buffer[];
+} LevelAsset;
 
 /*
 #define ASSET_BUFFER_MEMSIZE sizeof(MeshAsset) * MAX_MESH_ASSETS \

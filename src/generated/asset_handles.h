@@ -39,4 +39,9 @@ typedef enum {
    ASSET_NUM_FONTS
 } FontAssetHandle;
 
+typedef enum {
+   ASSET_LEVEL_TEST,
+   ASSET_NUM_LEVELS
+} LevelAssetHandle;
+
 #endif // GEN_asset_handles_h_INCLUDED
