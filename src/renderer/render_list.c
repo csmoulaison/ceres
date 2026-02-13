@@ -21,8 +21,8 @@ changes made to the render layer.
 
 void render_list_init(RenderList* list) {
 	list->cameras_len = 0;
-	list->transforms_len = 0;
-	list->transform_index_offset = 0;
+	list->instances_len = 0;
+	list->instance_index_offset = 0;
 	list->instance_types_len = 0;
 	for(i32 i = 0; i < RENDER_LIST_MAX_INSTANCE_TYPES; i++) {
 		list->instance_types[i].instances_len = 0;
@@ -47,51 +47,66 @@ void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_
 }
 
 u8 render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i32 count) {
-	assert(list->transforms_len + count < RENDER_LIST_MAX_TRANSFORMS);
+	assert(list->instances_len + count < RENDER_LIST_MAX_INSTANCES);
 	assert(list->instance_types_len < RENDER_LIST_MAX_INSTANCE_TYPES);
-	strict_assert(list->transforms_len < 65535);
+	strict_assert(list->instances_len < 65535);
 	strict_assert(list->instance_types_len < 255);
 
 	RenderListInstanceType* type = &list->instance_types[list->instance_types_len];
 	list->instance_types_len++;
 	type->model = model;
 	type->texture = texture;
-	type->transform_index_offset = list->transform_index_offset;
-	list->transform_index_offset += count;
+	type->instance_index_offset = list->instance_index_offset;
+	list->instance_index_offset += count;
 	return list->instance_types_len - 1;
 }
 
-f32* render_list_push_instance(RenderList* list, u8 instance_type) {
+RenderListInstanceData* render_list_push_instance(RenderList* list, u8 instance_type) {
 	// TODO: Bounds checking on instances? Right now we aren't storing the count
 	// when the type is allocated. Maybe we can only store when in debug mode.
 	strict_assert(instance_type < list->instance_types_len);
 	RenderListInstanceType* type = &list->instance_types[instance_type];
-	f32* transform = list->transforms[type->transform_index_offset + type->instances_len].transform;
+	RenderListInstanceData* instance = &list->instances[type->instance_index_offset + type->instances_len];
+	instance->color = v4_new(1.0f, 1.0f, 1.0f, 1.0f);
 	type->instances_len++;
-	return transform;
+	return instance;
 }
 
 void render_list_draw_model(RenderList* list, u8 instance_type, v3 position, v3 orientation) {
-	f32* transform = render_list_push_instance(list, instance_type);
-	m4_translation(position, transform);
+	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+	m4_translation(position, instance->transform);
 	f32 rotation[16];
 	m4_rotation(
 		orientation.x, 
 		orientation.y, 
 		orientation.z, 
 		rotation);
-	m4_mul(transform, rotation, transform);
+	m4_mul(instance->transform, rotation, instance->transform);
 }
 
 void render_list_draw_model_aligned(RenderList* list, u8 instance_type, v3 position) {
-	f32* transform = render_list_push_instance(list, instance_type);
-	m4_translation(position, transform);
+	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+	m4_translation(position, instance->transform);
+}
+
+void render_list_draw_model_colored(RenderList* list, u8 instance_type, v3 position, v3 orientation, v4 color) {
+	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+	instance->color = color;
+	m4_translation(position, instance->transform);
+	f32 rotation[16];
+	m4_rotation(
+		orientation.x, 
+		orientation.y, 
+		orientation.z, 
+		rotation);
+	m4_mul(instance->transform, rotation, instance->transform);
 }
 
 void render_list_draw_laser(RenderList* list, u8 instance_type, v3 start, v3 end, f32 stroke) {
-	f32* transform = render_list_push_instance(list, instance_type);
+	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+	instance->color = v4_new(2.0f, 0.0f, 0.0f, 1.0f);
 	v3 line_delta = v3_sub(end, start);
-	m4_scale(v3_new(v3_magnitude(line_delta), stroke, stroke), transform);
+	m4_scale(v3_new(v3_magnitude(line_delta), stroke, stroke), instance->transform);
 
 	f32 rotation[16];
 	v3 line_norm = v3_normalize(line_delta);
@@ -100,8 +115,8 @@ void render_list_draw_laser(RenderList* list, u8 instance_type, v3 start, v3 end
 	f32 translation[16];
 	m4_translation(start, translation);
 
-	m4_mul(rotation, transform, transform);
-	m4_mul(translation, transform, transform);
+	m4_mul(rotation, instance->transform, instance->transform);
+	m4_mul(translation, instance->transform, instance->transform);
 }
 
 void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v2 screen_anchor, v4 color) {

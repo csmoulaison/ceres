@@ -217,7 +217,7 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 
 		switch(i) {
 			case RENDER_SSBO_MODEL: {
-				ssbo->size = sizeof(RenderListTransform) * RENDER_LIST_MAX_TRANSFORMS;
+				ssbo->size = sizeof(RenderListInstanceData) * RENDER_LIST_MAX_INSTANCES;
 				ssbo->binding = 0;
 			} break;
 			case RENDER_SSBO_TEXT: {
@@ -314,7 +314,7 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		m4_mul(ssbo->transform, rotation, ssbo->transform);
 	}
 	*/
-	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)list->transforms);
+	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)list->instances);
 
 	// Text ssbo
 	RenderGlyph* text_ssbo = (RenderGlyph*)stack_alloc(&frame_stack, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
@@ -402,9 +402,9 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 
 			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
 				.ssbo = RENDER_SSBO_MODEL, 
-				.size = sizeof(RenderListTransform) * type->instances_len, 
+				.size = sizeof(RenderListInstanceData) * type->instances_len, 
 				.host_buffer_index = model_host_buffer, 
-				.host_buffer_offset = sizeof(RenderListTransform) * type->transform_index_offset
+				.host_buffer_offset = sizeof(RenderListInstanceData) * type->instance_index_offset
 			};
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_model, &frame_stack);
 

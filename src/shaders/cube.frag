@@ -3,6 +3,7 @@
 in vec3 frag_pos;
 in vec3 normal;
 in vec2 tex_uv;
+in vec4 color;
 
 out vec4 frag_color;
 
@@ -20,7 +21,7 @@ void main()
 	vec3 diffuse = diff * light_color;
 
 	vec3 result = ambient + diffuse;
-    frag_color = vec4(result, 1.0f) * texture(tex, tex_uv);
+    frag_color = vec4(result, 1.0f) * texture(tex, tex_uv) * color;
     // vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
     //frag_color = vec4(result, 1.0f);
 	//frag_color = vec4(1.0f);

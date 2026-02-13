@@ -19,7 +19,6 @@ void game_active_update(GameState* game, f32 dt) {
 			player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
 		}
 
-
 		player->shoot_cooldown -= dt;
 		if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
 			player->shoot_cooldown = 0.08f;
@@ -34,9 +33,13 @@ void game_active_update(GameState* game, f32 dt) {
 				if(t < 0.5f) continue;
 
 				v2 closest = v2_add(player->position, v2_scale(direction, t));
-				if(v2_distance_squared(closest, other->position) < 1.66f) {
+				if(v2_distance_squared(closest, other->position) < 1.15f) {
+					f32 cross = v2_cross(direction, v2_sub(other->position, player->position));
+					other->rotation_velocity -= cross;
+					
 					other->health -= 0.2f;
 					other->hit_cooldown = 1.0f;
+					other->velocity = v2_add(other->velocity, v2_scale(direction, 1.0f));
 					if(other->health <= 0.0f) {
 						other->health = 1.0f;
 						f32 pos = 14.0f;

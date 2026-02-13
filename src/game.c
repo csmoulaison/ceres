@@ -222,7 +222,8 @@ GAME_UPDATE(game_update) {
 	music_channel->amplitude = 4000.0f - (game->frame % mod_half) * 100.0f * freq + current_player_velocity * 2000.0f;
 	music_channel->frequency = freq * 100.0f;
 	music_channel->shelf = 4000.0f;
-	music_channel->volatility = freq * 0.05f - (game->frame % mod_half) * freq * 0.1f;
+	music_channel->volatility = freq * 0.01f - (game->frame % mod_half) * freq * 0.1f;
+	music_channel->volatility = 0.0f;
 	music_channel->pan = 0.0f;
 
 	GameSoundChannel* ch2 = &game->sound_channels[player_channels * 2 + 1];
@@ -230,6 +231,7 @@ GAME_UPDATE(game_update) {
 	ch2->frequency = freq * 33.3f;
 	ch2->shelf = 4000.0f;
 	ch2->volatility = freq * 0.05f;
+	ch2->volatility = 0.0f;
 	ch2->pan = 0.0f;
 
 	GameSoundChannel* ch4 = &game->sound_channels[player_channels * 2 + 2];
@@ -239,17 +241,18 @@ GAME_UPDATE(game_update) {
 	ch4->frequency = f4 * ((f32)rand() / RAND_MAX) * 400.0f;
 	ch4->shelf = 4000.0f + current_player_velocity * 50.0f;
 	ch4->volatility = f4 * 0.05f - (game->frame % mod_phase) * 0.01f;
+	ch4->volatility = 0.0f;
 	ch4->pan = 0.0f;
 #endif
 
 #if 1
 	GameSoundChannel* ch3 = &game->sound_channels[player_channels * 2 + 3];
-	f32 fs3[16] = { 4, 0, 2, 0, 6, 0, 2, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
+	f32 fs3[16] = { 2, 1, 4, 1, 6, 1, 4, 1, 2, 3, 4, 1, 6, 3, 2, 3 };
 	f32 f3 = fs3[(game->frame / mod_phase) % 16];
 	ch3->amplitude = 2000.0f * f3 - (game->frame % mod_phase) * 8000.0f;
 	ch3->frequency = f3 * ((f32)rand() / RAND_MAX) * 25.0f;
 	ch3->shelf = 1000.0f + current_player_velocity * 100.0f;
-	ch3->volatility = f3 * 0.6f - (game->frame % mod_phase) * 0.2f;
+	ch3->volatility = f3 * (0.1f + current_player_velocity * 0.02f - (game->frame % mod_phase) * 0.2f);
 	ch3->pan = 0.0f;
 #endif
 
@@ -269,14 +272,16 @@ GAME_UPDATE(game_update) {
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
-		render_list_draw_model(list, ship_instance_type, pos, rot);
+		f32 hit_flash = 1.0f + player->hit_cooldown * player->hit_cooldown * 10.0f;
+		f32 hit_flash_red = 1.0f + player->hit_cooldown * player->hit_cooldown * 20.0f;
+		render_list_draw_model_colored(list, ship_instance_type, pos, rot, v4_new(hit_flash_red, hit_flash, hit_flash, 1.0f));
 
 		v2 direction = player_direction_vector(player);
 		v2 side = v2_new(-direction.y, direction.x);
 		v2 target = v2_add(player->position, v2_scale(direction, 50.0f));
 
-		v2 laser_pos_1 = v2_add(v2_add(player->position, v2_scale(side, 0.48f)), v2_scale(direction, 0.30f));
-		v2 laser_pos_2 = v2_add(v2_add(player->position, v2_scale(side, -0.48f)), v2_scale(direction, 0.30f));
+		v2 laser_pos_1 = v2_add(v2_add(player->position, v2_scale(side, 0.39f)), v2_scale(direction, 0.10f));
+		v2 laser_pos_2 = v2_add(v2_add(player->position, v2_scale(side, -0.39f)), v2_scale(direction, 0.10f));
 
 		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
 		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
@@ -401,9 +406,6 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		channel->pan = fclamp(channel->pan, -1.0f, 1.0f);
 		channel->pan = (channel->pan + 1.0f) / 2.0f;
 
-		channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.8f);
-		channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.8f);
-
 		if(channel->phase > 2.0f * M_PI) {
 			channel->phase -= 2.0f * M_PI;
 		}
@@ -417,6 +419,8 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		buffer[i * 2 + 1] = 0.0f;
 		for(i32 j = 0; j < GAME_SOUND_CHANNELS_COUNT; j++) {
 			GameSoundChannel* channel = &game->sound_channels[j];
+			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
+			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
 
 			channel->phase += channel_rates[j];
 			f32 sample = channel->actual_amplitude * sinf(channel->phase);

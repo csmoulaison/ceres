@@ -8,20 +8,27 @@ layout(std140, binding = 0) uniform world {
 	vec3 cam_position;
 };
 
+struct Instance {
+	mat4 transform;
+	vec4 color;
+};
+
 layout(std430, binding = 0) buffer md
 {
-	mat4 transforms[];
+	Instance instances[];
 } models;
 
 out vec3 frag_pos;
 out vec3 normal;
 out vec2 tex_uv;
+out vec4 color;
 
 void main()
 {
-	mat4 model = models.transforms[gl_InstanceID];
-	frag_pos = vec3(model * vec4(pos, 1.0f));
-	normal = mat3(transpose(inverse(model))) * norm;
+	Instance instance = models.instances[gl_InstanceID];
+	frag_pos = vec3(instance.transform * vec4(pos, 1.0f));
+	normal = mat3(transpose(inverse(instance.transform))) * norm;
 	tex_uv = uv;
+	color = instance.color;
 	gl_Position = projection * vec4(frag_pos, 1.0f);
 }

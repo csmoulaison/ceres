@@ -22,7 +22,7 @@ changes made to the render layer.
 #include "renderer/renderer.h"
 
 #define RENDER_LIST_MAX_INSTANCE_TYPES 32
-#define RENDER_LIST_MAX_TRANSFORMS 16000
+#define RENDER_LIST_MAX_INSTANCES 16000
 #define RENDER_LIST_MAX_LASERS 32
 #define RENDER_LIST_MAX_GLYPHS_PER_FONT 512
 #define RENDER_LIST_MAX_CAMERAS 2
@@ -37,13 +37,14 @@ typedef struct {
 
 typedef struct {
 	f32 transform[16];
-} RenderListTransform;
+	v4 color;
+} RenderListInstanceData;
 
 typedef struct {
 	u8 model;
 	u8 texture;
 	u16 instances_len;
-	u16 transform_index_offset;
+	u16 instance_index_offset;
 } RenderListInstanceType;
 
 typedef struct {
@@ -60,9 +61,9 @@ typedef struct {
 	RenderListCamera cameras[RENDER_LIST_MAX_CAMERAS];
 	u32 cameras_len;
 
-	RenderListTransform transforms[RENDER_LIST_MAX_TRANSFORMS];
-	u32 transforms_len;
-	u32 transform_index_offset;
+	RenderListInstanceData instances[RENDER_LIST_MAX_INSTANCES];
+	u32 instances_len;
+	u32 instance_index_offset;
 
 	RenderListInstanceType instance_types[RENDER_LIST_MAX_INSTANCE_TYPES];
 	u32 instance_types_len;

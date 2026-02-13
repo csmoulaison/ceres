@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - Level format and updated physics state
 // - The ship exploding in some visually pleasing way, along with shooting and
 //   exploding sound effects
 // - A game with lives and a game over screen, then restart

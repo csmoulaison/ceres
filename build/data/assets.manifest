@@ -3,8 +3,8 @@ mesh FLOOR data/meshes/floor_flat.obj
 mesh CYLINDER data/meshes/cylinder.obj
 mesh CUBE data/meshes/cube.obj
 texture SHIP data/textures/ship.bmp
-texture FLOOR data/textures/worn.bmp
-texture CRATE data/textures/crate.bmp
+texture FLOOR data/textures/floor_tiles.bmp
+texture CRATE data/textures/cube_tile.bmp
 render_program MODEL ../src/shaders/cube.vert ../src/shaders/cube.frag
 render_program TEXT ../src/shaders/text.vert ../src/shaders/text.frag
 render_program LASER ../src/shaders/laser.vert ../src/shaders/laser.frag
