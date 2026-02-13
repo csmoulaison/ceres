@@ -29,7 +29,9 @@ void main()
 	vec3 specular = spec_strength * spec * light_color;
 
 	vec3 result = ambient + diffuse + specular;
-    frag_color = vec4(result, 1.0f) * texture(tex, tex_uv) * color;
+	vec4 f_color = vec4(result, 1.0f) * texture(tex, tex_uv);
+	vec4 color_4 = vec4(color.xyz, 1.0f);
+    frag_color = mix(f_color, color_4, color.w);
     // vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
     //frag_color = vec4(result, 1.0f);
 	//frag_color = vec4(1.0f);

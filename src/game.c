@@ -271,9 +271,7 @@ GAME_UPDATE(game_update) {
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 		v3 rot = v3_new(-tilt, player->direction, 0.0f);
-		f32 hit_flash = 1.0f + player->hit_cooldown * player->hit_cooldown * 10.0f;
-		f32 hit_flash_red = 1.0f + player->hit_cooldown * player->hit_cooldown * 20.0f;
-		render_list_draw_model_colored(list, ship_instance_type, pos, rot, v4_new(hit_flash_red, hit_flash, hit_flash, 1.0f));
+		render_list_draw_model_colored(list, ship_instance_type, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
 
 		v2 direction = player_direction_vector(player);
 		v2 side = v2_new(-direction.y, direction.x);

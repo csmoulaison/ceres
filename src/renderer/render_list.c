@@ -67,7 +67,7 @@ RenderListInstanceData* render_list_push_instance(RenderList* list, u8 instance_
 	strict_assert(instance_type < list->instance_types_len);
 	RenderListInstanceType* type = &list->instance_types[instance_type];
 	RenderListInstanceData* instance = &list->instances[type->instance_index_offset + type->instances_len];
-	instance->color = v4_new(1.0f, 1.0f, 1.0f, 1.0f);
+	instance->color = v4_new(1.0f, 1.0f, 1.0f, 0.0f);
 	type->instances_len++;
 	return instance;
 }
