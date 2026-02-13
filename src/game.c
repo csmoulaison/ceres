@@ -14,7 +14,6 @@ GAME_INIT(game_init) {
 	game->mode = GAME_ACTIVE;
 	game->frame = 0;
 
-	// NOW: Does this need doing here instead of just on platform layer?
 	fast_random_init();
 
 	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
@@ -266,7 +265,7 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = false;
+	bool splitscreen = true;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -382,12 +381,12 @@ GAME_UPDATE(game_update) {
 	v2 title_position = v2_new(32.0f, -32.0f);
 	v2 title_inner_anchor = v2_new(0.0f, 1.0f);
 	v2 title_screen_anchor = v2_new(0.0f, 1.0f);
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "Level editing",
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "More dynamic shooting and vfx",
 		title_position, title_inner_anchor, title_screen_anchor, color, &ui_stack);
 
 	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
 	title_position.y -= 64.0f;
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: serialization of level data.",
+	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: UI rects and HUD.",
 		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_stack);
 
 	game->frame++;

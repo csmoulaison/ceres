@@ -24,11 +24,13 @@ void game_active_update(GameState* game, f32 dt) {
 			player->shoot_cooldown = 0.08f;
 			player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
 
+			v2 direction = player_direction_vector(player);
+			player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
+
 			for(i32 j = 0; j < 2; j++) {
 				if(j == i) continue;
 
 				GamePlayer* other = &game->players[j];
-				v2 direction = player_direction_vector(player);
 				f32 t = v2_dot(direction, v2_sub(other->position, player->position));
 				if(t < 0.5f) continue;
 
@@ -53,7 +55,7 @@ void game_active_update(GameState* game, f32 dt) {
 		}
 
 		// Calculate ship rotational acceleration
-		f32 rotate_speed = 16.0f;
+		f32 rotate_speed = 20.0f;
 		if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
 			rot_acceleration += rotate_speed;
 		}

@@ -1,3 +1,8 @@
+// TODO: Currently, I don't understand these all that well. Continue reading the
+// physics book and get a better handle on what's going on. Incidentally, these
+// don't really work all that great either. The final result should feel like a
+// nice flawless game of ice hockey with a bit of friction. No stickies, please!
+
 void physics_resolve_velocities(GameState* game) {
 	f32 radius = 0.5f;
 	for(i32 i = 0; i < 2; i++) {
@@ -40,6 +45,7 @@ void physics_resolve_velocities(GameState* game) {
 		}
 
 		// Resolve against other players
+		// TODO: Nudge the rotational speeds on collision.
 		for(i32 j = i + 1; j < 2; j++) {
 			GamePlayer* other = &game->players[j];
 			if(v2_distance(player->position, other->position) < radius * 2.0f) {

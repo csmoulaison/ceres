@@ -1,8 +1,11 @@
 // NOW: < LIST: I think our order is as follows:
+// - UI for health, score, and maybe gun heat?
 // - Ship destruction animation.
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames
-// - 
+// - Designed competitive level
+// - Post death respawn animation (camera moves to spawn location, ship flies
+//   in from tunnnel?)
 // - Menu, so we can have two buttons, one for local and one for ...
 // - ... Networking
 // 
@@ -137,7 +140,6 @@ i32 main(i32 argc, char** argv) {
 	if(!xlib->display) { panic(); }
 
 	srand(time(NULL));
-	fast_random_init();
 
 	// GLX (OpenGL+Xlib) specific stuff. The control flow for this can't really be
 	// abstracted now, only refactored to specifics if/when we get another API going.
