@@ -4,6 +4,7 @@ in vec3 frag_pos;
 in vec3 normal;
 in vec2 tex_uv;
 in vec4 color;
+in vec3 view_pos;
 
 out vec4 frag_color;
 
@@ -16,11 +17,18 @@ void main()
 	vec3 ambient = vec3(0.2f, 0.2f, 0.2f);
 
 	vec3 norm = normalize(normal);
-	vec3 light_direction = normalize(light_pos - frag_pos);
-	float diff = max(dot(norm, light_direction), 0.0f);
+	vec3 light_dir = normalize(light_pos - frag_pos);
+	float diff = max(dot(norm, light_dir), 0.0f);
 	vec3 diffuse = diff * light_color;
 
-	vec3 result = ambient + diffuse;
+	// specular
+	float spec_strength = 10.0f;
+	vec3 view_dir = normalize(light_pos - frag_pos);
+	vec3 reflect_dir = reflect(-light_dir, norm);
+	float spec = pow(max(dot(view_dir, reflect_dir), 0.0f), 32);
+	vec3 specular = spec_strength * spec * light_color;
+
+	vec3 result = ambient + diffuse + specular;
     frag_color = vec4(result, 1.0f) * texture(tex, tex_uv) * color;
     // vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
     //frag_color = vec4(result, 1.0f);

@@ -22,6 +22,7 @@ out vec3 frag_pos;
 out vec3 normal;
 out vec2 tex_uv;
 out vec4 color;
+out vec3 view_pos;
 
 void main()
 {
@@ -29,6 +30,7 @@ void main()
 	frag_pos = vec3(instance.transform * vec4(pos, 1.0f));
 	normal = mat3(transpose(inverse(instance.transform))) * norm;
 	tex_uv = uv;
+	view_pos = cam_position;
 	color = instance.color;
 	gl_Position = projection * vec4(frag_pos, 1.0f);
 }

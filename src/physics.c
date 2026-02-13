@@ -44,9 +44,13 @@ void physics_resolve_velocities(GameState* game) {
 			GamePlayer* other = &game->players[j];
 			if(v2_distance(player->position, other->position) < radius * 2.0f) {
 				f32 mag = v2_magnitude(player->velocity) + v2_magnitude(other->velocity);
-				if(player->hit_cooldown < mag * 0.04f) {
-					player->hit_cooldown = mag * 0.04f;
+				if(player->hit_cooldown < mag * 0.02f) {
+					player->hit_cooldown = mag * 0.02f;
 				}
+				if(other->hit_cooldown < mag * 0.02f) {
+					other->hit_cooldown = mag * 0.02f;
+				}
+
 
 				// This is the case of both ships having equal mass.
 				//v2 collision_normal = v2_normalize(v2_sub(player->position, other->position));

@@ -1,8 +1,8 @@
 // NOW: < LIST: I think our order is as follows:
-// - The ship exploding in some visually pleasing way, along with shooting and
-//   exploding sound effects
+// - Ship destruction animation.
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames
+// - 
 // - Menu, so we can have two buttons, one for local and one for ...
 // - ... Networking
 // 

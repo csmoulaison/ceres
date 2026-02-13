@@ -315,6 +315,7 @@ GAME_UPDATE(game_update) {
 					GameCamera* camera = &game->cameras[i];
 					GamePlayer* player = &game->players[i];
 					v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
+					//v3 cam_pos = v3_new(player->position.x - camera->offset.x * 1.5f, 5.0f, player->position.y - camera->offset.y * 1.5f);
 					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f);
 					f32 gap = 0.0025f;
 					v4 screen_rect;
