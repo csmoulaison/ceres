@@ -39,17 +39,8 @@ void game_active_update(GameState* game, f32 dt) {
 					f32 cross = v2_cross(direction, v2_sub(other->position, player->position));
 					other->rotation_velocity -= cross;
 					
-					other->health -= 0.2f;
-					other->hit_cooldown = 1.0f;
 					other->velocity = v2_add(other->velocity, v2_scale(direction, 1.0f));
-					if(other->health <= 0.0f) {
-						other->health = 1.0f;
-						f32 pos = 14.0f;
-						if(i == 0) pos = 50.0f;
-						other->position = v2_new(pos, pos);
-						other->velocity = v2_zero();
-						other->hit_cooldown = 1.2f;
-					}
+					player_damage(other, 0.2f);
 				}
 			}
 		}

@@ -4,6 +4,7 @@
 #include "game.h"
 #include "renderer/render_list.c"
 #include "ui_text.c"
+#include "player.c"
 #include "physics.c"
 #include "level.c"
 #include "game_active.c"

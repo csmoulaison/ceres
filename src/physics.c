@@ -32,9 +32,12 @@ void physics_resolve_velocities(GameState* game) {
 
 			if(penetration < 0.0f) {
 				f32 mag = v2_magnitude(player->velocity);
-				if(player->hit_cooldown < mag * 0.04f) {
-					player->hit_cooldown = mag * 0.04f;
-				}
+				player_damage(player, mag * 0.01f);
+				// TODO: hit_cooldown should probably be modified as a result of a
+				// damage_player function.
+				//if(player->hit_cooldown < mag * 0.04f) {
+				//	player->hit_cooldown = mag * 0.04f;
+				//}
 
 				player->position = v2_add(player->position, v2_scale(v2_normalize(player->velocity), penetration * 1.2f));
 				player->velocity = v2_mult(player->velocity, contact_normal);
@@ -50,13 +53,7 @@ void physics_resolve_velocities(GameState* game) {
 			GamePlayer* other = &game->players[j];
 			if(v2_distance(player->position, other->position) < radius * 2.0f) {
 				f32 mag = v2_magnitude(player->velocity) + v2_magnitude(other->velocity);
-				if(player->hit_cooldown < mag * 0.02f) {
-					player->hit_cooldown = mag * 0.02f;
-				}
-				if(other->hit_cooldown < mag * 0.02f) {
-					other->hit_cooldown = mag * 0.02f;
-				}
-
+				player_damage(player, mag * 0.01f);
 
 				// This is the case of both ships having equal mass.
 				//v2 collision_normal = v2_normalize(v2_sub(player->position, other->position));
