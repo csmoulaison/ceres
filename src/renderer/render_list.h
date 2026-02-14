@@ -26,6 +26,7 @@ changes made to the render layer.
 #define RENDER_LIST_MAX_LASERS 32
 #define RENDER_LIST_MAX_GLYPHS_PER_FONT 512
 #define RENDER_LIST_MAX_CAMERAS 2
+#define RENDER_LIST_MAX_RECTS 512
 
 typedef u8 RenderListInstanceArray;
 
@@ -56,6 +57,12 @@ typedef struct {
 } RenderListGlyph;
 
 typedef struct {
+	v4 dst;
+	v4 color;
+	v2 screen_anchor;
+} RenderListRect;
+
+typedef struct {
 	v3 clear_color;
 
 	RenderListCamera cameras[RENDER_LIST_MAX_CAMERAS];
@@ -71,6 +78,9 @@ typedef struct {
 	RenderListGlyph glyph_lists[ASSET_NUM_FONTS][RENDER_LIST_MAX_GLYPHS_PER_FONT];
 	u32 glyph_list_lens[ASSET_NUM_FONTS];
 	u32 glyph_list_textures[ASSET_NUM_FONTS];
+
+	RenderListRect rects[RENDER_LIST_MAX_RECTS];
+	u32 rects_len;
 } RenderList;
 
 #endif // render_list_h_INCLUDED

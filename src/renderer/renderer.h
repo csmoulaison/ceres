@@ -17,6 +17,7 @@ typedef enum {
 typedef enum {
 	RENDER_SSBO_TEXT = 0,
 	RENDER_SSBO_MODEL,
+	RENDER_SSBO_RECT,
 	NUM_RENDER_SSBOS
 } RenderSsboType;
 

@@ -1,9 +1,6 @@
 #version 430 core
 layout (location = 0) in vec2 vert;
 
-out vec2 uv;
-out vec4 text_color;
-
 struct Char {
 	vec4 src;
 	vec4 dst;
@@ -14,6 +11,9 @@ layout(std430, binding = 0) buffer txt
 {
 	Char string[];
 } text;
+
+out vec2 uv;
+out vec4 text_color;
 
 void main()
 {

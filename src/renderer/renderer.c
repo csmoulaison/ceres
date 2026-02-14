@@ -10,6 +10,11 @@ typedef struct {
 } RenderGlyph;
 
 typedef struct {
+	v4 dst;
+	v4 color;
+} RenderRect;
+
+typedef struct {
 	float projection[16];
 	v3 position;
 	f32 padding;
@@ -61,6 +66,7 @@ void render_push_command(RenderMemory* renderer, RenderCommandType type, void* d
 	RenderCommand* cmd = (RenderCommand*)stack_alloc(frame_stack, sizeof(RenderCommand));
 	cmd->type = type;
 	cmd->data = stack_alloc(frame_stack, data_size);
+	cmd->next = NULL;
 	memcpy(cmd->data, data, data_size);
 
 	if(renderer->commands.root == NULL) {
@@ -210,7 +216,7 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 		}
 	}
 
-	init->ssbos_len = 2;
+	init->ssbos_len = NUM_RENDER_SSBOS;
 	init->ssbos = (RenderSsboInitData*)stack_alloc(&init_stack, sizeof(RenderSsboInitData) * init->ssbos_len);
 	for(i32 i = 0; i < init->ssbos_len; i++) {
 		RenderSsboInitData* ssbo = &init->ssbos[i];
@@ -222,6 +228,10 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 			} break;
 			case RENDER_SSBO_TEXT: {
 				ssbo->size = sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT;
+				ssbo->binding = 0;
+			} break;
+			case RENDER_SSBO_RECT: {
+				ssbo->size = sizeof(RenderRect) * RENDER_LIST_MAX_RECTS;
 				ssbo->binding = 0;
 			} break;
 			default: {
@@ -266,6 +276,8 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	// =========================
 	// PREPARE HOST DATA BUFFERS
 	// =========================
+	// TODO: We need to finish what we started with models and move a lot of this
+	// logic to the render list if appropriate.
 
 	// Camera ubo
 	RenderCameraUbo* camera_ubos = (RenderCameraUbo*)stack_alloc(&frame_stack, sizeof(RenderCameraUbo) * list->cameras_len);
@@ -287,36 +299,10 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
 
 	// Model ssbos
-	/*
-	RenderModelTransform* model_ssbos = (RenderModelTransform*)stack_alloc(&frame_stack, sizeof(RenderModelTransform) * list->models_len);
-
-	u32 model_ssbo_offsets_by_type[ASSET_NUM_MESHES];
-	u32 model_ssbo_lens_by_type[ASSET_NUM_MESHES];
-	u64 offset = 0;
-	for(i32 i = 0; i < ASSET_NUM_MESHES; i++) {
-		model_ssbo_offsets_by_type[i] = offset;
-		offset += list->model_lens_by_type[i];
-		model_ssbo_lens_by_type[i] = 0;
-	}
-
-	for(i32 i = 0; i < list->models_len; i++) {
-		RenderListModel* model = &list->models[i];
-		RenderModelTransform* ssbo = &model_ssbos[model_ssbo_offsets_by_type[model->id] + model_ssbo_lens_by_type[model->id]];
-		model_ssbo_lens_by_type[model->id]++;
-
-		m4_translation(model->position, ssbo->transform);
-		f32 rotation[16];
-		m4_rotation(
-			model->orientation.x, 
-			model->orientation.y, 
-			model->orientation.z, 
-			rotation);
-		m4_mul(ssbo->transform, rotation, ssbo->transform);
-	}
-	*/
 	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)list->instances);
 
 	// Text ssbo
+	// NOW: Only allocate amount of glyphs needed, I would imagine!
 	RenderGlyph* text_ssbo = (RenderGlyph*)stack_alloc(&frame_stack, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
 	for(u32 i = 0; i < ASSET_NUM_FONTS; i++) {
 		for(u32 j = 0; j < list->glyph_list_lens[i]; j++) {
@@ -333,6 +319,19 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		}
 	}
 	u8 text_host_buffer = render_push_host_buffer(renderer, (u8*)text_ssbo);
+
+	// Rect ssbo
+	RenderRect* rect_ssbo = (RenderRect*)stack_alloc(&frame_stack, sizeof(RenderRect) * list->rects_len);
+	for(u32 i = 0; i < list->rects_len; i++) {
+		RenderListRect* list_rect = &list->rects[i];
+		RenderRect* render_rect = &rect_ssbo[i];
+		render_rect->dst.x = 2.0f * (list_rect->dst.x / platform->window_width + list_rect->screen_anchor.x) - 1.0f;
+		render_rect->dst.y = 2.0f * (list_rect->dst.y / platform->window_height + list_rect->screen_anchor.y) - 1.0f;
+		render_rect->dst.z = 2.0f * (list_rect->dst.z / platform->window_width);
+		render_rect->dst.w = 2.0f * (list_rect->dst.w / platform->window_height);
+		render_rect->color = list_rect->color;
+	}
+	u8 rect_host_buffer = render_push_host_buffer(renderer, (u8*)rect_ssbo);
 
 	// =====================
 	// GENERATE RENDER GRAPH
@@ -452,4 +451,25 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		}
 		text_buffer_offset += sizeof(RenderGlyph) * RENDER_LIST_MAX_GLYPHS_PER_FONT;
 	}
+
+	// Draw rects
+	RenderCommandUseProgram use_program_rect = { .program = ASSET_RENDER_PROGRAM_RECT };
+	render_push_command(renderer, RENDER_COMMAND_USE_PROGRAM, &use_program_rect, &frame_stack);
+	
+	RenderCommandUseSsbo use_ssbo_rect = { .ssbo = RENDER_SSBO_RECT };
+	render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_rect, &frame_stack);
+
+	RenderCommandBufferSsboData buffer_ssbo_data_rect = { 
+		.ssbo = RENDER_SSBO_RECT, 
+		.size = sizeof(RenderGlyph) * list->rects_len, 
+		.host_buffer_index = rect_host_buffer, 
+		.host_buffer_offset = 0 
+	};
+	render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_rect, &frame_stack);
+
+	RenderCommandDrawMeshInstanced draw_mesh_instanced_rect = { 
+		.mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], 
+		.count = list->rects_len 
+	};
+	render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_rect, &frame_stack);
 }

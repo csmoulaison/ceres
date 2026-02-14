@@ -39,6 +39,7 @@ typedef struct {
 	v2 position;
 	v2 velocity;
 	f32 health;
+	f32 visible_health;
 	f32 shoot_cooldown;
 	f32 hit_cooldown;
 

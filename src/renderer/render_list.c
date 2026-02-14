@@ -24,6 +24,7 @@ void render_list_init(RenderList* list) {
 	list->instances_len = 0;
 	list->instance_index_offset = 0;
 	list->instance_types_len = 0;
+	list->rects_len = 0;
 	for(i32 i = 0; i < RENDER_LIST_MAX_INSTANCE_TYPES; i++) {
 		list->instance_types[i].instances_len = 0;
 	}
@@ -140,4 +141,22 @@ void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle f
 	list_glyph->src.y = ((f32)font_glyph->position[1]) / font->texture_height;
 	list_glyph->src.z = ((f32)font_glyph->size[0]) / font->texture_width;
 	list_glyph->src.w = ((f32)font_glyph->size[1]) / font->texture_height;
+}
+
+void render_list_draw_rect(RenderList* list, v4 dst, v2 screen_anchor, v4 color) {
+	assert(list->rects_len < RENDER_LIST_MAX_RECTS);
+
+	RenderListRect* rect = &list->rects[list->rects_len];
+	list->rects_len++;
+	rect->dst = dst;
+	rect->color = color;
+	rect->screen_anchor = screen_anchor;
+}
+
+void render_list_draw_box(RenderList* list, v4 dst, v2 screen_anchor, f32 stroke, v4 color) {
+	f32 hstroke = stroke / 2.0f;
+	render_list_draw_rect(list, v4_new(dst.x - hstroke,         dst.y - hstroke,         dst.z + stroke, stroke),         screen_anchor, color);
+	render_list_draw_rect(list, v4_new(dst.x - hstroke,         dst.y + dst.w - hstroke, dst.z + stroke, stroke),         screen_anchor, color);
+	render_list_draw_rect(list, v4_new(dst.x - hstroke,         dst.y + hstroke,         stroke,         dst.w - stroke), screen_anchor, color);
+	render_list_draw_rect(list, v4_new(dst.x + dst.z - hstroke, dst.y + hstroke,         stroke,         dst.w - stroke), screen_anchor, color);
 }

@@ -195,8 +195,13 @@ void gl_update(RenderMemory* renderer, Platform* platform) {
 	}
 
 	RenderCommand* cmd = renderer->commands.root;
+	printf("here!\n");
+	i32 count = 0;
 	while(cmd != NULL) {
+		printf("  count %i\n", count);
 		assert(cmd->data != NULL);
+		printf("    good\n");
+		count++;
 		switch(cmd->type) {
 			case RENDER_COMMAND_CLEAR: {
 				RenderCommandClear* data = (RenderCommandClear*)cmd->data;

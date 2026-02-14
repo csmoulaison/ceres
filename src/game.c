@@ -35,6 +35,7 @@ GAME_INIT(game_init) {
 		player->position = v2_new(i * 2.0f + 32.0f, i * 2.0f + 32.0f);
 		player->velocity = v2_zero();
 		player->health = 1.0f;
+		player->visible_health = player->health;
 		player->shoot_cooldown = 0.0f;
 		player->hit_cooldown = 0.0f;
 		player->shoot_cooldown_sound = 0.0f;
@@ -352,13 +353,14 @@ GAME_UPDATE(game_update) {
 		"vel_x: ",
 		"vel_y: "
 	};
-	v2 debug_screen_anchor = v2_zero();
+	v2 debug_screen_anchor = v2_new(1.0f, 0.0f);
 	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {
 		char str[256];
 		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
 
 		v2 debug_position = v2_new(32.0f, 12.0f + (PRINT_VALUES_LEN - i) * 24.0f);
-		v2 debug_inner_anchor = v2_zero();
+		// TODO: anchor should be 1.0f, but is misaligned when we set it to that. Why?
+		v2 debug_inner_anchor = v2_new(1.5f, 0.0f);
 		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_MONO_SMALL, str,
 			debug_position, debug_inner_anchor, &ui_stack);
 
@@ -386,6 +388,24 @@ GAME_UPDATE(game_update) {
 	title_position.y -= 64.0f;
 	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: UI rects and HUD.",
 		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_stack);
+
+	for(i32 i = 0; i < 2; i++) {
+		if(!splitscreen && i != 0) continue;
+
+		GamePlayer* player = &game->players[i];
+		player->visible_health = lerp(player->visible_health, player->health, 20.0f * dt);
+		v4 health_bar_root = v4_new(32.0f, 32.0f, 64.0f, 400.0f);
+		render_list_draw_box(list, health_bar_root, v2_new(i * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 1.0f));
+		f32 segments = 40.0f;
+		for(i32 j = 0; j < (i32)(player->visible_health * segments); j++) {
+			v4 health_bar_sub = health_bar_root;
+			health_bar_sub.x += 8.0f;
+			health_bar_sub.y += 8.0f + j * ((health_bar_root.w - 8.0f) / segments);
+			health_bar_sub.z -= 16.0f;
+			health_bar_sub.w = health_bar_root.w / segments - 8.0f;
+			render_list_draw_box(list, health_bar_sub, v2_new(i * 0.5f, 0.0f), 4.0f, v4_new(1.0f - j / segments, j / segments, 0.0f, 1.0f));
+		}
+	}
 
 	game->frame++;
 }
