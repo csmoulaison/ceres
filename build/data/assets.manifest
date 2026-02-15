@@ -6,6 +6,7 @@ mesh FLOOR data/meshes/floor_flat.obj
 mesh CYLINDER data/meshes/cylinder.obj
 mesh CUBE data/meshes/cube.obj
 texture SHIP data/textures/ship.bmp
+texture SHIP_2 data/textures/ship2.bmp
 texture FLOOR data/textures/floor_tiles.bmp
 texture CRATE data/textures/cube_tile.bmp
 render_program MODEL ../src/shaders/model.vert ../src/shaders/model.frag

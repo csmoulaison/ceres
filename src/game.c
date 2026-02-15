@@ -276,7 +276,8 @@ GAME_UPDATE(game_update) {
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
-	u8 ship_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 2);
+	u8 ship_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 1);
+	u8 ship2_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 1);
 	u8 laser_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
@@ -287,7 +288,9 @@ GAME_UPDATE(game_update) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		v3 rot = player_orientation(player);
-		render_list_draw_model_colored(list, ship_instance_type, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
+		u8 instance_type = ship_instance_type;
+		if(i == 1) instance_type = ship2_instance_type;
+		render_list_draw_model_colored(list, instance_type, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
 
 		v2 direction = player_direction_vector(player);
 		v2 side = v2_new(-direction.y, direction.x);

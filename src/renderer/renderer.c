@@ -395,7 +395,8 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		for(i32 i = 0; i < list->instance_types_len; i++) {
 			RenderListInstanceType* type = &list->instance_types[i];
 			if(type->instances_len < 1) {
-				printf("Instances len less than 1 for instance type %i\n", i);
+				continue;
+				//printf("Instances len less than 1 for instance type %i\n", i);
 				//panic();
 			}
 
