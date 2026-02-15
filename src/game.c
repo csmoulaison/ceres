@@ -51,6 +51,11 @@ GAME_INIT(game_init) {
 		camera->offset = v2_zero();
 	}
 
+	for(i32 i = 0; i < 6; i++) {
+		GameDestructMesh* destruct_mesh = &game->destruct_meshes[i];
+		destruct_mesh->opacity = 0.0f;
+	}
+
 	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
 		GameSoundChannel* channel = &game->sound_channels[i];
 		channel->phase = 0.0f;
@@ -142,6 +147,15 @@ GAME_UPDATE(game_update) {
 		} break;
 #endif
 		default: break;
+	}
+
+	for(i32 i = 0; i < 6; i++) {
+		GameDestructMesh* mesh = &game->destruct_meshes[i];
+		if(mesh->opacity <= 0.0f) continue;
+		mesh->velocity.y -= 10.0f * dt;
+		mesh->position = v3_add(mesh->position, v3_scale(mesh->velocity, dt));
+		mesh->orientation = v3_add(mesh->orientation, v3_scale(mesh->rotation_velocity, dt));
+		mesh->opacity -= dt;
 	}
 
 	// Update sound channels
@@ -268,12 +282,11 @@ GAME_UPDATE(game_update) {
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = true;
+	bool splitscreen = false;
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
-		f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
-		v3 rot = v3_new(-tilt, player->direction, 0.0f);
+		v3 rot = player_orientation(player);
 		render_list_draw_model_colored(list, ship_instance_type, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
 
 		v2 direction = player_direction_vector(player);
@@ -298,6 +311,31 @@ GAME_UPDATE(game_update) {
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(i % floor_length, 0.0f, i / floor_length);
 		render_list_draw_model_aligned(list, floor_instance_type, floor_pos);
+	}
+
+	// TODO: When this is put below cube rendering, the meshes are overwritten by
+	// cubes. Pretty important we figure out why, obviously.
+	u8 body_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_BODY, ASSET_TEXTURE_SHIP, 2);
+	u8 wing_l_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_L, ASSET_TEXTURE_SHIP, 2);
+	u8 wing_r_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_R, ASSET_TEXTURE_SHIP, 2);
+	for(i32 i = 0; i < 6; i++) {
+		GameDestructMesh* mesh = &game->destruct_meshes[i];
+		if(mesh->opacity <= 0.0f) continue;
+
+		u8 instance_type = 0;
+		switch(mesh->mesh) {
+			case ASSET_MESH_SHIP_BODY: {
+				instance_type = body_instance_type;
+			} break;
+			case ASSET_MESH_SHIP_WING_L: {
+				instance_type = wing_l_instance_type;
+			} break;
+			case ASSET_MESH_SHIP_WING_R: {
+				instance_type = wing_r_instance_type;
+			} break;
+			default: { panic(); }
+		}
+		render_list_draw_model_colored(list, instance_type, mesh->position, mesh->orientation, v4_new(1.0f, 1.0f, 1.0f, mesh->opacity * mesh->opacity));
 	}
 
 	u8 cube_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 1024);

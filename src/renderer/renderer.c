@@ -396,7 +396,7 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 			RenderListInstanceType* type = &list->instance_types[i];
 			if(type->instances_len < 1) {
 				printf("Instances len less than 1 for instance type %i\n", i);
-				panic();
+				//panic();
 			}
 
 			RenderCommandBufferSsboData buffer_ssbo_data_model = { 

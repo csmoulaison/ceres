@@ -1,3 +1,8 @@
+v3 player_orientation(GamePlayer* player) {
+	f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
+	return v3_new(-tilt, player->direction, 0.0f);
+}
+
 v2 player_direction_vector(GamePlayer* player) {
 	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
 }
@@ -25,7 +30,7 @@ void game_active_update(GameState* game, f32 dt) {
 			player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
 
 			v2 direction = player_direction_vector(player);
-			player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
+			//player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
 
 			for(i32 j = 0; j < 2; j++) {
 				if(j == i) continue;
@@ -132,6 +137,23 @@ void game_active_update(GameState* game, f32 dt) {
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
 		if(player->health <= 0.0f) {
+			u8 destruct_mesh_ids[3] = { ASSET_MESH_SHIP_BODY, ASSET_MESH_SHIP_WING_L, ASSET_MESH_SHIP_WING_R };
+			for(i32 j = 0; j < 3; j++) {
+				GameDestructMesh* destruct_mesh = &game->destruct_meshes[j];
+				destruct_mesh->opacity = 1.0f;
+				destruct_mesh->mesh = destruct_mesh_ids[j];
+				destruct_mesh->texture = ASSET_TEXTURE_SHIP;
+				destruct_mesh->position = v3_new(player->position.x, 0.5f, player->position.y);
+				destruct_mesh->orientation = player_orientation(player);
+				destruct_mesh->velocity.x = (random_f32() * 2.0f - 1.0f) * 2.0f;
+				destruct_mesh->velocity.y = random_f32() * 2.0f;
+				destruct_mesh->velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
+				destruct_mesh->velocity = v3_add(destruct_mesh->velocity, v3_new(player->velocity.x, 0.0f, player->velocity.y));
+				destruct_mesh->rotation_velocity.x = (random_f32() * 2.0f - 1.0f) * 2.0f;
+				destruct_mesh->rotation_velocity.y = (random_f32() * 2.0f - 1.0f) * 2.0f;
+				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
+			}
+
 			player->health = 1.0f;
 			f32 pos = 32.0f;
 			player->position = v2_new(pos, pos);

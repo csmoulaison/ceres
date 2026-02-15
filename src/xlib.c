@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - UI for health, score, and maybe gun heat?
 // - Ship destruction animation.
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames

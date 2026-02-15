@@ -1,4 +1,7 @@
 mesh SHIP data/meshes/ship.obj 
+mesh SHIP_BODY data/meshes/ship_body.obj
+mesh SHIP_WING_L data/meshes/ship_wing_1.obj
+mesh SHIP_WING_R data/meshes/ship_wing_2.obj
 mesh FLOOR data/meshes/floor_flat.obj
 mesh CYLINDER data/meshes/cylinder.obj
 mesh CUBE data/meshes/cube.obj

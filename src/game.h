@@ -76,11 +76,22 @@ typedef struct {
 } GameLevel;
 
 typedef struct {
+	f32 opacity;
+	u8 mesh;
+	u8 texture;
+	v3 position;
+	v3 velocity;
+	v3 orientation;
+	v3 rotation_velocity;
+} GameDestructMesh;
+
+typedef struct {
 	GameMode mode;
 	GameLevel level;
 
 	GamePlayer players[2];
 	GameCamera cameras[2];
+	GameDestructMesh destruct_meshes[6];
 
 	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;

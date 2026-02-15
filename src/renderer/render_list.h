@@ -22,7 +22,7 @@ changes made to the render layer.
 #include "renderer/renderer.h"
 
 #define RENDER_LIST_MAX_INSTANCE_TYPES 32
-#define RENDER_LIST_MAX_INSTANCES 16000
+#define RENDER_LIST_MAX_INSTANCES 32000
 #define RENDER_LIST_MAX_LASERS 32
 #define RENDER_LIST_MAX_GLYPHS_PER_FONT 512
 #define RENDER_LIST_MAX_CAMERAS 2
