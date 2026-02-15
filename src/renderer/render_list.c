@@ -47,7 +47,8 @@ void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_
 	list->cameras_len++;
 }
 
-u8 render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i32 count) {
+// NOW: Check if matching type has already been allocated.
+void render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i32 count) {
 	assert(list->instances_len + count < RENDER_LIST_MAX_INSTANCES);
 	assert(list->instance_types_len < RENDER_LIST_MAX_INSTANCE_TYPES);
 	strict_assert(list->instances_len < 65535);
@@ -59,22 +60,30 @@ u8 render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i3
 	type->texture = texture;
 	type->instance_index_offset = list->instance_index_offset;
 	list->instance_index_offset += count;
-	return list->instance_types_len - 1;
 }
 
-RenderListInstanceData* render_list_push_instance(RenderList* list, u8 instance_type) {
+RenderListInstanceData* render_list_push_instance(RenderList* list, u8 model, u8 texture) {
+	RenderListInstanceType* type = NULL;
+	for(i32 i = 0; i < list->instance_types_len; i++) {
+		type = &list->instance_types[i];
+		if(type->model == model && type->texture == texture) {
+			break;
+		} else {
+			type = NULL;
+		}
+	}
+	assert(type != NULL);
+	
 	// TODO: Bounds checking on instances? Right now we aren't storing the count
 	// when the type is allocated. Maybe we can only store when in debug mode.
-	strict_assert(instance_type < list->instance_types_len);
-	RenderListInstanceType* type = &list->instance_types[instance_type];
 	RenderListInstanceData* instance = &list->instances[type->instance_index_offset + type->instances_len];
 	instance->color = v4_new(1.0f, 1.0f, 1.0f, 0.0f);
 	type->instances_len++;
 	return instance;
 }
 
-void render_list_draw_model(RenderList* list, u8 instance_type, v3 position, v3 orientation) {
-	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+void render_list_draw_model(RenderList* list, u8 model, u8 texture, v3 position, v3 orientation) {
+	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
 	m4_translation(position, instance->transform);
 	f32 rotation[16];
 	m4_rotation(
@@ -85,13 +94,13 @@ void render_list_draw_model(RenderList* list, u8 instance_type, v3 position, v3 
 	m4_mul(instance->transform, rotation, instance->transform);
 }
 
-void render_list_draw_model_aligned(RenderList* list, u8 instance_type, v3 position) {
-	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+void render_list_draw_model_aligned(RenderList* list, u8 model, u8 texture, v3 position) {
+	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
 	m4_translation(position, instance->transform);
 }
 
-void render_list_draw_model_colored(RenderList* list, u8 instance_type, v3 position, v3 orientation, v4 color) {
-	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+void render_list_draw_model_colored(RenderList* list, u8 model, u8 texture, v3 position, v3 orientation, v4 color) {
+	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
 	instance->color = color;
 	m4_translation(position, instance->transform);
 	f32 rotation[16];
@@ -103,8 +112,8 @@ void render_list_draw_model_colored(RenderList* list, u8 instance_type, v3 posit
 	m4_mul(instance->transform, rotation, instance->transform);
 }
 
-void render_list_draw_laser(RenderList* list, u8 instance_type, v3 start, v3 end, f32 stroke) {
-	RenderListInstanceData* instance = render_list_push_instance(list, instance_type);
+void render_list_draw_laser(RenderList* list, v3 start, v3 end, f32 stroke) {
+	RenderListInstanceData* instance = render_list_push_instance(list, ASSET_MESH_CYLINDER, 0);
 	instance->color = v4_new(2.0f, 0.0f, 0.0f, 1.0f);
 	v3 line_delta = v3_sub(end, start);
 	m4_scale(v3_new(v3_magnitude(line_delta), stroke, stroke), instance->transform);

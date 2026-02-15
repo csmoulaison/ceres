@@ -11,12 +11,18 @@
 #define GAME_EDITOR_TOOLS true
 #define MAX_GAME_LEVEL_SIDE_LENGTH 1024
 
+typedef enum {
+	EDITOR_TOOL_CUBES,
+	EDITOR_TOOL_SPAWNS
+} LevelEditorTool;
+
 #if GAME_EDITOR_TOOLS
 typedef struct {
-	v2 camera_position;
+	v3 camera_position;
 	u32 cursor_x;
 	u32 cursor_y;
 	u32 cursor_object;
+	LevelEditorTool tool;
 } LevelEditor;
 #endif
 
@@ -71,6 +77,9 @@ typedef enum {
 } GameMode;
 
 typedef struct {
+	LevelSpawn spawns[MAX_LEVEL_SPAWNS];
+	u8 spawns_len;
+
 	u16 side_length;
 	u8 tiles[MAX_GAME_LEVEL_SIDE_LENGTH * MAX_GAME_LEVEL_SIDE_LENGTH];
 } GameLevel;

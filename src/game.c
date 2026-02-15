@@ -76,19 +76,30 @@ GAME_INIT(game_init) {
 		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
 	}
 
+	// Load level
 	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
-	game->level.side_length = level_asset->side_length;
-	u16 side_length = game->level.side_length;
+	GameLevel* level = &game->level;
+	level->spawns_len = level_asset->spawns_len;
+	for(i32 i = 0; i < level->spawns_len; i++) {
+		level->spawns[i] = level_asset->spawns[i];
+	}
+
+	level->side_length = level_asset->side_length;
+	level->side_length = 64;
+	u16 side_length = level->side_length;
 	assert(side_length <= MAX_GAME_LEVEL_SIDE_LENGTH);
 	for(i32 i = 0; i < side_length * side_length; i++) {
 		i32 x = i % side_length;
 		i32 y = i / side_length;
-		if(x < 12 || x > 51 || y < 12 || y > 51) {
-			game->level.tiles[i] = 1 + rand() / (RAND_MAX / 3);
+		if(x < 2 || x > 61 || y < 2 || y > 61) {
+			level->tiles[i] = 1 + rand() / (RAND_MAX / 3);
 		} else {
-			game->level.tiles[i] = level_asset->buffer[i];
+			level->tiles[i] = level_asset->buffer[i];
 		}
 	}
+
+	// init editor
+	game->level_editor.tool = EDITOR_TOOL_CUBES;
 }
 
 GAME_UPDATE(game_update) {
@@ -276,9 +287,19 @@ GAME_UPDATE(game_update) {
 	RenderList* list = &output->render_list;
 	render_list_init(list);
 
-	u8 ship_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 1);
-	u8 ship2_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 1);
-	u8 laser_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 8);
+	render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
+
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_BODY, ASSET_TEXTURE_SHIP, 2);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_L, ASSET_TEXTURE_SHIP, 2);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_R, ASSET_TEXTURE_SHIP, 2);
+
+	render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 4096);
+
+	i32 floor_length = game->level.side_length;
+	i32 floor_instances = floor_length * floor_length;
+	render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
@@ -288,9 +309,9 @@ GAME_UPDATE(game_update) {
 		GamePlayer* player = &game->players[i];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		v3 rot = player_orientation(player);
-		u8 instance_type = ship_instance_type;
-		if(i == 1) instance_type = ship2_instance_type;
-		render_list_draw_model_colored(list, instance_type, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
+		u8 texture = ASSET_TEXTURE_SHIP;
+		if(i == 1) texture = ASSET_TEXTURE_SHIP_2;
+		render_list_draw_model_colored(list, ASSET_MESH_SHIP, texture, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
 
 		v2 direction = player_direction_vector(player);
 		v2 side = v2_new(-direction.y, direction.x);
@@ -299,8 +320,8 @@ GAME_UPDATE(game_update) {
 		v2 laser_pos_1 = v2_add(v2_add(player->position, v2_scale(side, 0.39f)), v2_scale(direction, 0.10f));
 		v2 laser_pos_2 = v2_add(v2_add(player->position, v2_scale(side, -0.39f)), v2_scale(direction, 0.10f));
 
-		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
-		render_list_draw_laser(list, laser_instance_type, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
+		render_list_draw_laser(list, v3_new(laser_pos_1.x, 0.5f, laser_pos_1.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
+		render_list_draw_laser(list, v3_new(laser_pos_2.x, 0.5f, laser_pos_2.y), v3_new(target.x, 0.5f, target.y), player->shoot_cooldown_sound * player->shoot_cooldown_sound * player->shoot_cooldown_sound * 0.08f);
 
 		// NOW: Debug player velocity line.
 		//v3 vel_laser_start = v3_new(player->position.x, 0.5f, player->position.y);
@@ -308,44 +329,23 @@ GAME_UPDATE(game_update) {
 		//render_list_draw_laser(list, laser_instance_type, vel_laser_start, vel_laser_end, 0.05f);
 	}
 
-	i32 floor_length = game->level.side_length;
-	i32 floor_instances = floor_length * floor_length;
-	u8 floor_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 	for(i32 i = 0; i < floor_instances; i++) {
 		v3 floor_pos = v3_new(i % floor_length, 0.0f, i / floor_length);
-		render_list_draw_model_aligned(list, floor_instance_type, floor_pos);
+		render_list_draw_model_aligned(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos);
 	}
 
 	// TODO: When this is put below cube rendering, the meshes are overwritten by
 	// cubes. Pretty important we figure out why, obviously.
-	u8 body_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_BODY, ASSET_TEXTURE_SHIP, 2);
-	u8 wing_l_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_L, ASSET_TEXTURE_SHIP, 2);
-	u8 wing_r_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_R, ASSET_TEXTURE_SHIP, 2);
 	for(i32 i = 0; i < 6; i++) {
 		GameDestructMesh* mesh = &game->destruct_meshes[i];
 		if(mesh->opacity <= 0.0f) continue;
-
-		u8 instance_type = 0;
-		switch(mesh->mesh) {
-			case ASSET_MESH_SHIP_BODY: {
-				instance_type = body_instance_type;
-			} break;
-			case ASSET_MESH_SHIP_WING_L: {
-				instance_type = wing_l_instance_type;
-			} break;
-			case ASSET_MESH_SHIP_WING_R: {
-				instance_type = wing_r_instance_type;
-			} break;
-			default: { panic(); }
-		}
-		render_list_draw_model_colored(list, instance_type, mesh->position, mesh->orientation, v4_new(1.0f, 1.0f, 1.0f, mesh->opacity * mesh->opacity));
+		render_list_draw_model_colored(list, mesh->mesh, mesh->texture, mesh->position, mesh->orientation, v4_new(1.0f, 1.0f, 1.0f, mesh->opacity * mesh->opacity));
 	}
 
-	u8 cube_instance_type = render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 1024);
 	for(i32 i = 0; i < floor_instances; i++) {
 		for(i32 j = 1; j <= game->level.tiles[i]; j++) {
 			v3 cube_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
-			render_list_draw_model_aligned(list, cube_instance_type, cube_pos);
+			render_list_draw_model_aligned(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, cube_pos);
 		}
 	}
 
@@ -371,14 +371,7 @@ GAME_UPDATE(game_update) {
 		} break;
 #if GAME_EDITOR_TOOLS
 		case GAME_LEVEL_EDITOR: {
-			LevelEditor* editor = &game->level_editor;
-			v3 cam_pos = v3_new((f32)editor->camera_position.x, 8.0f, (f32)editor->camera_position.y - 4.0f);
-			v3 cam_target = v3_new((f32)editor->camera_position.x, 0.0f, (f32)editor->camera_position.y);
-			v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
-
-			v3 cube_pos = v3_new(editor->cursor_x, 0.0f, editor->cursor_y);
-			render_list_draw_model_aligned(list, cube_instance_type, cube_pos);
+			level_editor_draw(game, list);
 		} break;
 #endif
 		default: break;

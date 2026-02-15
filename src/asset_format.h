@@ -9,6 +9,8 @@
 #define MAX_FONT_ASSETS 12
 #define MAX_LEVEL_ASSETS 8
 
+#define MAX_LEVEL_SPAWNS 8
+
 #include "font.h"
 
 typedef struct {
@@ -69,7 +71,15 @@ typedef struct {
 } FontAsset;
 
 typedef struct {
+	u16 x;
+	u16 y;
+	u8 team;
+} LevelSpawn;
+
+typedef struct {
 	u16 side_length;
+	LevelSpawn spawns[MAX_LEVEL_SPAWNS];
+	u8 spawns_len;
 	u8 buffer[];
 } LevelAsset;
 

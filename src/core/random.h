@@ -6,6 +6,7 @@
 static u32 fast_random_seed;
 
 void random_init();
+i32 random_i32();
 f32 random_f32();
 
 void fast_random_init();
@@ -35,6 +36,10 @@ inline f32 fast_random_f32() {
 
 void random_init() {
 	srand(time(NULL));
+}
+
+i32 random_i32(i32 max) {
+	return rand() / (RAND_MAX / max);
 }
 
 f32 random_f32() {

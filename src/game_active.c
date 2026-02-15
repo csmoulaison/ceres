@@ -107,10 +107,8 @@ void game_active_update(GameState* game, f32 dt) {
 
 		player->position = v2_add(player->position, v2_add(accel_dt, velocity_dt));
 
-		// RESOLVE VELOCITIES!!
+		// Resolve velocities
 		physics_resolve_velocities(game);
-
-		// Update player velocity
 		player->velocity = v2_add(player->velocity, v2_scale(acceleration, dt));
 
 		f32 ship_energy = v2_magnitude(player->velocity) + abs(player->rotation_velocity);
@@ -154,11 +152,7 @@ void game_active_update(GameState* game, f32 dt) {
 				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
 			}
 
-			player->health = 1.0f;
-			f32 pos = 32.0f;
-			player->position = v2_new(pos, pos);
-			player->velocity = v2_zero();
-			player->hit_cooldown = 1.2f;
+			player_spawn(player, &game->level, i);
 
 			GamePlayer* other;
 			if(i == 0) other = &game->players[1];

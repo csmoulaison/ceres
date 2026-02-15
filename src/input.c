@@ -17,6 +17,8 @@ typedef enum {
 	BUTTON_SHOOT,
 	BUTTON_DEBUG,
 	BUTTON_QUIT,
+	BUTTON_CLEAR,
+	BUTTON_SWITCH,
 	NUM_BUTTONS
 } InputButtonType;
 
