@@ -129,6 +129,22 @@ void game_active_update(GameState* game, f32 dt) {
 		camera->offset = v2_add(camera->offset, camera_target_delta);
 	}
 
+	for(i32 i = 0; i < 2; i++) {
+		GamePlayer* player = &game->players[i];
+		if(player->health <= 0.0f) {
+			player->health = 1.0f;
+			f32 pos = 32.0f;
+			player->position = v2_new(pos, pos);
+			player->velocity = v2_zero();
+			player->hit_cooldown = 1.2f;
+
+			GamePlayer* other;
+			if(i == 0) other = &game->players[1];
+			if(i == 1) other = &game->players[0];
+			other->score++;
+		}
+	}
+
 	if(input_button_pressed(game->players[0].button_states[BUTTON_DEBUG])) {
 		game->level_editor.cursor_x = (u32)game->players[0].position.x;
 		game->level_editor.cursor_y = (u32)game->players[0].position.y;

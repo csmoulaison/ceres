@@ -33,16 +33,18 @@ typedef struct {
 } GameSoundChannel;
 
 typedef struct {
+	v2 position;
+	v2 velocity;
 	f32 direction;
 	f32 rotation_velocity;
 	f32 strafe_tilt;
-	v2 position;
-	v2 velocity;
+
 	f32 health;
+	i32 score;
+
 	f32 visible_health;
 	f32 shoot_cooldown;
 	f32 hit_cooldown;
-
 	f32 momentum_cooldown_sound;
 	f32 shoot_cooldown_sound;
 

@@ -31,11 +31,12 @@ GAME_INIT(game_init) {
 
 	for(i32 i = 0; i < 2; i++) {
 		GamePlayer* player = &game->players[i];
-		player->direction = 0.0f;
-		player->rotation_velocity = 0.0f;
 		player->position = v2_new(i * 2.0f + 32.0f, i * 2.0f + 32.0f);
 		player->velocity = v2_zero();
+		player->direction = 0.0f;
+		player->rotation_velocity = 0.0f;
 		player->health = 1.0f;
+		player->score = 0;
 		player->visible_health = player->health;
 		player->shoot_cooldown = 0.0f;
 		player->hit_cooldown = 0.0f;
@@ -315,7 +316,7 @@ GAME_UPDATE(game_update) {
 					GamePlayer* player = &game->players[i];
 					v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
 					//v3 cam_pos = v3_new(player->position.x - camera->offset.x * 1.5f, 5.0f, player->position.y - camera->offset.y * 1.5f);
-					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f);
+					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + i * 8.0f);
 					f32 gap = 0.0025f;
 					v4 screen_rect;
 					if(splitscreen) {
@@ -342,6 +343,8 @@ GAME_UPDATE(game_update) {
 		default: break;
 	}
 
+	// TODO: Layouts for splitscreen vs single and others, sets up anchors and
+	// positions per item, which are referenced here in the drawing commands.
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 
 	GamePlayer* pl_primary = &game->players[0];
@@ -378,17 +381,17 @@ GAME_UPDATE(game_update) {
 		}
 	}
 
-	v4 color = v4_new(0.4f, 0.5f, 0.7f, 1.0f);
-	v2 title_position = v2_new(32.0f, -32.0f);
-	v2 title_inner_anchor = v2_new(0.0f, 1.0f);
-	v2 title_screen_anchor = v2_new(0.0f, 1.0f);
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_LARGE, "More dynamic shooting and vfx",
-		title_position, title_inner_anchor, title_screen_anchor, color, &ui_stack);
-
-	v4 color_neu = v4_new(0.4f, 0.7f, 0.5f, 1.0f);
-	title_position.y -= 64.0f;
-	ui_draw_text_line(list, game->fonts, ASSET_FONT_OVO_REGULAR, "Next up: UI rects and HUD.",
-		title_position, title_inner_anchor, title_screen_anchor, color_neu, &ui_stack);
+	// Score
+	for(i32 i = 0; i < 2; i++) {
+		v2 position = v2_new(-24.0f + i * 48.0f, -32.0f);
+		v2 inner_anchor = v2_new(1.0f * (1.0f - i), 1.0f);
+		v2 screen_anchor = v2_new(0.5f, 1.0f);
+		v4 color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
+		char buf[16];
+		sprintf(buf, "%i", game->players[i].score);
+		ui_draw_text_line(list, game->fonts, ASSET_FONT_QUANTICO_LARGE, buf,
+			position, inner_anchor, screen_anchor, color, &ui_stack);
+	}
 
 	for(i32 i = 0; i < 2; i++) {
 		if(!splitscreen && i != 0) continue;
