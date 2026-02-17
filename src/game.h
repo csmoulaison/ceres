@@ -7,22 +7,10 @@
 #include "game_event.h"
 #include "input.c"
 
-#define SOUND_CHANNELS_COUNT 16
 #define GAME_UI_MEMSIZE MEGABYTE
 #define GAME_EDITOR_TOOLS true
 #define MAX_GAME_LEVEL_SIDE_LENGTH 1024
-
-typedef struct {
-	f32 phase;
-	f32 frequency;
-	f32 amplitude;
-	f32 shelf;
-	f32 volatility;
-	f32 pan;
-
-	f32 actual_frequency;
-	f32 actual_amplitude;
-} SoundChannel;
+#define SOUND_MAX_CHANNELS 16
 
 typedef enum {
 	EDITOR_TOOL_CUBES,
@@ -66,6 +54,23 @@ typedef struct {
 	f32 yaw;
 } DebugCamera;
 
+typedef struct {
+	f32 phase;
+	f32 frequency;
+	f32 amplitude;
+	f32 shelf;
+	f32 volatility;
+	f32 pan;
+
+	f32 actual_frequency;
+	f32 actual_amplitude;
+} SoundChannel;
+
+typedef struct {
+	SoundChannel channels[SOUND_MAX_CHANNELS];
+	u8 channels_len;
+} SoundState;
+
 typedef enum {
 	GAME_ACTIVE,
 #if GAME_EDITOR_TOOLS
@@ -95,16 +100,14 @@ typedef struct {
 	GameMode mode;
 	GameLevel level;
 	InputState input;
+	SoundState sound;
 
 	GamePlayer players[2];
 	GameCamera cameras[2];
 	GameDestructMesh destruct_meshes[6];
 
-	SoundChannel sound_channels[SOUND_CHANNELS_COUNT];
-
 	FontData fonts[ASSET_NUM_FONTS];
 	u32 frame;
-
 
 #if GAME_EDITOR_TOOLS
 	LevelEditor level_editor;

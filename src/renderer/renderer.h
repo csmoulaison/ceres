@@ -1,6 +1,9 @@
 #ifndef renderer_h_INCLUDED
 #define renderer_h_INCLUDED
 
+// TODO: This should be controlled by the game layer, I think. It's not
+// platform code, and it's game specific.
+
 #include "renderer/primitive_vbo_data.h"
 
 #define RENDER_INIT_MEMSIZE MEGABYTE * 32

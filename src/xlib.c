@@ -335,7 +335,7 @@ i32 main(i32 argc, char** argv) {
 		}
 		platform->current_event = platform->head_event;
 
-		xlib->game_update(game, platform->current_event, &game_output, 0.016f);
+		xlib->game_update(game, platform->current_event, &game_output, 0.01f);
 
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {

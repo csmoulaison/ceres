@@ -9,8 +9,8 @@
 #include "level.c"
 #include "game_active.c"
 #include "level_editor.c"
-#include "sound.c"
 #include "draw.c"
+#include "sound.c"
 
 GAME_INIT(game_init) {
 	GameState* game = &memory->state;
@@ -54,7 +54,7 @@ GAME_INIT(game_init) {
 		destruct_mesh->opacity = 0.0f;
 	}
 
-	sound_init(game->sound_channels);
+	sound_init(&game->sound);
 	input_init(&game->input);
 
 	// Load level
@@ -113,7 +113,7 @@ GAME_UPDATE(game_update) {
 		mesh->opacity -= dt;
 	}
 
-	sound_update(game->sound_channels, game);
+	sound_update(&game->sound, game);
 
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 	draw_active_game(game, &output->render_list, &ui_stack, dt);
@@ -128,9 +128,9 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	f32 global_shelf = 30000.0f;
 	f32 global_attenuation = 0.62f;
 
-	f32 channel_rates[SOUND_CHANNELS_COUNT];
-	for(i32 channel_index = 0; channel_index < SOUND_CHANNELS_COUNT; channel_index++) {
-		SoundChannel* channel = &game->sound_channels[channel_index];
+	f32 channel_rates[SOUND_MAX_CHANNELS];
+	for(i32 channel_index = 0; channel_index < SOUND_MAX_CHANNELS; channel_index++) {
+		SoundChannel* channel = &game->sound.channels[channel_index];
 		channel->amplitude = fclamp(channel->amplitude, 0.0f, channel->amplitude);
 		channel->pan = fclamp(channel->pan, -1.0f, 1.0f);
 		channel->pan = (channel->pan + 1.0f) / 2.0f;
@@ -146,8 +146,8 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	for(i32 sample_index = 0; sample_index < samples_count; sample_index++) {
 		buffer[sample_index * 2] = 0.0f;
 		buffer[sample_index * 2 + 1] = 0.0f;
-		for(i32 ch = 0; ch < SOUND_CHANNELS_COUNT; ch++) {
-			SoundChannel* channel = &game->sound_channels[ch];
+		for(i32 ch = 0; ch < SOUND_MAX_CHANNELS; ch++) {
+			SoundChannel* channel = &game->sound.channels[ch];
 			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
 			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
 
