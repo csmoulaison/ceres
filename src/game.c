@@ -17,9 +17,9 @@ GAME_INIT(game_init) {
 
 	fast_random_init();
 
-	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
-		FontData* font = &game->fonts[i];
-		FontAsset* f_asset = (FontAsset*)&assets->buffer[assets->font_buffer_offsets[i]];
+	for(i32 fnt = 0; fnt < ASSET_NUM_FONTS; fnt++) {
+		FontData* font = &game->fonts[fnt];
+		FontAsset* f_asset = (FontAsset*)&assets->buffer[assets->font_buffer_offsets[fnt]];
 		TextureAsset* t_asset = (TextureAsset*)&assets->buffer[assets->texture_buffer_offsets[f_asset->texture_id]];
 
 		font->texture_id = f_asset->texture_id;
@@ -29,9 +29,9 @@ GAME_INIT(game_init) {
 		memcpy(font->glyphs, f_asset->buffer, sizeof(FontGlyph) * f_asset->glyphs_len);
 	}
 
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
-		player->position = v2_new(i * 2.0f + 32.0f, i * 2.0f + 32.0f);
+	for(i32 pl = 0; pl < 2; pl++) {
+		GamePlayer* player = &game->players[pl];
+		player->position = v2_new(pl * 2.0f + 32.0f, pl * 2.0f + 32.0f);
 		player->velocity = v2_zero();
 		player->direction = 0.0f;
 		player->rotation_velocity = 0.0f;
@@ -43,21 +43,17 @@ GAME_INIT(game_init) {
 		player->shoot_cooldown_sound = 0.0f;
 		player->momentum_cooldown_sound = 0.0f;
 
-		for(i32 i = 0; i < NUM_BUTTONS; i++) {
-			player->button_states[i] = 0;
-		}
-
-		GameCamera* camera = &game->cameras[i];
+		GameCamera* camera = &game->cameras[pl];
 		camera->offset = v2_zero();
 	}
 
-	for(i32 i = 0; i < 6; i++) {
-		GameDestructMesh* destruct_mesh = &game->destruct_meshes[i];
+	for(i32 dm = 0; dm < 6; dm++) {
+		GameDestructMesh* destruct_mesh = &game->destruct_meshes[dm];
 		destruct_mesh->opacity = 0.0f;
 	}
 
-	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
-		GameSoundChannel* channel = &game->sound_channels[i];
+	for(i32 ch = 0; ch < GAME_SOUND_CHANNELS_COUNT; ch++) {
+		GameSoundChannel* channel = &game->sound_channels[ch];
 		channel->phase = 0.0f;
 		channel->frequency = 0.0f;
 		channel->amplitude = 0.0f;
@@ -68,33 +64,27 @@ GAME_INIT(game_init) {
 		channel->actual_amplitude = 0.0f;
 	}
 
-	FILE* file = fopen(CONFIG_DEFAULT_INPUT_FILENAME, "r");
-	assert(file != NULL);
-
-	fread(&game->key_mappings_len, sizeof(u32), 1, file);
-	for(i32 i = 0; i < game->key_mappings_len; i++) {
-		fread(&game->key_mappings[i], sizeof(GameKeyMapping), 1, file);
-	}
+	input_init(&game->input);
 
 	// Load level
 	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
 	GameLevel* level = &game->level;
 	level->spawns_len = level_asset->spawns_len;
-	for(i32 i = 0; i < level->spawns_len; i++) {
-		level->spawns[i] = level_asset->spawns[i];
+	for(i32 sp = 0; sp < level->spawns_len; sp++) {
+		level->spawns[sp] = level_asset->spawns[sp];
 	}
 
 	level->side_length = level_asset->side_length;
 	level->side_length = 64;
 	u16 side_length = level->side_length;
 	assert(side_length <= MAX_GAME_LEVEL_SIDE_LENGTH);
-	for(i32 i = 0; i < side_length * side_length; i++) {
-		i32 x = i % side_length;
-		i32 y = i / side_length;
+	for(i32 pos = 0; pos < side_length * side_length; pos++) {
+		i32 x = pos % side_length;
+		i32 y = pos / side_length;
 		if(x < 2 || x > 61 || y < 2 || y > 61) {
-			level->tiles[i] = 1 + rand() / (RAND_MAX / 3);
+			level->tiles[pos] = 1 + rand() / (RAND_MAX / 3);
 		} else {
-			level->tiles[i] = level_asset->buffer[i];
+			level->tiles[pos] = level_asset->buffer[pos];
 		}
 	}
 
@@ -104,47 +94,10 @@ GAME_INIT(game_init) {
 
 GAME_UPDATE(game_update) {
 	GameState* game = &memory->state;
-
-	// Update input events
-	for(u32 i = 0; i < NUM_BUTTONS; i++) {
-		game->players[0].button_states[i] = game->players[0].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
-		game->players[1].button_states[i] = game->players[1].button_states[i] & ~INPUT_PRESSED_BIT & ~INPUT_RELEASED_BIT;
-	}
-	GameEvent* event = events_head;
-	while(event != NULL) {
-		switch(event->type) {
-			case GAME_EVENT_KEY_DOWN: {
-				for(i32 i = 0; i < game->key_mappings_len; i++) {
-					GameKeyMapping* mapping = &game->key_mappings[i];
-					if(mapping->key_id == *((u64*)event->data)) {
-						ButtonState* button = &game->players[mapping->player_index].button_states[mapping->button_type];
-						if((*button) & INPUT_DOWN_BIT) {
-							break;
-						}
-						*button = (*button) | INPUT_DOWN_BIT | INPUT_PRESSED_BIT;
-						break;
-					}
-				}
-			} break;
-			case GAME_EVENT_KEY_UP: {
-				for(i32 i = 0; i < game->key_mappings_len; i++) {
-					GameKeyMapping* mapping = &game->key_mappings[i];
-					if(mapping->key_id == *((u64*)event->data)) {
-						ButtonState* button = &game->players[mapping->player_index].button_states[mapping->button_type];
-						if((*button) & INPUT_DOWN_BIT) {
-							*button = INPUT_RELEASED_BIT;
-						}
-						break;
-					}
-				}
-			} break;
-			default: break;
-		}
-		event = event->next;
-	}
+	input_poll_events(&game->input, events_head);
 
 	// Quit control
-	if(input_button_down(game->players[0].button_states[BUTTON_QUIT])) {
+	if(input_button_down(game->input.players[0].buttons[BUTTON_QUIT])) {
 		output->close_requested = true;
 	}
 
@@ -160,8 +113,8 @@ GAME_UPDATE(game_update) {
 		default: break;
 	}
 
-	for(i32 i = 0; i < 6; i++) {
-		GameDestructMesh* mesh = &game->destruct_meshes[i];
+	for(i32 dm = 0; dm < 6; dm++) {
+		GameDestructMesh* mesh = &game->destruct_meshes[dm];
 		if(mesh->opacity <= 0.0f) continue;
 		mesh->velocity.y -= 10.0f * dt;
 		mesh->position = v3_add(mesh->position, v3_scale(mesh->velocity, dt));
@@ -170,58 +123,59 @@ GAME_UPDATE(game_update) {
 	}
 
 	// Update sound channels
-	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
-		GameSoundChannel* ch = &game->sound_channels[i];
-		ch->amplitude = 0.0f;
-		ch->frequency = 0.0f;
-		ch->volatility = 0.0f;
+	for(i32 ch = 0; ch < GAME_SOUND_CHANNELS_COUNT; ch++) {
+		GameSoundChannel* channel = &game->sound_channels[ch];
+		channel->amplitude = 0.0f;
+		channel->frequency = 0.0f;
+		channel->volatility = 0.0f;
+		//*channel = (GameSoundChannel){};
 	}
 
 #if 1
 	f32 current_player_velocity;
 
 #define player_channels 5
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
+	for(i32 pl = 0; pl < 2; pl++) {
+		GamePlayer* player = &game->players[pl];
 		f32 v_mag = v2_magnitude(player->velocity);
-		if(i == 0) current_player_velocity = v_mag;
+		if(pl == 0) current_player_velocity = v_mag;
 
-		GameSoundChannel* velocity_channel = &game->sound_channels[0 + i * player_channels];
+		GameSoundChannel* velocity_channel = &game->sound_channels[0 + pl * player_channels];
 		velocity_channel->amplitude = 2000.0f * v_mag;
 		velocity_channel->frequency = 7.144123f * v_mag;
 		velocity_channel->shelf = 6000.0f;
 		velocity_channel->volatility = 0.002f * v_mag;
 
-		GameSoundChannel* momentum_channel = &game->sound_channels[1 + i * player_channels];
+		GameSoundChannel* momentum_channel = &game->sound_channels[1 + pl * player_channels];
 		f32 m = player->momentum_cooldown_sound;
 		momentum_channel->amplitude = 2000.0f * m;
 		momentum_channel->frequency = 3.0f * m;
 		momentum_channel->shelf = 2000.0f;
 		momentum_channel->volatility = 0.01f * m;
 
-		GameSoundChannel* rotation_channel = &game->sound_channels[2 + i * player_channels];
+		GameSoundChannel* rotation_channel = &game->sound_channels[2 + pl * player_channels];
 		f32 rot = player->rotation_velocity;
 		rotation_channel->amplitude = 2000.0f * rot;
 		rotation_channel->frequency = 10.0f * abs(rot);
 		rotation_channel->shelf = 6000.0f;
 		rotation_channel->volatility = 0.002f * rot;
 
-		GameSoundChannel* shoot_channel = &game->sound_channels[3 + i * player_channels];
+		GameSoundChannel* shoot_channel = &game->sound_channels[3 + pl * player_channels];
 		f32 shoot = player->shoot_cooldown_sound;
 		shoot_channel->amplitude = 10000.0f * shoot * shoot;
 		shoot_channel->frequency = 1500.0f * shoot * shoot;
 		shoot_channel->shelf = 2000.0f + 2000.0f * shoot;
 		shoot_channel->volatility = 0.2f * shoot;
 
-		GameSoundChannel* hit_channel = &game->sound_channels[4 + i * player_channels];
+		GameSoundChannel* hit_channel = &game->sound_channels[4 + pl * player_channels];
 		f32 hit = player->hit_cooldown;
 		hit_channel->amplitude = 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f;
 		hit_channel->frequency = 200.0f * hit * hit;
 		hit_channel->shelf = 2000.0f + 2000.0f * hit;
 		hit_channel->volatility = 2.0f * hit * ((f32)rand() / RAND_MAX);
 
-		for(i32 j = 0; j < player_channels; j++) {
-			GameSoundChannel* ch = &game->sound_channels[j + i * player_channels];
+		for(i32 ch = 0; ch < player_channels; ch++) {
+			GameSoundChannel* channel = &game->sound_channels[ch + pl * player_channels];
 
 			f32 distance_1 = 1.0f + v2_distance(game->players[0].position, player->position);
 			f32 distance_2 = 1.0f + v2_distance(game->players[1].position, player->position);
@@ -230,11 +184,11 @@ GAME_UPDATE(game_update) {
 			distance = distance_1;
 
 
-			ch->amplitude /= distance * 1.0f;
-			ch->shelf += distance * 100.0f;
-			ch->volatility -= distance * 0.01f;
-			ch->pan = (game->players[0].position.y - player->position.y) * 0.2f;
-			if(ch->volatility < 0.0f) ch->volatility = 0.0f;
+			channel->amplitude /= distance * 1.0f;
+			channel->shelf += distance * 100.0f;
+			channel->volatility -= distance * 0.01f;
+			channel->pan = (game->players[0].position.y - player->position.y) * 0.2f;
+			if(channel->volatility < 0.0f) channel->volatility = 0.0f;
 		}
 	}
 
@@ -305,12 +259,12 @@ GAME_UPDATE(game_update) {
 	render_list_set_clear_color(list, clear_color);
 
 	bool splitscreen = false;
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
+	for(i32 pl = 0; pl < 2; pl++) {
+		GamePlayer* player = &game->players[pl];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		v3 rot = player_orientation(player);
 		u8 texture = ASSET_TEXTURE_SHIP;
-		if(i == 1) texture = ASSET_TEXTURE_SHIP_2;
+		if(pl == 1) texture = ASSET_TEXTURE_SHIP_2;
 		render_list_draw_model_colored(list, ASSET_MESH_SHIP, texture, pos, rot, v4_new(1.0f, 1.0f, 1.0f, player->hit_cooldown * player->hit_cooldown * 4.0f));
 
 		v2 direction = player_direction_vector(player);
@@ -329,39 +283,39 @@ GAME_UPDATE(game_update) {
 		//render_list_draw_laser(list, laser_instance_type, vel_laser_start, vel_laser_end, 0.05f);
 	}
 
-	for(i32 i = 0; i < floor_instances; i++) {
-		v3 floor_pos = v3_new(i % floor_length, 0.0f, i / floor_length);
+	for(i32 pos = 0; pos < floor_instances; pos++) {
+		v3 floor_pos = v3_new(pos % floor_length, 0.0f, pos / floor_length);
 		render_list_draw_model_aligned(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_pos);
 	}
 
 	// TODO: When this is put below cube rendering, the meshes are overwritten by
 	// cubes. Pretty important we figure out why, obviously.
-	for(i32 i = 0; i < 6; i++) {
-		GameDestructMesh* mesh = &game->destruct_meshes[i];
+	for(i32 dm = 0; dm < 6; dm++) {
+		GameDestructMesh* mesh = &game->destruct_meshes[dm];
 		if(mesh->opacity <= 0.0f) continue;
 		render_list_draw_model_colored(list, mesh->mesh, mesh->texture, mesh->position, mesh->orientation, v4_new(1.0f, 1.0f, 1.0f, mesh->opacity * mesh->opacity));
 	}
 
-	for(i32 i = 0; i < floor_instances; i++) {
-		for(i32 j = 1; j <= game->level.tiles[i]; j++) {
-			v3 cube_pos = v3_new(i % floor_length, (f32)j - 1.0f, i / floor_length);
+	for(i32 pos = 0; pos < floor_instances; pos++) {
+		for(i32 height = 1; height <= game->level.tiles[pos]; height++) {
+			v3 cube_pos = v3_new(pos % floor_length, (f32)height - 1.0f, pos / floor_length);
 			render_list_draw_model_aligned(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, cube_pos);
 		}
 	}
 
 	switch(game->mode) {
 		case GAME_ACTIVE: {
-			for(i32 i = 0; i < 2; i++) {
-				if(splitscreen || i == 0) {
-					GameCamera* camera = &game->cameras[i];
-					GamePlayer* player = &game->players[i];
+			for(i32 player_index = 0; player_index < 2; player_index++) {
+				if(splitscreen || player_index == 0) {
+					GameCamera* camera = &game->cameras[player_index];
+					GamePlayer* player = &game->players[player_index];
 					v3 cam_target = v3_new(camera->offset.x + player->position.x, 0.0f, camera->offset.y + player->position.y);
 					//v3 cam_pos = v3_new(player->position.x - camera->offset.x * 1.5f, 5.0f, player->position.y - camera->offset.y * 1.5f);
-					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + i * 8.0f);
+					v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + player_index * 8.0f);
 					f32 gap = 0.0025f;
 					v4 screen_rect;
 					if(splitscreen) {
-						screen_rect = v4_new(0.5f * i + gap * i, 0.0f, 0.5f - gap * (1 - i), 1.0f);
+						screen_rect = v4_new(0.5f * player_index + gap * player_index, 0.0f, 0.5f - gap * (1 - player_index), 1.0f);
 					} else {
 						screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
 					}
@@ -381,67 +335,33 @@ GAME_UPDATE(game_update) {
 	// positions per item, which are referenced here in the drawing commands.
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 
-	GamePlayer* pl_primary = &game->players[0];
-#define PRINT_VALUES_LEN 2
-	f32 print_values[PRINT_VALUES_LEN] = {
-		pl_primary->velocity.x,
-		pl_primary->velocity.y
-	};
-	char* print_labels[PRINT_VALUES_LEN] = {
-		"vel_x: ",
-		"vel_y: "
-	};
-	v2 debug_screen_anchor = v2_new(1.0f, 0.0f);
-	for(i32 i = 0; i < PRINT_VALUES_LEN; i++) {
-		char str[256];
-		sprintf(str, "%s%.2f", print_labels[i], print_values[i]);
-
-		v2 debug_position = v2_new(32.0f, 12.0f + (PRINT_VALUES_LEN - i) * 24.0f);
-		// TODO: anchor should be 1.0f, but is misaligned when we set it to that. Why?
-		v2 debug_inner_anchor = v2_new(1.5f, 0.0f);
-		TextLinePlacements placements = ui_text_line_placements(game->fonts, ASSET_FONT_MONO_SMALL, str,
-			debug_position, debug_inner_anchor, &ui_stack);
-
-		f32 gb_mod = 1.0f;
-		for(i32 j = 0; j < placements.len; j++) {
-			v2 position = v2_new(placements.x[j], placements.y[j]);
-			v4 color = v4_new(0.75f, 0.75f * gb_mod, 0.75f * gb_mod, 1.0f);
-
-			if(str[j] == ':') {
-				gb_mod = 0.1f;
-			}
-
-			render_list_draw_glyph(list, game->fonts, ASSET_FONT_MONO_SMALL, str[j], position, debug_screen_anchor, color);
-		}
-	}
-
 	// Score
-	for(i32 i = 0; i < 2; i++) {
-		v2 position = v2_new(-24.0f + i * 48.0f, -32.0f);
-		v2 inner_anchor = v2_new(1.0f * (1.0f - i), 1.0f);
+	for(i32 player_index = 0; player_index < 2; player_index++) {
+		v2 position = v2_new(-24.0f + player_index * 48.0f, -32.0f);
+		v2 inner_anchor = v2_new(1.0f * (1.0f - player_index), 1.0f);
 		v2 screen_anchor = v2_new(0.5f, 1.0f);
 		v4 color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
 		char buf[16];
-		sprintf(buf, "%i", game->players[i].score);
+		sprintf(buf, "%i", game->players[player_index].score);
 		ui_draw_text_line(list, game->fonts, ASSET_FONT_QUANTICO_LARGE, buf,
 			position, inner_anchor, screen_anchor, color, &ui_stack);
 	}
 
-	for(i32 i = 0; i < 2; i++) {
-		if(!splitscreen && i != 0) continue;
+	for(i32 player_index = 0; player_index < 2; player_index++) {
+		if(!splitscreen && player_index != 0) continue;
 
-		GamePlayer* player = &game->players[i];
+		GamePlayer* player = &game->players[player_index];
 		player->visible_health = lerp(player->visible_health, player->health, 20.0f * dt);
 		v4 health_bar_root = v4_new(32.0f, 32.0f, 64.0f, 400.0f);
-		render_list_draw_box(list, health_bar_root, v2_new(i * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 1.0f));
+		render_list_draw_box(list, health_bar_root, v2_new(player_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 1.0f));
 		f32 segments = 40.0f;
-		for(i32 j = 0; j < (i32)(player->visible_health * segments); j++) {
+		for(i32 seg = 0; seg < (i32)(player->visible_health * segments); seg++) {
 			v4 health_bar_sub = health_bar_root;
 			health_bar_sub.x += 8.0f;
-			health_bar_sub.y += 8.0f + j * ((health_bar_root.w - 8.0f) / segments);
+			health_bar_sub.y += 8.0f + seg * ((health_bar_root.w - 8.0f) / segments);
 			health_bar_sub.z -= 16.0f;
 			health_bar_sub.w = health_bar_root.w / segments - 8.0f;
-			render_list_draw_box(list, health_bar_sub, v2_new(i * 0.5f, 0.0f), 4.0f, v4_new(1.0f - j / segments, j / segments, 0.0f, 1.0f));
+			render_list_draw_box(list, health_bar_sub, v2_new(player_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f - seg / segments, seg / segments, 0.0f, 1.0f));
 		}
 	}
 
@@ -456,8 +376,8 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	f32 global_attenuation = 0.62f;
 
 	f32 channel_rates[GAME_SOUND_CHANNELS_COUNT];
-	for(i32 i = 0; i < GAME_SOUND_CHANNELS_COUNT; i++) {
-		GameSoundChannel* channel = &game->sound_channels[i];
+	for(i32 channel_index = 0; channel_index < GAME_SOUND_CHANNELS_COUNT; channel_index++) {
+		GameSoundChannel* channel = &game->sound_channels[channel_index];
 		channel->amplitude = fclamp(channel->amplitude, 0.0f, channel->amplitude);
 		channel->pan = fclamp(channel->pan, -1.0f, 1.0f);
 		channel->pan = (channel->pan + 1.0f) / 2.0f;
@@ -467,35 +387,35 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		}
 
 		// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
-		channel_rates[i] = 2.0f * M_PI * channel->actual_frequency / 48000;
+		channel_rates[channel_index] = 2.0f * M_PI * channel->actual_frequency / 48000;
 	}
 
-	for(i32 i = 0; i < samples_count; i++) {
-		buffer[i * 2] = 0.0f;
-		buffer[i * 2 + 1] = 0.0f;
-		for(i32 j = 0; j < GAME_SOUND_CHANNELS_COUNT; j++) {
-			GameSoundChannel* channel = &game->sound_channels[j];
+	for(i32 sample_index = 0; sample_index < samples_count; sample_index++) {
+		buffer[sample_index * 2] = 0.0f;
+		buffer[sample_index * 2 + 1] = 0.0f;
+		for(i32 ch = 0; ch < GAME_SOUND_CHANNELS_COUNT; ch++) {
+			GameSoundChannel* channel = &game->sound_channels[ch];
 			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
 			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
 
-			channel->phase += channel_rates[j];
-			f32 sample = channel->actual_amplitude * sinf(channel->phase);
-			sample = fclamp(sample, -channel->shelf, channel->shelf);
-			sample += sample * fast_random_f32() * channel->volatility;
+			channel->phase += channel_rates[ch];
+			f32 sample_indexle = channel->actual_amplitude * sinf(channel->phase);
+			sample_indexle = fclamp(sample_indexle, -channel->shelf, channel->shelf);
+			sample_indexle += sample_indexle * fast_random_f32() * channel->volatility;
 
-			buffer[i * 2] += sample * (1.0f - channel->pan);
-			buffer[i * 2 + 1] += sample * channel->pan;
+			buffer[sample_index * 2] += sample_indexle * (1.0f - channel->pan);
+			buffer[sample_index * 2 + 1] += sample_indexle * channel->pan;
 		}
 
-		buffer[i * 2] *= global_attenuation;
-		buffer[i * 2] = fclamp(buffer[i * 2], -global_shelf, global_shelf);
-		buffer[i * 2 + 1] *= global_attenuation;
-		buffer[i * 2 + 1] = fclamp(buffer[i * 2 + 1], -global_shelf, global_shelf);
+		buffer[sample_index * 2] *= global_attenuation;
+		buffer[sample_index * 2] = fclamp(buffer[sample_index * 2], -global_shelf, global_shelf);
+		buffer[sample_index * 2 + 1] *= global_attenuation;
+		buffer[sample_index * 2 + 1] = fclamp(buffer[sample_index * 2 + 1], -global_shelf, global_shelf);
 
-		if(buffer[i * 2] == global_shelf || buffer[i * 2 + 1] == global_shelf) {
+		if(buffer[sample_index * 2] == global_shelf || buffer[sample_index * 2 + 1] == global_shelf) {
 			printf("Global shelf reached (up)\n");
 		}
-		if(buffer[i * 2] == -global_shelf || buffer[i * 2 + 1] == -global_shelf) {
+		if(buffer[sample_index * 2] == -global_shelf || buffer[sample_index * 2 + 1] == -global_shelf) {
 			printf("Global shelf reached (up)\n");
 		}
 	}

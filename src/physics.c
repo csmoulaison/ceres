@@ -5,13 +5,13 @@
 
 void physics_resolve_velocities(GameState* game) {
 	f32 radius = 0.5f;
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
+	for(i32 pl = 0; pl < 2; pl++) {
+		GamePlayer* player = &game->players[pl];
 
 		// Resolve against level, reducing checks to a 3x3 region around the player
-		for(i32 j = 0; j < 25; j++) {
-			f32 x = player->position.x + (j % 5) - 1.0f;
-			f32 y = player->position.y + (j / 5) - 1.0f;
+		for(i32 pos = 0; pos < 25; pos++) {
+			f32 x = player->position.x + (pos % 5) - 1.0f;
+			f32 y = player->position.y + (pos / 5) - 1.0f;
 
 			i32 cube_index = (i32)y * game->level.side_length + (i32)x;
 			if(game->level.tiles[cube_index] == 0) continue;
@@ -49,8 +49,8 @@ void physics_resolve_velocities(GameState* game) {
 
 		// Resolve against other players
 		// TODO: Nudge the rotational speeds on collision.
-		for(i32 j = i + 1; j < 2; j++) {
-			GamePlayer* other = &game->players[j];
+		for(i32 pl_other = pl + 1; pl_other < 2; pl_other++) {
+			GamePlayer* other = &game->players[pl_other];
 			if(v2_distance(player->position, other->position) < radius * 2.0f) {
 				f32 mag = v2_magnitude(player->velocity) + v2_magnitude(other->velocity);
 				player_damage(player, mag * 0.01f);

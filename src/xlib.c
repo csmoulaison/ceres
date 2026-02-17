@@ -1,4 +1,5 @@
 // NOW: < LIST: I think our order is as follows:
+// - Cleanup the structure.
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames
 // - Designed competitive level
@@ -177,17 +178,17 @@ i32 main(i32 argc, char** argv) {
 
 	i32 best_framebuffer_config = -1;
 	i32 best_sample_count = -1;
-	for(i32 i = 0; i < framebuffer_configs_len; i++) {
-		XVisualInfo* tmp_visual_info = glXGetVisualFromFBConfig(xlib->display, framebuffer_configs[i]);
+	for(i32 fc = 0; fc < framebuffer_configs_len; fc++) {
+		XVisualInfo* tmp_visual_info = glXGetVisualFromFBConfig(xlib->display, framebuffer_configs[fc]);
 		if(tmp_visual_info != NULL) {
 			i32 sample_buffers;
-			glXGetFBConfigAttrib(xlib->display, framebuffer_configs[i], GLX_SAMPLE_BUFFERS, &sample_buffers);
+			glXGetFBConfigAttrib(xlib->display, framebuffer_configs[fc], GLX_SAMPLE_BUFFERS, &sample_buffers);
 
 			i32 samples;
-			glXGetFBConfigAttrib(xlib->display, framebuffer_configs[i], GLX_SAMPLES, &samples);
+			glXGetFBConfigAttrib(xlib->display, framebuffer_configs[fc], GLX_SAMPLES, &samples);
 
 			if(best_framebuffer_config == -1 || (sample_buffers && samples > best_sample_count)) {
-				best_framebuffer_config = i;
+				best_framebuffer_config = fc;
 				best_sample_count = samples;
 			}
 		}
@@ -346,8 +347,6 @@ i32 main(i32 argc, char** argv) {
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);
 		gl_update(renderer, platform);
 
-		//stack_clear_to_zero(&renderer->frame_arena);
-		//stack_clear_to_zero(&arenas.frame);
 		glXSwapBuffers(xlib->display, xlib->window);
 		platform->frames_since_init++;
 	}

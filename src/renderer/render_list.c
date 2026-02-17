@@ -25,12 +25,12 @@ void render_list_init(RenderList* list) {
 	list->instance_index_offset = 0;
 	list->instance_types_len = 0;
 	list->rects_len = 0;
-	for(i32 i = 0; i < RENDER_LIST_MAX_INSTANCE_TYPES; i++) {
-		list->instance_types[i].instances_len = 0;
+	for(i32 type_index = 0; type_index < RENDER_LIST_MAX_INSTANCE_TYPES; type_index++) {
+		list->instance_types[type_index].instances_len = 0;
 	}
-	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
-		list->glyph_list_lens[i] = 0;
-		list->glyph_list_textures[i] = 0;
+	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
+		list->glyph_list_lens[font_index] = 0;
+		list->glyph_list_textures[font_index] = 0;
 	}
 }
 
@@ -64,8 +64,8 @@ void render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, 
 
 RenderListInstanceData* render_list_push_instance(RenderList* list, u8 model, u8 texture) {
 	RenderListInstanceType* type = NULL;
-	for(i32 i = 0; i < list->instance_types_len; i++) {
-		type = &list->instance_types[i];
+	for(i32 type_index = 0; type_index < list->instance_types_len; type_index++) {
+		type = &list->instance_types[type_index];
 		if(type->model == model && type->texture == texture) {
 			break;
 		} else {

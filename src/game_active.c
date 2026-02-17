@@ -8,8 +8,9 @@ v2 player_direction_vector(GamePlayer* player) {
 }
 
 void game_active_update(GameState* game, f32 dt) {
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
+	for(i32 pl = 0; pl < 2; pl++) {
+		GamePlayer* player = &game->players[pl];
+		InputPlayer* input = &game->input.players[pl];
 
 		v2 acceleration = v2_zero();
 		v2 direction_vector = player_direction_vector(player);
@@ -25,17 +26,17 @@ void game_active_update(GameState* game, f32 dt) {
 		}
 
 		player->shoot_cooldown -= dt;
-		if(player->shoot_cooldown < 0.0f && input_button_down(player->button_states[BUTTON_SHOOT])) {
+		if(player->shoot_cooldown < 0.0f && input_button_down(input->buttons[BUTTON_SHOOT])) {
 			player->shoot_cooldown = 0.08f;
 			player->shoot_cooldown_sound = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
 
 			v2 direction = player_direction_vector(player);
 			//player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
 
-			for(i32 j = 0; j < 2; j++) {
-				if(j == i) continue;
+			for(i32 pl_other = 0; pl_other < 2; pl_other++) {
+				if(pl_other == pl) continue;
 
-				GamePlayer* other = &game->players[j];
+				GamePlayer* other = &game->players[pl_other];
 				f32 t = v2_dot(direction, v2_sub(other->position, player->position));
 				if(t < 0.5f) continue;
 
@@ -52,28 +53,28 @@ void game_active_update(GameState* game, f32 dt) {
 
 		// Calculate ship rotational acceleration
 		f32 rotate_speed = 20.0f;
-		if(input_button_down(player->button_states[BUTTON_TURN_LEFT])) {
+		if(input_button_down(input->buttons[BUTTON_TURN_LEFT])) {
 			rot_acceleration += rotate_speed;
 		}
-		if(input_button_down(player->button_states[BUTTON_TURN_RIGHT])) {
+		if(input_button_down(input->buttons[BUTTON_TURN_RIGHT])) {
 			rot_acceleration -= rotate_speed;
 		}
 
 		// Forward/back thruster control
 		f32 forward_mod = 0.0f;
-		if(input_button_down(player->button_states[BUTTON_FORWARD])) {
+		if(input_button_down(input->buttons[BUTTON_FORWARD])) {
 			forward_mod += 32.0f;
 		}
-		if(input_button_down(player->button_states[BUTTON_BACK])) {
+		if(input_button_down(input->buttons[BUTTON_BACK])) {
 			forward_mod -= 16.0f;
 		}
 		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Side thruster control
-		if(input_button_down(player->button_states[BUTTON_STRAFE_LEFT])) {
+		if(input_button_down(input->buttons[BUTTON_STRAFE_LEFT])) {
 			strafe_mod -= 1.0f;
 		}
-		if(input_button_down(player->button_states[BUTTON_STRAFE_RIGHT])) {
+		if(input_button_down(input->buttons[BUTTON_STRAFE_RIGHT])) {
 			strafe_mod += 1.0f;
 		}
 
@@ -122,7 +123,7 @@ void game_active_update(GameState* game, f32 dt) {
 		// 
 		// TODO: Not every player will necessarily get a camera in the future. Bots
 		// and online play, for instance.
-		GameCamera* camera = &game->cameras[i];
+		GameCamera* camera = &game->cameras[pl];
 		f32 camera_lookahead = 4.0f;
 		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
 
@@ -130,16 +131,13 @@ void game_active_update(GameState* game, f32 dt) {
 		v2 camera_target_delta = v2_sub(camera_target_offset, camera->offset);
 		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
 		camera->offset = v2_add(camera->offset, camera_target_delta);
-	}
 
-	for(i32 i = 0; i < 2; i++) {
-		GamePlayer* player = &game->players[i];
 		if(player->health <= 0.0f) {
 			u8 destruct_mesh_ids[3] = { ASSET_MESH_SHIP_BODY, ASSET_MESH_SHIP_WING_L, ASSET_MESH_SHIP_WING_R };
-			for(i32 j = 0; j < 3; j++) {
-				GameDestructMesh* destruct_mesh = &game->destruct_meshes[j];
+			for(i32 dm = 0; dm < 3; dm++) {
+				GameDestructMesh* destruct_mesh = &game->destruct_meshes[dm * pl];
 				destruct_mesh->opacity = 1.0f;
-				destruct_mesh->mesh = destruct_mesh_ids[j];
+				destruct_mesh->mesh = destruct_mesh_ids[dm];
 				destruct_mesh->texture = ASSET_TEXTURE_SHIP;
 				destruct_mesh->position = v3_new(player->position.x, 0.5f, player->position.y);
 				destruct_mesh->orientation = player_orientation(player);
@@ -152,16 +150,16 @@ void game_active_update(GameState* game, f32 dt) {
 				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
 			}
 
-			player_spawn(player, &game->level, i);
+			player_spawn(player, &game->level, pl);
 
 			GamePlayer* other;
-			if(i == 0) other = &game->players[1];
-			if(i == 1) other = &game->players[0];
+			if(pl == 0) other = &game->players[1];
+			if(pl == 1) other = &game->players[0];
 			other->score++;
 		}
 	}
 
-	if(input_button_pressed(game->players[0].button_states[BUTTON_DEBUG])) {
+	if(input_button_pressed(game->input.players[0].buttons[BUTTON_DEBUG])) {
 		game->level_editor.cursor_x = (u32)game->players[0].position.x;
 		game->level_editor.cursor_y = (u32)game->players[0].position.y;
 		game->mode = GAME_LEVEL_EDITOR;

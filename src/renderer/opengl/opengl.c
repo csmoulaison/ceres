@@ -110,14 +110,14 @@ void gl_init(RenderMemory* renderer, RenderInitMemory* init) {
 		glGenBuffers(1, &vbo);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		u32 vertex_size = 0;
-		for(i32 i = 0; i < mesh_data->vertex_attributes_len; i++) {
-			vertex_size += mesh_data->vertex_attribute_sizes[i];
+		for(i32 attr_index = 0; attr_index < mesh_data->vertex_attributes_len; attr_index++) {
+			vertex_size += mesh_data->vertex_attribute_sizes[attr_index];
 		}
 		u32 cur_offset = 0;
-		for(i32 i = 0; i < mesh_data->vertex_attributes_len; i++) {
-			u32 attribute_size = mesh_data->vertex_attribute_sizes[i];
-			glVertexAttribPointer(i, attribute_size, GL_FLOAT, GL_FALSE, sizeof(f32) * vertex_size, (void*)(cur_offset * sizeof(f32))); 
-			glEnableVertexAttribArray(i);
+		for(i32 attr_index = 0; attr_index < mesh_data->vertex_attributes_len; attr_index++) {
+			u32 attribute_size = mesh_data->vertex_attribute_sizes[attr_index];
+			glVertexAttribPointer(attr_index, attribute_size, GL_FLOAT, GL_FALSE, sizeof(f32) * vertex_size, (void*)(cur_offset * sizeof(f32))); 
+			glEnableVertexAttribArray(attr_index);
 			cur_offset += attribute_size;
 		}
 		glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * mesh_data->vertices_len * vertex_size, mesh_data->vertex_data, GL_STATIC_DRAW);

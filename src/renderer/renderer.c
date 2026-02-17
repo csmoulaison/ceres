@@ -100,9 +100,9 @@ void render_push_mesh_init_data(
 	mesh->vertex_attributes_len = vertex_attributes_len;
 
 	u32 total_vertex_size = 0;
-	for(u32 i = 0; i < vertex_attributes_len; i++) {
-		mesh->vertex_attribute_sizes[i] = vertex_attribute_sizes[i];
-		total_vertex_size += vertex_attribute_sizes[i];
+	for(u32 attr_index = 0; attr_index < vertex_attributes_len; attr_index++) {
+		mesh->vertex_attribute_sizes[attr_index] = vertex_attribute_sizes[attr_index];
+		total_vertex_size += vertex_attribute_sizes[attr_index];
 	}
 
 	mesh->vertices_len = vertices_len;
@@ -122,9 +122,9 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 
 	init->programs_len = assets->render_programs_len;
 	init->programs = (RenderProgramInitData*)stack_alloc(&init_stack, sizeof(RenderProgramInitData) * init->programs_len);
-	for(i32 i = 0; i < init->programs_len; i++) {
-		RenderProgramAsset* asset = (RenderProgramAsset*)&assets->buffer[assets->render_program_buffer_offsets[i]];
-		RenderProgramInitData* program = &init->programs[i];
+	for(i32 prog_index = 0; prog_index < init->programs_len; prog_index++) {
+		RenderProgramAsset* asset = (RenderProgramAsset*)&assets->buffer[assets->render_program_buffer_offsets[prog_index]];
+		RenderProgramInitData* program = &init->programs[prog_index];
 
 		program->vertex_shader_src = (char*)stack_alloc(&init_stack, asset->vertex_shader_src_len);
 		program->vertex_shader_src_len = asset->vertex_shader_src_len;
@@ -134,37 +134,37 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 		program->fragment_shader_src_len = asset->fragment_shader_src_len;
 		memcpy(program->fragment_shader_src, asset->buffer + asset->vertex_shader_src_len, sizeof(char) * asset->fragment_shader_src_len);
 
-		if(i == init->programs_len - 1) program->next = NULL; else program->next = &init->programs[i + 1];
+		if(prog_index == init->programs_len - 1) program->next = NULL; else program->next = &init->programs[prog_index + 1];
 	}
 
 	init->meshes_len = assets->meshes_len + NUM_RENDER_PRIMITIVES;
 	init->meshes = (RenderMeshInitData*)stack_alloc(&init_stack, sizeof(RenderMeshInitData) * init->meshes_len);
-	for(i32 i = 0; i < assets->meshes_len; i++) {
-		renderer->model_to_mesh_map[i] = i;
+	for(i32 mesh_index = 0; mesh_index < assets->meshes_len; mesh_index++) {
+		renderer->model_to_mesh_map[mesh_index] = mesh_index;
 
-		MeshAsset* asset = (MeshAsset*)&assets->buffer[assets->mesh_buffer_offsets[i]];
-		RenderMeshInitData* mesh = &init->meshes[i];
+		MeshAsset* asset = (MeshAsset*)&assets->buffer[assets->mesh_buffer_offsets[mesh_index]];
+		RenderMeshInitData* mesh = &init->meshes[mesh_index];
 		u32 vert_attrib_sizes[3] = { 3, 3, 2 };
 		u32 vert_attribs_len = 3;
 		u64 vertex_buffer_size = sizeof(f32) * 8 * asset->vertices_len;
 		render_push_mesh_init_data(mesh, (f32*)(asset->buffer), asset->vertices_len, (u32*)(asset->buffer + vertex_buffer_size), asset->indices_len, vert_attrib_sizes, vert_attribs_len, &init_stack);
 
-		if(i == init->meshes_len - 1) {
+		if(mesh_index == init->meshes_len - 1) {
 			mesh->next = NULL; 
 		} else {
-			mesh->next = &init->meshes[i + 1];
+			mesh->next = &init->meshes[mesh_index + 1];
 		}
 	}
-	for(i32 i = 0; i < NUM_RENDER_PRIMITIVES; i++) {
-		i32 mesh_index = assets->meshes_len + i;
-		renderer->primitive_to_mesh_map[i] = mesh_index;
+	for(i32 primitive_index = 0; primitive_index < NUM_RENDER_PRIMITIVES; primitive_index++) {
+		i32 mesh_index = assets->meshes_len + primitive_index;
+		renderer->primitive_to_mesh_map[primitive_index] = mesh_index;
 		
 		RenderMeshInitData* mesh = &init->meshes[mesh_index];
 		u32 vert_attrib_sizes[1] = { 2 };
 		u32 vert_attribs_len = 1;
 		// TODO: Remove the magic number here only used for quad primitive
 		u32 vertices_len = 6;
-		render_push_mesh_init_data(mesh, render_primitives[i], vertices_len, render_primitives_indices[i], 1, vert_attrib_sizes, vert_attribs_len, &init_stack);
+		render_push_mesh_init_data(mesh, render_primitives[primitive_index], vertices_len, render_primitives_indices[primitive_index], 1, vert_attrib_sizes, vert_attribs_len, &init_stack);
 
 		if(mesh_index == init->meshes_len - 1) {
 			mesh->next = NULL;
@@ -175,9 +175,9 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 
 	init->textures_len = assets->textures_len;
 	init->textures = (RenderTextureInitData*)stack_alloc(&init_stack, sizeof(RenderTextureInitData) * init->textures_len);
-	for(i32 i = 0; i < init->textures_len; i++) {
-		TextureAsset* asset = (TextureAsset*)&assets->buffer[assets->texture_buffer_offsets[i]];
-		RenderTextureInitData* texture = &init->textures[i];
+	for(i32 tex_index = 0; tex_index < init->textures_len; tex_index++) {
+		TextureAsset* asset = (TextureAsset*)&assets->buffer[assets->texture_buffer_offsets[tex_index]];
+		RenderTextureInitData* texture = &init->textures[tex_index];
 		texture->width = asset->width;
 		texture->height = asset->height;
 		texture->channel_count = asset->channel_count;
@@ -186,42 +186,42 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 		texture->pixel_data = (u8*)stack_alloc(&init_stack, pixel_data_size);
 		memcpy(texture->pixel_data, asset->buffer, pixel_data_size);
 
-		if(i == init->textures_len - 1) {
+		if(tex_index == init->textures_len - 1) {
 			texture->next = NULL;
 		} else {
-			texture->next = &init->textures[i + 1];
+			texture->next = &init->textures[tex_index + 1];
 		}
 	}
 
 	init->ubos_len = NUM_RENDER_UBOS;
 	init->ubos = (RenderUboInitData*)stack_alloc(&init_stack, sizeof(RenderUboInitData) * init->ubos_len);
-	for(i32 i = 0; i < init->ubos_len; i++) {
-		RenderUboInitData* ubo = &init->ubos[i];
+	for(i32 ubo_index = 0; ubo_index < init->ubos_len; ubo_index++) {
+		RenderUboInitData* ubo = &init->ubos[ubo_index];
 
-		switch(i) {
+		switch(ubo_index) {
 			case RENDER_UBO_CAMERA: {
 				ubo->size = sizeof(RenderCameraUbo);
 				ubo->binding = 0;
 			} break;
 			default: {
-				printf("Error: No initialization data defined for uniform buffer %i.\n", i);
+				printf("Error: No initialization data defined for uniform buffer %i.\n", ubo_index);
 				panic();
 			} break;
 		}
 
-		if(i == init->ubos_len - 1) {
+		if(ubo_index == init->ubos_len - 1) {
 			ubo->next = NULL;
 		} else {
-			ubo->next = &init->ubos[i + 1];
+			ubo->next = &init->ubos[ubo_index + 1];
 		}
 	}
 
 	init->ssbos_len = NUM_RENDER_SSBOS;
 	init->ssbos = (RenderSsboInitData*)stack_alloc(&init_stack, sizeof(RenderSsboInitData) * init->ssbos_len);
-	for(i32 i = 0; i < init->ssbos_len; i++) {
-		RenderSsboInitData* ssbo = &init->ssbos[i];
+	for(i32 ssbo_index = 0; ssbo_index < init->ssbos_len; ssbo_index++) {
+		RenderSsboInitData* ssbo = &init->ssbos[ssbo_index];
 
-		switch(i) {
+		switch(ssbo_index) {
 			case RENDER_SSBO_MODEL: {
 				ssbo->size = sizeof(RenderListInstanceData) * RENDER_LIST_MAX_INSTANCES;
 				ssbo->binding = 0;
@@ -235,15 +235,15 @@ void render_init(RenderMemory* renderer, RenderInitMemory* init, AssetMemory* as
 				ssbo->binding = 0;
 			} break;
 			default: {
-				printf("Error: No initialization data defined for shader storage buffer %i.\n", i);
+				printf("Error: No initialization data defined for shader storage buffer %i.\n", ssbo_index);
 				panic();
 			} break;
 		}
 
-		if(i == init->ssbos_len - 1) {
+		if(ssbo_index == init->ssbos_len - 1) {
 			ssbo->next = NULL;
 		} else {
-			ssbo->next = &init->ssbos[i + 1];
+			ssbo->next = &init->ssbos[ssbo_index + 1];
 		}
 	}
 }
@@ -281,9 +281,9 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 
 	// Camera ubo
 	RenderCameraUbo* camera_ubos = (RenderCameraUbo*)stack_alloc(&frame_stack, sizeof(RenderCameraUbo) * list->cameras_len);
-	for(i32 i = 0; i < list->cameras_len; i++) {
-		RenderListCamera* cam = &list->cameras[i];
-		RenderCameraUbo* ubo = &camera_ubos[i];
+	for(i32 cam_index = 0; cam_index < list->cameras_len; cam_index++) {
+		RenderListCamera* cam = &list->cameras[cam_index];
+		RenderCameraUbo* ubo = &camera_ubos[cam_index];
 		f32 perspective[16];
 		m4_perspective(
 			radians_from_degrees(75.0f), 
@@ -304,10 +304,10 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	// Text ssbo
 	// NOW: Only allocate amount of glyphs needed, I would imagine!
 	RenderGlyph* text_ssbo = (RenderGlyph*)stack_alloc(&frame_stack, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
-	for(u32 i = 0; i < ASSET_NUM_FONTS; i++) {
-		for(u32 j = 0; j < list->glyph_list_lens[i]; j++) {
-			RenderListGlyph* list_glyph = &list->glyph_lists[i][j];
-			RenderGlyph* render_glyph = &text_ssbo[i * RENDER_LIST_MAX_GLYPHS_PER_FONT + j];
+	for(u32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
+		for(u32 glyph_index = 0; glyph_index < list->glyph_list_lens[font_index]; glyph_index++) {
+			RenderListGlyph* list_glyph = &list->glyph_lists[font_index][glyph_index];
+			RenderGlyph* render_glyph = &text_ssbo[font_index * RENDER_LIST_MAX_GLYPHS_PER_FONT + glyph_index];
 
 			render_glyph->dst.x = 2.0f * (list_glyph->offset.x / platform->window_width + list_glyph->screen_anchor.x) - 1.0f;
 			render_glyph->dst.y = 2.0f * (list_glyph->offset.y / platform->window_height + list_glyph->screen_anchor.y) - 1.0f;
@@ -322,9 +322,9 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 
 	// Rect ssbo
 	RenderRect* rect_ssbo = (RenderRect*)stack_alloc(&frame_stack, sizeof(RenderRect) * list->rects_len);
-	for(u32 i = 0; i < list->rects_len; i++) {
-		RenderListRect* list_rect = &list->rects[i];
-		RenderRect* render_rect = &rect_ssbo[i];
+	for(u32 rect_index = 0; rect_index < list->rects_len; rect_index++) {
+		RenderListRect* list_rect = &list->rects[rect_index];
+		RenderRect* render_rect = &rect_ssbo[rect_index];
 		render_rect->dst.x = 2.0f * (list_rect->dst.x / platform->window_width + list_rect->screen_anchor.x) - 1.0f;
 		render_rect->dst.y = 2.0f * (list_rect->dst.y / platform->window_height + list_rect->screen_anchor.y) - 1.0f;
 		render_rect->dst.z = 2.0f * (list_rect->dst.z / platform->window_width);
@@ -343,8 +343,8 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	render_push_command(renderer, RENDER_COMMAND_USE_UBO, &use_ubo_camera, &frame_stack);
 
 	// Draw viewports
-	for(i32 i = 0; i < list->cameras_len; i++) {
-		RenderListCamera* cam = &list->cameras[i];
+	for(i32 cam_index = 0; cam_index < list->cameras_len; cam_index++) {
+		RenderListCamera* cam = &list->cameras[cam_index];
 		v4 viewport_rect = cam->screen_rect;
 		viewport_rect.x *= platform->window_width;
 		viewport_rect.y *= platform->window_height;
@@ -354,7 +354,7 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		RenderCommandSetViewport set_viewport = { .rect = viewport_rect };
 		render_push_command(renderer, RENDER_COMMAND_SET_VIEWPORT, &set_viewport, &frame_stack);
 		
-		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = camera_host_buffer, .host_buffer_offset = sizeof(RenderCameraUbo) * i };
+		RenderCommandBufferUboData buffer_ubo_data_camera = { .ubo = RENDER_UBO_CAMERA, .host_buffer_index = camera_host_buffer, .host_buffer_offset = sizeof(RenderCameraUbo) * cam_index };
 		render_push_command(renderer, RENDER_COMMAND_BUFFER_UBO_DATA, &buffer_ubo_data_camera, &frame_stack);
 
 		// Draw models
@@ -364,36 +364,8 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 		RenderCommandUseSsbo use_ssbo_model = { .ssbo = RENDER_SSBO_MODEL };
 		render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_model, &frame_stack);
 
-		/*
-		for(i32 i = 0; i < ASSET_NUM_MESHES; i++) {
-			if(list->model_lens_by_type[i] < 1) break;
-
-			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
-				.ssbo = RENDER_SSBO_MODEL, 
-				.size = sizeof(RenderModelTransform) * list->model_lens_by_type[i], 
-				.host_buffer_index = model_host_buffer, 
-				.host_buffer_offset = sizeof(RenderModelTransform) * model_ssbo_offsets_by_type[i]
-			};
-			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_model, &frame_stack);
-
-			// TODO: This assumes textures and models are listed 1 by 1 in perfect sync,
-			// ignoring the texture passed to the render list.
-			//
-			// Avoiding this would require us to do something like bindless rendering or
-			// a texture array, which would mean the textures are laid out next to each
-			// other in memory on a per mesh basis.
-			//
-			// For now, we can also just have them be a part of the render list.
-			RenderCommandUseTexture use_texture = { .texture = i };
-			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture, &frame_stack);
-
-			RenderCommandDrawMeshInstanced draw_mesh_instanced_model = { .mesh = renderer->model_to_mesh_map[i], .count = list->model_lens_by_type[i] };
-			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_model, &frame_stack);
-		}
-		*/
-
-		for(i32 i = 0; i < list->instance_types_len; i++) {
-			RenderListInstanceType* type = &list->instance_types[i];
+		for(i32 type_index = 0; type_index < list->instance_types_len; type_index++) {
+			RenderListInstanceType* type = &list->instance_types[type_index];
 			if(type->instances_len < 1) {
 				continue;
 				//printf("Instances len less than 1 for instance type %i\n", i);
@@ -431,22 +403,22 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	render_push_command(renderer, RENDER_COMMAND_USE_SSBO, &use_ssbo_text, &frame_stack);
 
 	u64 text_buffer_offset = 0;
-	for(i32 i = 0; i < ASSET_NUM_FONTS; i++) {
-		if(list->glyph_list_lens[i] > 0) {
+	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
+		if(list->glyph_list_lens[font_index] > 0) {
 			RenderCommandBufferSsboData buffer_ssbo_data_text = { 
 				.ssbo = RENDER_SSBO_TEXT, 
-				.size = sizeof(RenderGlyph) * list->glyph_list_lens[i], 
+				.size = sizeof(RenderGlyph) * list->glyph_list_lens[font_index], 
 				.host_buffer_index = text_host_buffer, 
 				.host_buffer_offset = text_buffer_offset 
 			};
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_text, &frame_stack);
 
-			RenderCommandUseTexture use_texture_text = { .texture = list->glyph_list_textures[i] };
+			RenderCommandUseTexture use_texture_text = { .texture = list->glyph_list_textures[font_index] };
 			render_push_command(renderer, RENDER_COMMAND_USE_TEXTURE, &use_texture_text, &frame_stack);
 
 			RenderCommandDrawMeshInstanced draw_mesh_instanced_text = { 
 				.mesh = renderer->primitive_to_mesh_map[RENDER_PRIMITIVE_QUAD], 
-				.count = list->glyph_list_lens[i] 
+				.count = list->glyph_list_lens[font_index] 
 			};
 			render_push_command(renderer, RENDER_COMMAND_DRAW_MESH_INSTANCED, &draw_mesh_instanced_text, &frame_stack);
 		}

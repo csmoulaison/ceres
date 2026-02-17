@@ -15,23 +15,23 @@ TextLinePlacements ui_text_line_placements(FontData* fonts, FontAssetHandle font
 
 	FontData* font = &fonts[font_handle];
 	f32 cur_x = position.x;
-	for(i32 i = 0; i < result.len; i++) {
-		char c = text[i];
+	for(i32 ci = 0; ci < result.len; ci++) {
+		char c = text[ci];
 		FontGlyph* glyph = &font->glyphs[(u8)c];
 
-		result.x[i] = cur_x + glyph->bearing[0];
-		result.y[i] = position.y - (glyph->size[1] - glyph->bearing[1]);
+		result.x[ci] = cur_x + glyph->bearing[0];
+		result.y[ci] = position.y - (glyph->size[1] - glyph->bearing[1]);
         cur_x += (glyph->advance >> 6);
 	}
 
 	f32 off_x = (cur_x - position.x) * inner_anchor.x;
 	f32 off_y = font->size * inner_anchor.y;
-	for(i32 i = 0; i < result.len; i++) {
-		result.x[i] -= off_x;
-		result.y[i] -= off_y;
+	for(i32 pl = 0; pl < result.len; pl++) {
+		result.x[pl] -= off_x;
+		result.y[pl] -= off_y;
 
-		result.x[i] = floor(result.x[i]);
-		result.y[i] = floor(result.y[i]);
+		result.x[pl] = floor(result.x[pl]);
+		result.y[pl] = floor(result.y[pl]);
 	}
 
 	return result;
@@ -39,8 +39,8 @@ TextLinePlacements ui_text_line_placements(FontData* fonts, FontAssetHandle font
 
 void ui_draw_text_line(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char* text, v2 position, v2 inner_anchor, v2 screen_anchor, v4 color, StackAllocator* stack) {
 	TextLinePlacements placements = ui_text_line_placements(fonts, font_handle, text, position, inner_anchor, stack);
-	for(i32 j = 0; j < placements.len; j++) {
-		v2 position = v2_new(placements.x[j], placements.y[j]);
-		render_list_draw_glyph(list, fonts, font_handle, text[j], position, screen_anchor, color);
+	for(i32 pl = 0; pl < placements.len; pl++) {
+		v2 position = v2_new(placements.x[pl], placements.y[pl]);
+		render_list_draw_glyph(list, fonts, font_handle, text[pl], position, screen_anchor, color);
 	}
 }

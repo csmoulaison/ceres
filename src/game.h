@@ -4,6 +4,7 @@
 #include "asset_format.h"
 #include "generated/asset_handles.h"
 #include "renderer/render_list.h"
+#include "game_event.h"
 #include "input.c"
 
 #define GAME_SOUND_CHANNELS_COUNT 16
@@ -53,10 +54,6 @@ typedef struct {
 	f32 hit_cooldown;
 	f32 momentum_cooldown_sound;
 	f32 shoot_cooldown_sound;
-
-	// TODO: Might we want to have this be part of an input handler which just has
-	// a list of button states per player?
-	ButtonState button_states[NUM_BUTTONS];
 } GamePlayer;
 
 typedef struct {
@@ -97,18 +94,17 @@ typedef struct {
 typedef struct {
 	GameMode mode;
 	GameLevel level;
+	InputState input;
 
 	GamePlayer players[2];
 	GameCamera cameras[2];
 	GameDestructMesh destruct_meshes[6];
 
-	GameKeyMapping key_mappings[MAX_KEY_MAPPINGS];
-	u32 key_mappings_len;
-
 	GameSoundChannel sound_channels[GAME_SOUND_CHANNELS_COUNT];
 
 	FontData fonts[ASSET_NUM_FONTS];
 	u32 frame;
+
 
 #if GAME_EDITOR_TOOLS
 	LevelEditor level_editor;
@@ -128,20 +124,6 @@ typedef struct {
 	bool close_requested;
 	RenderList render_list;
 } GameOutput;
-
-typedef enum {
-	GAME_EVENT_MOUSE_MOVED,
-	GAME_EVENT_KEY_DOWN,
-	GAME_EVENT_KEY_UP,
-	GAME_EVENT_NEW_CONNECTION,
-	GAME_EVENT_PACKET_RECEIVED
-} GameEventType;
-
-typedef struct GameEvent {
-	struct GameEvent* next;
-	GameEventType type;
-	void* data;
-} GameEvent;
 
 #define GAME_INIT(name) void name(GameMemory* memory, AssetMemory* assets)
 typedef GAME_INIT(GameInitFunction);

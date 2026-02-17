@@ -1,9 +1,9 @@
 void player_spawn(GamePlayer* player, GameLevel* level, u8 player_team) {
 	u8 spawns_len = 0;
 	u8 team_spawns[MAX_LEVEL_SPAWNS];
-	for(i32 i = 0; i < level->spawns_len; i++) {
-		if(level->spawns[i].team == player_team) {
-			team_spawns[spawns_len] = i;
+	for(i32 sp = 0; sp < level->spawns_len; sp++) {
+		if(level->spawns[sp].team == player_team) {
+			team_spawns[spawns_len] = sp;
 			spawns_len++;
 		}
 	}

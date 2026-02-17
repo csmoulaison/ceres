@@ -82,7 +82,7 @@ void bitstream_write_bits(Bitstream* stream, char* value, u32 size_bits)
 
 	u32 val_byte_off = 0;
 	u32 val_bit_off = 0;
-	for(u32 i = 0; i < size_bits; i++) {
+	for(u32 bit_index = 0; bit_index < size_bits; bit_index++) {
 		char* write_byte = &stream->data[stream->byte_offset];
 		u8 bit_to_set = 1 << stream->bit_offset;
 
@@ -105,7 +105,7 @@ void bitstream_read_bits(Bitstream* stream, char* value, u32 size_bits)
 	*value = 0;
 	u32 val_byte_off = 0;
 	u32 val_bit_off = 0;
-	for(u32 i = 0; i < size_bits; i++) {
+	for(u32 bit = 0; bit < size_bits; bit++) {
 		char* write_byte = &value[val_byte_off];
 		u8 bit_to_set = 1 << val_bit_off;
 

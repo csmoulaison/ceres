@@ -10,18 +10,18 @@ void level_editor_serialize(GameLevel* level) {
 void level_editor_update(GameState* game) {
 	LevelEditor* editor = &game->level_editor;
 	GameLevel* level = &game->level;
-	ButtonState* button_states = game->players[0].button_states;
+	InputButton* buttons = game->input.players[0].buttons;
 
-	if(input_button_pressed(button_states[BUTTON_FORWARD])) {
+	if(input_button_pressed(buttons[BUTTON_FORWARD])) {
 		editor->cursor_y++;
 	}
-	if(input_button_pressed(button_states[BUTTON_BACK])) {
+	if(input_button_pressed(buttons[BUTTON_BACK])) {
 		editor->cursor_y--;
 	}
-	if(input_button_pressed(button_states[BUTTON_TURN_LEFT])) {
+	if(input_button_pressed(buttons[BUTTON_TURN_LEFT])) {
 		editor->cursor_x++;
 	}
-	if(input_button_pressed(button_states[BUTTON_TURN_RIGHT])) {
+	if(input_button_pressed(buttons[BUTTON_TURN_RIGHT])) {
 		editor->cursor_x--;
 	}
 
@@ -30,9 +30,9 @@ void level_editor_update(GameState* game) {
 	editor->camera_position.y = lerp(editor->camera_position.y, *tile, 0.10f);
 	editor->camera_position.z = lerp(editor->camera_position.z, (f32)editor->cursor_y, 0.20f);
 
-	if(input_button_pressed(button_states[BUTTON_CLEAR])) {
-		for(i32 i = 0; i < game->level.side_length * game->level.side_length; i++) {
-			level->tiles[i] = 0;
+	if(input_button_pressed(buttons[BUTTON_CLEAR])) {
+		for(i32 pos = 0; pos < game->level.side_length * game->level.side_length; pos++) {
+			level->tiles[pos] = 0;
 		}
 		level->spawns_len = 0;
 		printf("Editor: Cleared level\n");
@@ -40,11 +40,11 @@ void level_editor_update(GameState* game) {
 
 	switch(editor->tool) {
 		case EDITOR_TOOL_CUBES: {
-			if(input_button_pressed(button_states[BUTTON_SHOOT])) {
+			if(input_button_pressed(buttons[BUTTON_SHOOT])) {
 				*tile += 1;
 			}
 
-			if(input_button_pressed(game->players[1].button_states[BUTTON_SHOOT])) {
+			if(input_button_pressed(game->input.players[1].buttons[BUTTON_SHOOT])) {
 				if(*tile > 0) {
 					*tile -= 1;
 				}
@@ -52,16 +52,16 @@ void level_editor_update(GameState* game) {
 
 		} break;
 		case EDITOR_TOOL_SPAWNS: {
-			if(input_button_pressed(button_states[BUTTON_SHOOT]) && *tile == 0) {
+			if(input_button_pressed(buttons[BUTTON_SHOOT]) && *tile == 0) {
 				bool matched_spawn = false;
-				for(i32 i = 0; i < level->spawns_len; i++) {
-					LevelSpawn* spawn = &level->spawns[i];
+				for(i32 sp = 0; sp < level->spawns_len; sp++) {
+					LevelSpawn* spawn = &level->spawns[sp];
 					if(spawn->x == editor->cursor_x && spawn->y == editor->cursor_y) {
 						matched_spawn = true;
 						spawn->team++;
 						if(spawn->team > 1) {
-							printf("Editor: Deleted spawn %i\n", i);
-							level->spawns[i] = level->spawns[level->spawns_len - 1];
+							printf("Editor: Deleted spawn %i\n", sp);
+							level->spawns[sp] = level->spawns[level->spawns_len - 1];
 							level->spawns_len--;
 						} else {
 							printf("Editor: Changed spawn team to %i\n", spawn->team);
@@ -81,12 +81,12 @@ void level_editor_update(GameState* game) {
 		} break;
 		default: { panic(); }
 	}
-	if(input_button_pressed(button_states[BUTTON_SWITCH])) {
+	if(input_button_pressed(buttons[BUTTON_SWITCH])) {
 		editor->tool++;
 		if(editor->tool > 1) editor->tool = 0;
 	}
 
-	if(input_button_pressed(button_states[BUTTON_DEBUG])) {
+	if(input_button_pressed(buttons[BUTTON_DEBUG])) {
 		game->mode = GAME_ACTIVE;
 		level_editor_serialize(&game->level);
 	}
@@ -122,8 +122,8 @@ void level_editor_draw(GameState* game, RenderList* list) {
 	}
 	render_list_draw_model_colored(list, mesh, texture, mesh_pos, v3_zero(), v4_new(1.0f, 1.0f - bluegreen_attenuation, 1.0f - bluegreen_attenuation, sin((f32)game->frame / 4.0f)));
 
-	for(i32 i = 0; i < level->spawns_len; i++) {
-		LevelSpawn* spawn = &level->spawns[i];
+	for(i32 sp = 0; sp < level->spawns_len; sp++) {
+		LevelSpawn* spawn = &level->spawns[sp];
 		v4 color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
 		if(spawn->team == 1) color = v4_new(0.0f, 0.5f, 0.5f, 1.0f);
 		render_list_draw_model_colored(list, mesh, texture, v3_new(spawn->x, 0.5f, spawn->y), v3_new(0.0f, (f32)game->frame / 10.0f, 0.0f), color);
