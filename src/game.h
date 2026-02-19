@@ -40,14 +40,13 @@ typedef struct {
 	f32 visible_health;
 	f32 shoot_cooldown;
 	f32 hit_cooldown;
-	f32 momentum_cooldown_sound;
-	f32 shoot_cooldown_sound;
+	f32 thruster_cooldown;
 
 	SoundHandle sound_forward_thruster;
 	SoundHandle sound_rotation_thruster;
 	SoundHandle sound_thruster_cooldown;
 	SoundHandle sound_shoot;
-	SoundHandle damage_sound;
+	SoundHandle sound_hit;
 } GamePlayer;
 
 typedef struct {

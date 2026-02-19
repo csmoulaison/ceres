@@ -99,15 +99,7 @@ GAME_UPDATE(game_update) {
 		mesh->opacity -= dt;
 	}
 
-	GamePlayer* p1 = &game->players[0];
-	GamePlayer* p2 = &game->players[1];
-	v2 ps[2] = { p1->position, p2->position };
-	f32 vs[2] = { v2_magnitude(p1->velocity), v2_magnitude(p2->velocity) };
-	f32 rs[2] = { p1->rotation_velocity, p2->rotation_velocity };
-	f32 ms[2] = { p1->momentum_cooldown_sound, p2->momentum_cooldown_sound };
-	f32 ss[2] = { p1->shoot_cooldown_sound, p2->shoot_cooldown_sound };
-	f32 hs[2] = { p1->hit_cooldown, p2->hit_cooldown };
-	sound_update(&game->sound, ps, vs, rs, ms, ss, hs, game->frame);
+	sound_update(&game->sound);
 
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 	draw_active_game(game, &output->render_list, &ui_stack, dt);
@@ -138,21 +130,22 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		channel_rates[channel_index] = 2.0f * M_PI * channel->actual_frequency / 48000;
 
 		if(channel_index >= game->sound.active_channels_len) {
-			channel->amplitude = 0.0f;
-			channel->frequency = 0.0f;
+			//channel->phase = 0.0f;
+			//channel->amplitude = 0.0f;
+			//channel->frequency = 0.0f;
 		}
 	}
 
 	for(i32 sample_index = 0; sample_index < samples_count; sample_index++) {
 		buffer[sample_index * 2] = 0.0f;
 		buffer[sample_index * 2 + 1] = 0.0f;
-		for(i32 ch = 0; ch < SOUND_MAX_CHANNELS; ch++) {
+		for(i32 ch = 0; ch < game->sound.active_channels_len; ch++) {
 			SoundChannel* channel = &game->sound.channels[ch];
-			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.02f);
-			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.02f);
+			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
+			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
 
-			//channel->phase += 2.0f * M_PI * channel->actual_frequency / 48000;
-			channel->phase += channel_rates[ch];
+			channel->phase += 2.0f * M_PI * channel->actual_frequency / 48000;
+			//channel->phase += channel_rates[ch];
 			f32 sample = channel->actual_amplitude * sinf(channel->phase);
 			sample = fclamp(sample, -channel->shelf, channel->shelf);
 			sample += sample * fast_random_f32() * channel->volatility;

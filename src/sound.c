@@ -2,7 +2,7 @@
 // Seems to happen both when channels activate and deactivate.
 // We also need to add all the other sounds.
 
-#define SOUND_MAX_CHANNELS 8
+#define SOUND_MAX_CHANNELS 16
 #define SOUND_SPARSE_LEN 64
 
 typedef struct {
@@ -58,9 +58,10 @@ void sound_init(SoundState* state) {
 }
 
 void sound_start(SoundState* state, SoundHandle* handle, u8 priority, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
-	SoundData* sound;
+	SoundData* sound = NULL;
 	if(handle->assigned) { 
 		assert(state->sounds[handle->index].active);
+		assert(state->sounds[handle->index].channel_assigned);
 		sound = &state->sounds[handle->index];
 	} else {
 		for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
@@ -68,15 +69,16 @@ void sound_start(SoundState* state, SoundHandle* handle, u8 priority, f32 amplit
 			if(!slot->active) {
 				sound = slot;
 				sound->active = true;
-
 				handle->index = sound_index;
 				handle->assigned = true;
-				printf("sound start %i\n", sound_index);
-				return;
+				break;
 			}
 		}
+		if(sound != NULL) { 
+			assert(!sound->channel_assigned);
+		}
 	}
-	if(!sound->active) {
+	if(sound == NULL) {
 		printf("No handle available for sound type %u.\n", handle->index);
 		return;
 	}
@@ -90,11 +92,9 @@ void sound_start(SoundState* state, SoundHandle* handle, u8 priority, f32 amplit
 
 void sound_stop(SoundState* state, SoundHandle* handle) {
 	if(handle->assigned) {
-		printf("sound stop %i\n", handle->index);
 		SoundData* sound = &state->sounds[handle->index];
-		sound->channel = 0;
-		sound->active = false;
-		handle->assigned = false;
+		memset(sound, 0, sizeof(SoundData));
+		memset(handle, 0, sizeof(SoundHandle));
 	}
 }
 
@@ -103,13 +103,13 @@ void sound_stop(SoundState* state, SoundHandle* handle) {
 	//channel->frequency = frequency;
 	//channel->shelf = shelf;
 	//channel->volatility = volatility;
-	//channel->pan = 0.0f;
+	//channel->pan = 0.5f;
 //}
 
 /*
 SoundChannel* sound_push_channel(SoundState* state, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
 	SoundChannel* channel = &state->channels[state->active_channels_len - 1];
-	channel->pan = 0.0f;
+	channel->pan = 0.5f;
 
 	channel->amplitude = amplitude;
 	channel->frequency = frequency;
@@ -123,7 +123,7 @@ SoundChannel* sound_push_channel(SoundState* state, f32 amplitude, f32 frequency
 void sound_spatialize_channel(SoundChannel* channel, v2 source_position, v2 listener_position) {
 	f32 distance = v2_distance(source_position, listener_position);
 	if(distance <= 0.1) {
-		channel->pan = 0.0f;
+		channel->pan = 0.5f;
 		return;
 	}
 
@@ -135,47 +135,34 @@ void sound_spatialize_channel(SoundChannel* channel, v2 source_position, v2 list
 }
 */
 
-void sound_update(SoundState* state, v2* positions, f32* v_mags, f32* r_vels, f32* mom_cools, f32* shoot_cools, f32* hit_cools, i32 frame) {
-	// NOW: Sort by highest priority using quick select algorithm
-	// 
-	// - Set all other sound->channels to 0. (IS THIS NECESSARY)
-	// 
-	// - Insert our highest priority sounds into channels in order, copying the
-	//   data from the channel the sound is currently connected to, if any, to the
-	//   newly assigned channel.
+void sound_update(SoundState* state) {
+	SoundData* packed_sounds[SOUND_MAX_CHANNELS];
+	u8 packed_sounds_len = 0;
+	//u32 priority_threshold = UINT32_MAX;
+	//SoundData* priority_threshold_sound;
 
-	SortedSound active[SOUND_SPARSE_LEN];
-	i32 active_len = 0;
+	printf("starting\n");
 	for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
 		SoundData* sound = &state->sounds[sound_index];
-		if(sound->active) {
-			active[active_len].handle = sound_index;
-			active[active_len].priority = sound->priority;
-			active_len++;
-		}
-	}
+		if(!sound->active) continue;
 
-	u8 prioritized_sounds[SOUND_MAX_CHANNELS];
-	u8 prioritized_sounds_len = 0;
+		if(packed_sounds_len < SOUND_MAX_CHANNELS) {
+			packed_sounds[packed_sounds_len] = sound;
+			packed_sounds_len++;
 
-	u32 priority_threshold = UINT32_MAX;
-	u8 priority_threshold_index;
-	for(i32 active_index = 0; active_index < active_len; active_index++) {
-		if(prioritized_sounds_len < SOUND_MAX_CHANNELS) {
-			prioritized_sounds[prioritized_sounds_len] = active_index;
-			if(active[active_index].priority < priority_threshold) {
-				priority_threshold = active[active_index].priority;
-				priority_threshold_index = prioritized_sounds_len;
-			}
-			prioritized_sounds_len++;
+			//if(sound->priority < priority_threshold) {
+			//	priority_threshold = sound->priority;
+			//	priority_threshold_sound = sound;
+			//}
 		} else {
-			printf("never here\n");
+			panic();
+			/* THIS IS THE CASE WHERE WE HAVE MORE SOUNDS THAN CHANNELS. We aren't there yet.
 			if(active[active_index].priority > priority_threshold) {
 				state->sounds[active[priority_threshold_index].handle].channel_assigned = false;
 				priority_threshold = active[active_index].priority;
-				prioritized_sounds[priority_threshold_index] = active_index;
+				channels_to_sounds[priority_threshold_index] = active_index;
 				for(i32 prioritized_index = 0; prioritized_index < active_len; prioritized_index++) {
-					if(active[prioritized_sounds[prioritized_index]].priority < priority_threshold) {
+					if(active[channels_to_sounds[prioritized_index]].priority < priority_threshold) {
 						priority_threshold = active[active_index].priority;
 						priority_threshold_index = active_index;
 					}
@@ -183,43 +170,45 @@ void sound_update(SoundState* state, v2* positions, f32* v_mags, f32* r_vels, f3
 			} else {
 				state->sounds[active[active_index].handle].channel_assigned = false;
 			}
+			*/
 		}
 	}
 
-	// NOW: We don't need the whole sound channel, just the actual_ fields.
 	SoundChannel cached_channels[SOUND_MAX_CHANNELS];
 	memcpy(cached_channels, state->channels, sizeof(SoundChannel) * SOUND_MAX_CHANNELS);
+	bool channels_assigned[SOUND_MAX_CHANNELS] = {0};
 
-	state->active_channels_len = prioritized_sounds_len;
-	for(i32 prioritized_index = 0; prioritized_index < prioritized_sounds_len; prioritized_index++) {
-		SoundData* sound = &state->sounds[active[prioritized_index].handle];
-		SoundChannel* cached_channel = &state->channels[sound->channel];
-		u8 ch = sound->channel;
-		sound->channel = prioritized_index;
-		SoundChannel* channel = &state->channels[sound->channel];
-
-		if(ch != sound->channel) {
-			printf("doesnt even fit!\n");
-		} else {
-			//printf("DOES even fit!\n");
-		}
-
+	state->active_channels_len = packed_sounds_len;
+	for(i32 channel_index = 0; channel_index < state->active_channels_len; channel_index++) {
+		SoundChannel* channel = &state->channels[channel_index];
+		SoundData* sound = packed_sounds[channel_index];
 		if(sound->channel_assigned) {
-			//printf("s%u ASS\n", prioritized_index);
+			SoundChannel* cached_channel = &cached_channels[sound->channel];
+			channel->phase = cached_channel->phase;
 			channel->actual_frequency = cached_channel->actual_frequency;
 			channel->actual_amplitude = cached_channel->actual_amplitude;
+			*channel = *cached_channel;
 		} else {
-			printf("s%u !ASS\n", prioritized_index);
-			//channel->actual_amplitude = sound->settings.amplitude;
-			//channel->actual_frequency = sound->settings.frequency;
+			sound->channel_assigned = true;
+			channel->phase = 0.0f;
+			channel->actual_amplitude = 0.0f;
+			channel->actual_frequency = 0.0f;
 		}
-		sound->channel_assigned = true;
+		sound->channel = channel_index;
+		channels_assigned[channel_index] = true;
 
 		channel->amplitude = sound->settings.amplitude;
 		channel->frequency = sound->settings.frequency;
 		channel->shelf = sound->settings.shelf;
 		channel->volatility = sound->settings.volatility;
-		channel->pan = 0.0f;
+		channel->pan = 0.5f;
+	}
+	for(i32 channel_index = 0; channel_index < state->active_channels_len; channel_index++) {
+		if(!channels_assigned[channel_index]) {
+			SoundChannel* channel = &state->channels[channel_index];
+			channel->amplitude = 0.0f;
+			channel->frequency = 0.0f;
+		}
 	}
 
 	/*
@@ -230,22 +219,6 @@ void sound_update(SoundState* state, v2* positions, f32* v_mags, f32* r_vels, f3
 		v2 source = positions[pl];
 		v2 listener = positions[0];
 			
-		// Forward thruster
-		ch = sound_push_channel(state, 2000.0f * v_mags[pl], 7.144123f * v_mags[pl], 6000.0f, 0.002f * v_mags[pl]);
-		sound_spatialize_channel(ch, source, listener);
-
-		// Rotation thruster
-		ch = sound_push_channel(state, 2000.0f * r_vels[pl], 10.0f * abs(r_vels[pl]), 6000.0f, 0.002f * r_vels[pl]);
-		sound_spatialize_channel(ch, source, listener);
-
-		// Thruster cooldown
-		ch = sound_push_channel(state, 2000.0f * mom_cools[pl], 3.0f * mom_cools[pl], 2000.0f, 0.01f * mom_cools[pl]);
-		sound_spatialize_channel(ch, source, listener);
-
-		// Gun shooting
-		f32 shoot = shoot_cools[pl];
-		ch = sound_push_channel(state, 10000.0f * shoot * shoot, 1500.0f * shoot * shoot, 2000.0f + 2000.0f * shoot, 0.2f * shoot);
-		sound_spatialize_channel(ch, source, listener);
 
 		// Collision/hit/damage
 		f32 hit = hit_cools[pl];
