@@ -6,11 +6,11 @@
 #include "renderer/render_list.h"
 #include "game_event.h"
 #include "input.c"
+#include "sound.c"
 
 #define GAME_UI_MEMSIZE MEGABYTE
 #define GAME_EDITOR_TOOLS true
 #define MAX_GAME_LEVEL_SIDE_LENGTH 1024
-#define SOUND_MAX_CHANNELS 16
 
 typedef enum {
 	EDITOR_TOOL_CUBES,
@@ -42,6 +42,12 @@ typedef struct {
 	f32 hit_cooldown;
 	f32 momentum_cooldown_sound;
 	f32 shoot_cooldown_sound;
+
+	SoundHandle sound_forward_thruster;
+	SoundHandle sound_rotation_thruster;
+	SoundHandle sound_thruster_cooldown;
+	SoundHandle sound_shoot;
+	SoundHandle damage_sound;
 } GamePlayer;
 
 typedef struct {
@@ -53,23 +59,6 @@ typedef struct {
 	f32 pitch;
 	f32 yaw;
 } DebugCamera;
-
-typedef struct {
-	f32 phase;
-	f32 frequency;
-	f32 amplitude;
-	f32 shelf;
-	f32 volatility;
-	f32 pan;
-
-	f32 actual_frequency;
-	f32 actual_amplitude;
-} SoundChannel;
-
-typedef struct {
-	SoundChannel channels[SOUND_MAX_CHANNELS];
-	u8 channels_len;
-} SoundState;
 
 typedef enum {
 	GAME_ACTIVE,

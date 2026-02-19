@@ -119,6 +119,20 @@ void game_active_update(GameState* game, f32 dt) {
 			player->momentum_cooldown_sound = lerp(player->momentum_cooldown_sound, 0.0f, 1.0f * dt);
 		}
 
+		f32 mag = v2_magnitude(player->velocity);
+		if(mag > 0.01f) {
+			sound_start(&game->sound, &player->sound_forward_thruster, 255, 2000.0f * mag, 7.144123f * mag, 6000.0f, 0.002f * mag);
+		} else {
+			sound_stop(&game->sound, &player->sound_forward_thruster);
+		}
+
+		f32 rot = fabs(player->rotation_velocity);
+		if(rot > 0.01f) {
+			sound_start(&game->sound, &player->sound_rotation_thruster, 255, 2000.0f * rot, 10.0f * rot, 6000.0f, 0.002f * rot);
+		} else {
+			sound_stop(&game->sound, &player->sound_rotation_thruster);
+		}
+
 		// Update camera
 		// 
 		// TODO: Not every player will necessarily get a camera in the future. Bots

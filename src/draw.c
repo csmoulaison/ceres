@@ -18,7 +18,7 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	bool splitscreen = false;
+	bool splitscreen = true;
 	for(i32 pl = 0; pl < 2; pl++) {
 		GamePlayer* player = &game->players[pl];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
@@ -93,7 +93,8 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 
 	// TODO: Layouts for splitscreen vs single and others, sets up anchors and
 	// positions per item, which are referenced here in the drawing commands.
-	// Score
+	 
+	// Player scores
 	for(i32 player_index = 0; player_index < 2; player_index++) {
 		v2 position = v2_new(-24.0f + player_index * 48.0f, -32.0f);
 		v2 inner_anchor = v2_new(1.0f * (1.0f - player_index), 1.0f);
@@ -105,6 +106,7 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 			position, inner_anchor, screen_anchor, color, ui_stack);
 	}
 
+	// Player health bars
 	for(i32 player_index = 0; player_index < 2; player_index++) {
 		if(!splitscreen && player_index != 0) continue;
 

@@ -60,14 +60,6 @@ void input_init(InputState* input) {
 	for(i32 km = 0; km < input->key_mappings_len; km++) {
 		fread(&input->key_mappings[km], sizeof(InputKeyMapping), 1, file);
 	}
-
-	for(i32 pl = 0; pl < 2; pl++) {
-		InputButton* buttons = input->players[pl].buttons;
-		for(i32 btn = 0; btn < NUM_BUTTONS; btn++) {
-			buttons[btn] = 0;
-		}
-	}
-
 }
 
 void input_poll_events(InputState* input, GameEvent* events_head) {

@@ -10,14 +10,18 @@
 #include "game_active.c"
 #include "level_editor.c"
 #include "draw.c"
-#include "sound.c"
+#include "debug_sound.c"
 
 GAME_INIT(game_init) {
+	fast_random_init();
+
 	GameState* game = &memory->state;
+	memset(game, 0, sizeof(GameState));
+
+	sound_init(&game->sound);
+	input_init(&game->input);
 	game->mode = GAME_ACTIVE;
 	game->frame = 0;
-
-	fast_random_init();
 
 	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
 		FontData* font = &game->fonts[font_index];
@@ -34,28 +38,10 @@ GAME_INIT(game_init) {
 	for(i32 player_index = 0; player_index < 2; player_index++) {
 		GamePlayer* player = &game->players[player_index];
 		player->position = v2_new(player_index * 2.0f + 32.0f, player_index * 2.0f + 32.0f);
-		player->velocity = v2_zero();
-		player->direction = 0.0f;
-		player->rotation_velocity = 0.0f;
 		player->health = 1.0f;
-		player->score = 0;
 		player->visible_health = player->health;
-		player->shoot_cooldown = 0.0f;
-		player->hit_cooldown = 0.0f;
-		player->shoot_cooldown_sound = 0.0f;
-		player->momentum_cooldown_sound = 0.0f;
-
-		GameCamera* camera = &game->cameras[player_index];
-		camera->offset = v2_zero();
+		//GameCamera* camera = &game->cameras[player_index];
 	}
-
-	for(i32 dm = 0; dm < 6; dm++) {
-		GameDestructMesh* destruct_mesh = &game->destruct_meshes[dm];
-		destruct_mesh->opacity = 0.0f;
-	}
-
-	sound_init(&game->sound);
-	input_init(&game->input);
 
 	// Load level
 	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
@@ -113,10 +99,19 @@ GAME_UPDATE(game_update) {
 		mesh->opacity -= dt;
 	}
 
-	sound_update(&game->sound, game);
+	GamePlayer* p1 = &game->players[0];
+	GamePlayer* p2 = &game->players[1];
+	v2 ps[2] = { p1->position, p2->position };
+	f32 vs[2] = { v2_magnitude(p1->velocity), v2_magnitude(p2->velocity) };
+	f32 rs[2] = { p1->rotation_velocity, p2->rotation_velocity };
+	f32 ms[2] = { p1->momentum_cooldown_sound, p2->momentum_cooldown_sound };
+	f32 ss[2] = { p1->shoot_cooldown_sound, p2->shoot_cooldown_sound };
+	f32 hs[2] = { p1->hit_cooldown, p2->hit_cooldown };
+	sound_update(&game->sound, ps, vs, rs, ms, ss, hs, game->frame);
 
 	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
 	draw_active_game(game, &output->render_list, &ui_stack, dt);
+	debug_draw_sound_channels(&game->sound, &output->render_list, game->fonts, &ui_stack);
 
 	game->frame++;
 }
@@ -141,6 +136,11 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 
 		// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
 		channel_rates[channel_index] = 2.0f * M_PI * channel->actual_frequency / 48000;
+
+		if(channel_index >= game->sound.active_channels_len) {
+			channel->amplitude = 0.0f;
+			channel->frequency = 0.0f;
+		}
 	}
 
 	for(i32 sample_index = 0; sample_index < samples_count; sample_index++) {
@@ -148,9 +148,10 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		buffer[sample_index * 2 + 1] = 0.0f;
 		for(i32 ch = 0; ch < SOUND_MAX_CHANNELS; ch++) {
 			SoundChannel* channel = &game->sound.channels[ch];
-			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
-			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
+			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.02f);
+			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.02f);
 
+			//channel->phase += 2.0f * M_PI * channel->actual_frequency / 48000;
 			channel->phase += channel_rates[ch];
 			f32 sample = channel->actual_amplitude * sinf(channel->phase);
 			sample = fclamp(sample, -channel->shelf, channel->shelf);
