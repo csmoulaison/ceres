@@ -10,7 +10,9 @@
 
 #define GAME_UI_MEMSIZE MEGABYTE
 #define GAME_EDITOR_TOOLS true
-#define MAX_GAME_LEVEL_SIDE_LENGTH 1024
+#define GAME_MAX_LEVEL_SIDE_LENGTH 1024
+#define GAME_MAX_TEAMS 2
+#define GAME_MAX_PLAYER_VIEWS 2
 
 typedef enum {
 	EDITOR_TOOL_CUBES,
@@ -28,16 +30,14 @@ typedef struct {
 #endif
 
 typedef struct {
+	u8 team;
+	f32 health;
 	v2 position;
 	v2 velocity;
 	f32 direction;
 	f32 rotation_velocity;
 	f32 strafe_tilt;
 
-	f32 health;
-	i32 score;
-
-	f32 visible_health;
 	f32 shoot_cooldown;
 	f32 hit_cooldown;
 	f32 thruster_cooldown;
@@ -50,8 +50,10 @@ typedef struct {
 } GamePlayer;
 
 typedef struct {
-	v2 offset;
-} GameCamera;
+	u8 player;
+	v2 camera_offset;
+	f32 visible_health;
+} GamePlayerView;
 
 typedef struct {
 	v3 position;
@@ -71,7 +73,7 @@ typedef struct {
 	u8 spawns_len;
 
 	u16 side_length;
-	u8 tiles[MAX_GAME_LEVEL_SIDE_LENGTH * MAX_GAME_LEVEL_SIDE_LENGTH];
+	u8 tiles[GAME_MAX_LEVEL_SIDE_LENGTH * GAME_MAX_LEVEL_SIDE_LENGTH];
 } GameLevel;
 
 typedef struct {
@@ -90,8 +92,13 @@ typedef struct {
 	InputState input;
 	SoundState sound;
 
-	GamePlayer players[2];
-	GameCamera cameras[2];
+	i32 team_scores[GAME_MAX_TEAMS];
+	GamePlayer players[MAX_PLAYERS];
+	u8 players_len;
+
+	GamePlayerView player_views[GAME_MAX_PLAYER_VIEWS];
+	u8 player_views_len;
+
 	GameDestructMesh destruct_meshes[6];
 
 	FontData fonts[ASSET_NUM_FONTS];

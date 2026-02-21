@@ -13,16 +13,13 @@
 #include "debug_sound.c"
 
 GAME_INIT(game_init) {
-	fast_random_init();
-
 	GameState* game = &memory->state;
 	memset(game, 0, sizeof(GameState));
-
 	sound_init(&game->sound);
 	input_init(&game->input);
-	game->mode = GAME_ACTIVE;
-	game->frame = 0;
+	fast_random_init();
 
+	// Fonts
 	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
 		FontData* font = &game->fonts[font_index];
 		FontAsset* f_asset = (FontAsset*)&assets->buffer[assets->font_buffer_offsets[font_index]];
@@ -35,45 +32,66 @@ GAME_INIT(game_init) {
 		memcpy(font->glyphs, f_asset->buffer, sizeof(FontGlyph) * f_asset->glyphs_len);
 	}
 
-	for(i32 player_index = 0; player_index < 2; player_index++) {
-		GamePlayer* player = &game->players[player_index];
-		player->position = v2_new(player_index * 2.0f + 32.0f, player_index * 2.0f + 32.0f);
-		player->health = 1.0f;
-		player->visible_health = player->health;
-		//GameCamera* camera = &game->cameras[player_index];
-	}
-
-	// Load level
+	// Level
 	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
 	GameLevel* level = &game->level;
 	level->spawns_len = level_asset->spawns_len;
-	for(i32 sp = 0; sp < level->spawns_len; sp++) {
-		level->spawns[sp] = level_asset->spawns[sp];
+	for(i32 spawn_index = 0; spawn_index < level->spawns_len; spawn_index++) {
+		level->spawns[spawn_index] = level_asset->spawns[spawn_index];
 	}
 
 	level->side_length = level_asset->side_length;
 	level->side_length = 64;
 	u16 side_length = level->side_length;
-	assert(side_length <= MAX_GAME_LEVEL_SIDE_LENGTH);
-	for(i32 pos = 0; pos < side_length * side_length; pos++) {
-		i32 x = pos % side_length;
-		i32 y = pos / side_length;
+	assert(side_length <= GAME_MAX_LEVEL_SIDE_LENGTH);
+	for(i32 tile_index = 0; tile_index < side_length * side_length; tile_index++) {
+		i32 x = tile_index % side_length;
+		i32 y = tile_index / side_length;
 		if(x < 2 || x > 61 || y < 2 || y > 61) {
-			level->tiles[pos] = 1 + rand() / (RAND_MAX / 3);
+			level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
 		} else {
-			level->tiles[pos] = level_asset->buffer[pos];
+			level->tiles[tile_index] = level_asset->buffer[tile_index];
 		}
 	}
 
-	// init editor
+	// Players
+	game->players_len = 4;
+	game->players[0].team = 0;
+	game->players[1].team = 0;
+	game->players[2].team = 1;
+	game->players[3].team = 1;
+	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
+		GamePlayer* player = &game->players[player_index];
+		player_spawn(player, level);
+	}
+
+	// Views
+	// 
+	// NOW: Setting views[0].player to anything other than 0 breaks any input
+	// checks that are manually indexing into the 0th player input state.
+	game->player_views_len = 1;
+	game->player_views[0].player = 0; 
+	game->player_views[1].player = 2; 
+	for(i32 view_index = 0; view_index < game->player_views_len; view_index++) {
+		GamePlayerView* view = &game->player_views[view_index];
+
+		GamePlayer* player = &game->players[view->player];
+		view->camera_offset = player->position;
+		view->visible_health = 0.0f;
+
+		input_attach_map(&game->input, view_index, view->player);
+	}
+
+	// Editor
+#if GAME_EDITOR_TOOLS
 	game->level_editor.tool = EDITOR_TOOL_CUBES;
+#endif
 }
 
 GAME_UPDATE(game_update) {
 	GameState* game = &memory->state;
 	input_poll_events(&game->input, events_head);
 
-	// Quit control
 	if(input_button_down(game->input.players[0].buttons[BUTTON_QUIT])) {
 		output->close_requested = true;
 	}
@@ -88,15 +106,6 @@ GAME_UPDATE(game_update) {
 		} break;
 #endif
 		default: break;
-	}
-
-	for(i32 dm = 0; dm < 6; dm++) {
-		GameDestructMesh* mesh = &game->destruct_meshes[dm];
-		if(mesh->opacity <= 0.0f) continue;
-		mesh->velocity.y -= 10.0f * dt;
-		mesh->position = v3_add(mesh->position, v3_scale(mesh->velocity, dt));
-		mesh->orientation = v3_add(mesh->orientation, v3_scale(mesh->rotation_velocity, dt));
-		mesh->opacity -= dt;
 	}
 
 	sound_update(&game->sound);

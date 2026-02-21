@@ -45,7 +45,7 @@ i32 main(i32 argc, char** argv) {
 
 	print_header("Creating input configuration file...");
 	system_call_ignore_result("mkdir data/config");
-	build_default_input_config_file("../src/input.c", "InputButtonType", "data/config/def_input.conf", false);
+	build_default_input_config_file("../src/input.h", "InputButtonType", "data/config/def_input.conf", false);
 	system_call("cp data/config/def_input.conf ../bin/data/def_input.conf");
 
 	print_header("Building asset pack from manifest...");

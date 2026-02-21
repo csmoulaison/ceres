@@ -8,9 +8,9 @@ v2 player_direction_vector(GamePlayer* player) {
 }
 
 void game_active_update(GameState* game, f32 dt) {
-	for(i32 pl = 0; pl < 2; pl++) {
-		GamePlayer* player = &game->players[pl];
-		InputPlayer* input = &game->input.players[pl];
+	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
+		GamePlayer* player = &game->players[player_index];
+		InputPlayer* input = &game->input.players[player_index];
 
 		v2 acceleration = v2_zero();
 		v2 direction_vector = player_direction_vector(player);
@@ -18,9 +18,6 @@ void game_active_update(GameState* game, f32 dt) {
 		f32 strafe_mod = 0.0f;
 
 		// Shooting
-		//if(player->shoot_cooldown > 0.0f) {
-		//	player->shoot_cooldown = lerp(player->shoot_cooldown, 0.0f, 4.0f * dt);
-		//}
 		if(player->hit_cooldown > 0.0f) {
 			player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
 		}
@@ -34,10 +31,10 @@ void game_active_update(GameState* game, f32 dt) {
 			v2 direction = player_direction_vector(player);
 			//player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
 
-			for(i32 pl_other = 0; pl_other < 2; pl_other++) {
-				if(pl_other == pl) continue;
+			for(i32 other_index = 0; other_index < game->players_len; other_index++) {
+				if(other_index == player_index) continue;
 
-				GamePlayer* other = &game->players[pl_other];
+				GamePlayer* other = &game->players[other_index];
 				f32 t = v2_dot(direction, v2_sub(other->position, player->position));
 				if(t < 0.5f) continue;
 
@@ -155,25 +152,12 @@ void game_active_update(GameState* game, f32 dt) {
 			sound_stop(&game->sound, &player->sound_hit);
 		}
 
-		// Update camera
-		// 
-		// TODO: Not every player will necessarily get a camera in the future. Bots
-		// and online play, for instance.
-		GameCamera* camera = &game->cameras[pl];
-		f32 camera_lookahead = 4.0f;
-		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
-
-		f32 camera_speed_mod = 2.0f;
-		v2 camera_target_delta = v2_sub(camera_target_offset, camera->offset);
-		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
-		camera->offset = v2_add(camera->offset, camera_target_delta);
-
 		if(player->health <= 0.0f) {
 			u8 destruct_mesh_ids[3] = { ASSET_MESH_SHIP_BODY, ASSET_MESH_SHIP_WING_L, ASSET_MESH_SHIP_WING_R };
-			for(i32 dm = 0; dm < 3; dm++) {
-				GameDestructMesh* destruct_mesh = &game->destruct_meshes[dm * pl];
+			for(i32 mesh_index = 0; mesh_index < 3; mesh_index++) {
+				GameDestructMesh* destruct_mesh = &game->destruct_meshes[mesh_index * player_index];
 				destruct_mesh->opacity = 1.0f;
-				destruct_mesh->mesh = destruct_mesh_ids[dm];
+				destruct_mesh->mesh = destruct_mesh_ids[mesh_index];
 				destruct_mesh->texture = ASSET_TEXTURE_SHIP;
 				destruct_mesh->position = v3_new(player->position.x, 0.5f, player->position.y);
 				destruct_mesh->orientation = player_orientation(player);
@@ -186,13 +170,20 @@ void game_active_update(GameState* game, f32 dt) {
 				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
 			}
 
-			player_spawn(player, &game->level, pl);
+			player_spawn(player, &game->level);
 
-			GamePlayer* other;
-			if(pl == 0) other = &game->players[1];
-			if(pl == 1) other = &game->players[0];
-			other->score++;
+			if(player->team == 0) game->team_scores[1] += 1;
+			if(player->team == 1) game->team_scores[0] += 1;
 		}
+	}
+
+	for(i32 mesh_index = 0; mesh_index < 6; mesh_index++) {
+		GameDestructMesh* mesh = &game->destruct_meshes[mesh_index];
+		if(mesh->opacity <= 0.0f) continue;
+		mesh->velocity.y -= 10.0f * dt;
+		mesh->position = v3_add(mesh->position, v3_scale(mesh->velocity, dt));
+		mesh->orientation = v3_add(mesh->orientation, v3_scale(mesh->rotation_velocity, dt));
+		mesh->opacity -= dt;
 	}
 
 	if(input_button_pressed(game->input.players[0].buttons[BUTTON_DEBUG])) {

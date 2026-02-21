@@ -1,4 +1,4 @@
-#include "input.c"
+#include "input.h"
 #include "GL/glx.h"
 
 typedef enum {
@@ -19,8 +19,8 @@ void build_default_input_config_file(char* input_header_file, char* button_type_
 			u32 existing_mappings_len;
 			fread(&existing_mappings_len, sizeof(existing_mappings_len), 1, existing_file);
 			for(i32 i = 0; i < existing_mappings_len; i++) {
-				GameKeyMapping mapping;
-				fread(&mapping, sizeof(GameKeyMapping), 1, existing_file);
+				InputKeyMapping mapping;
+				fread(&mapping, sizeof(InputKeyMapping), 1, existing_file);
 				if(mapping.button_type > existing_config_buttons_len) {
 					existing_config_buttons_len = mapping.button_type;
 				}
@@ -69,10 +69,11 @@ void build_default_input_config_file(char* input_header_file, char* button_type_
 		}
 	}
 	fclose(input_file);
+	assert(buttons_len > 0);
 
 	if(config_already_exists) {
 	   if(existing_config_buttons_len == buttons_len) {
-			printf("Input button lengths (%u) match! Not there could still be a different order or set of buttons which would cause an incorrect input mapping.\n", buttons_len);
+			printf("Input button lengths (%u) match! Note there could still be a different order or set of buttons which would cause an incorrect input mapping.\n", buttons_len);
 		   	return;
 	   } else {
 		   printf("Input button lengths do not match! Existing config: %u, Current: %u\n", existing_config_buttons_len, buttons_len);
@@ -93,14 +94,14 @@ void build_default_input_config_file(char* input_header_file, char* button_type_
 		value_mask, &attribs);
 	XMapWindow(display, window);
 
-	GameKeyMapping key_mappings[256];
+	InputKeyMapping key_mappings[256];
 	u32 key_mappings_len = 0;
 
 	printf("Press a key when prompted to capture its keysym as the default input for the given control.\n");
-	for(i32 player = 0; player < 2; player++) {
+	for(i32 map = 0; map < INPUT_MAX_MAPS; map++) {
 		i32 button_to_capture = 0;
 		for(i32 button_to_capture = 0; button_to_capture < buttons_len; button_to_capture++) {
-			printf("Player %i, %s...", player, button_names[button_to_capture]);
+			printf("Map %i, %s...", map, button_names[button_to_capture]);
 			fflush(stdout);
 			while(true) {
 				while(XPending(display)) {
@@ -109,7 +110,7 @@ void build_default_input_config_file(char* input_header_file, char* button_type_
 					switch(event.type) {
 						case KeyPress: {
 							unsigned long keysym = XLookupKeysym(&(event.xkey), 0);
-							key_mappings[key_mappings_len] = (GameKeyMapping){ .key_id = keysym, .player_index = player, .button_type = button_to_capture };
+							key_mappings[key_mappings_len] = (InputKeyMapping){ .key_id = keysym, .map_index = map, .button_type = button_to_capture };
 							key_mappings_len++;
 							printf("%x\n", keysym);
 							goto button_captured;
@@ -127,7 +128,7 @@ button_captured:
 	assert(file != NULL);
 
 	fwrite(&key_mappings_len, sizeof(u32), 1, file);
-	fwrite(&key_mappings, sizeof(GameKeyMapping) * key_mappings_len, 1, file);
+	fwrite(&key_mappings, sizeof(InputKeyMapping) * key_mappings_len, 1, file);
 
 	fclose(file);
 }

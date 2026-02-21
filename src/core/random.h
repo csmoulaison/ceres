@@ -6,7 +6,7 @@
 static u32 fast_random_seed;
 
 void random_init();
-i32 random_i32();
+i32 random_i32(i32 max);
 f32 random_f32();
 
 void fast_random_init();
