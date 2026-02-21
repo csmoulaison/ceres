@@ -10,7 +10,8 @@ void debug_draw_sound_channels(SoundState* state, RenderList* list, FontData* fo
 	for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
 		SoundData* sound = &state->sounds[sound_index];
 		v4 color = v4_new(0.0f, 1.0f, 0.0f, 1.0f);
-		if(!sound->active) color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
+		if(!sound->channel_assigned) color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
+		if(!sound->active) color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
 		render_list_draw_box(list, v4_new(64.0f, -164.0f - 16.0f * sound_index, 12.0f, 12.0f), v2_new(0.0f, 1.0f), 2.0f, color);
 
 		v2 position = v2_new(96.0f, -152.0f -16.0f * sound_index);

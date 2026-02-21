@@ -25,7 +25,7 @@ void game_active_update(GameState* game, f32 dt) {
 			player->hit_cooldown = lerp(player->hit_cooldown, 0.0f, 4.0f * dt);
 		}
 
-		player->shoot_cooldown -= dt * 15.0f;
+		player->shoot_cooldown -= dt * 10.0f;
 		if(player->shoot_cooldown < 0.0f) player->shoot_cooldown = 0.0f;
 		if(player->shoot_cooldown <= 0.0f && input_button_down(input->buttons[BUTTON_SHOOT])) {
 			player->shoot_cooldown = 0.08f;
@@ -122,35 +122,35 @@ void game_active_update(GameState* game, f32 dt) {
 
 		f32 mag = v2_magnitude(player->velocity);
 		if(mag > 0.01f) {
-			sound_start(&game->sound, &player->sound_forward_thruster, 255, 2000.0f * mag, 7.144123f * mag, 6000.0f, 0.000f * mag);
+			sound_start(&game->sound, &player->sound_forward_thruster, mag * 5.0f, 2000.0f * mag, 7.144123f * mag, 6000.0f, 0.000f * mag);
 		} else {
 			sound_stop(&game->sound, &player->sound_forward_thruster);
 		}
 
 		f32 rot = fabs(player->rotation_velocity);
 		if(rot > 0.01f) {
-			sound_start(&game->sound, &player->sound_rotation_thruster, 255, 2000.0f * rot, 10.0f * rot, 6000.0f, 0.000f * rot);
+			sound_start(&game->sound, &player->sound_rotation_thruster, rot * 5.0f, 2000.0f * rot, 10.0f * rot, 6000.0f, 0.000f * rot);
 		} else {
 			sound_stop(&game->sound, &player->sound_rotation_thruster);
 		}
 
 		f32 cool = player->thruster_cooldown;
 		if(cool > 0.01f) {
-			sound_start(&game->sound, &player->sound_thruster_cooldown, 255, 2000.0f * cool, 3.0f * cool, 2000.0f, 0.01f * cool);
+			sound_start(&game->sound, &player->sound_thruster_cooldown, cool * 4.0f, 2000.0f * cool, 3.0f * cool, 2000.0f, 0.01f * cool);
 		} else {
 			sound_stop(&game->sound, &player->sound_thruster_cooldown);
 		}
 
 		f32 shoot = player->shoot_cooldown;
 		if(shoot > 0.01f) {
-			sound_start(&game->sound, &player->sound_shoot, 255, 2500.0f * shoot * shoot, 1500.0f * shoot * shoot, 2000.0f + 2000.0f * shoot, 0.2f * shoot);
+			sound_start(&game->sound, &player->sound_shoot, shoot * 1000.0f, 3200.0f * shoot * shoot, 1500.0f * shoot * shoot, 3000.0f + 2000.0f * shoot, 0.2f * shoot);
 		} else {
 			sound_stop(&game->sound, &player->sound_shoot);
 		}
 
 		f32 hit = player->hit_cooldown * 0.5f;
 		if(hit > 0.01f) {
-			sound_start(&game->sound, &player->sound_hit, 255, 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f, 200.0f * hit * hit, 2000.0f + 2000.0f * hit, 2.0f * hit * ((f32)rand() / RAND_MAX));
+			sound_start(&game->sound, &player->sound_hit, hit * 500.0f, 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f, 200.0f * hit * hit, 2000.0f + 2000.0f * hit, 2.0f * hit * ((f32)rand() / RAND_MAX));
 		} else {
 			sound_stop(&game->sound, &player->sound_hit);
 		}

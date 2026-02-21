@@ -1,8 +1,4 @@
-// NOW: We are clicking a bit. Idk why. Not the right channels being copied?
-// Seems to happen both when channels activate and deactivate.
-// We also need to add all the other sounds.
-
-#define SOUND_MAX_CHANNELS 16
+#define SOUND_MAX_CHANNELS 8
 #define SOUND_SPARSE_LEN 64
 
 typedef struct {
@@ -39,7 +35,7 @@ typedef struct {
 	u8 channel;
 	bool active;
 	bool channel_assigned;
-	u8 priority;
+	u32 priority;
 } SoundData;
 
 typedef struct {
@@ -57,11 +53,11 @@ typedef struct {
 void sound_init(SoundState* state) {
 }
 
-void sound_start(SoundState* state, SoundHandle* handle, u8 priority, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
+void sound_start(SoundState* state, SoundHandle* handle, u32 priority, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
 	SoundData* sound = NULL;
 	if(handle->assigned) { 
 		assert(state->sounds[handle->index].active);
-		assert(state->sounds[handle->index].channel_assigned);
+		//assert(state->sounds[handle->index].channel_assigned);
 		sound = &state->sounds[handle->index];
 	} else {
 		for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
@@ -138,39 +134,35 @@ void sound_spatialize_channel(SoundChannel* channel, v2 source_position, v2 list
 void sound_update(SoundState* state) {
 	SoundData* packed_sounds[SOUND_MAX_CHANNELS];
 	u8 packed_sounds_len = 0;
-	//u32 priority_threshold = UINT32_MAX;
-	//SoundData* priority_threshold_sound;
+	u32 priority_threshold = UINT32_MAX;
+	u8 priority_threshold_index;
 
-	printf("starting\n");
 	for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
 		SoundData* sound = &state->sounds[sound_index];
 		if(!sound->active) continue;
 
 		if(packed_sounds_len < SOUND_MAX_CHANNELS) {
 			packed_sounds[packed_sounds_len] = sound;
+			if(sound->priority < priority_threshold) {
+				priority_threshold = sound->priority;
+				priority_threshold_index = packed_sounds_len;
+			}
 			packed_sounds_len++;
-
-			//if(sound->priority < priority_threshold) {
-			//	priority_threshold = sound->priority;
-			//	priority_threshold_sound = sound;
-			//}
 		} else {
-			panic();
-			/* THIS IS THE CASE WHERE WE HAVE MORE SOUNDS THAN CHANNELS. We aren't there yet.
-			if(active[active_index].priority > priority_threshold) {
-				state->sounds[active[priority_threshold_index].handle].channel_assigned = false;
-				priority_threshold = active[active_index].priority;
-				channels_to_sounds[priority_threshold_index] = active_index;
-				for(i32 prioritized_index = 0; prioritized_index < active_len; prioritized_index++) {
-					if(active[channels_to_sounds[prioritized_index]].priority < priority_threshold) {
-						priority_threshold = active[active_index].priority;
-						priority_threshold_index = active_index;
+			if(sound->priority > priority_threshold) {
+				packed_sounds[priority_threshold_index]->channel_assigned = false;
+				packed_sounds[priority_threshold_index] = sound;
+				priority_threshold = sound->priority;
+
+				for(i32 packed_index = 0; packed_index < packed_sounds_len; packed_index++) {
+					if(packed_sounds[packed_index]->priority < priority_threshold) {
+						priority_threshold = packed_sounds[packed_index]->priority;
+						priority_threshold_index = packed_index;
 					}
 				}
 			} else {
-				state->sounds[active[active_index].handle].channel_assigned = false;
+				sound->channel_assigned = false;
 			}
-			*/
 		}
 	}
 
@@ -213,18 +205,6 @@ void sound_update(SoundState* state) {
 
 	/*
 	f32 primary_player_velocity = v_mags[0];
-
-	SoundChannel* ch;
-	for(i32 pl = 0; pl < 2; pl++) {
-		v2 source = positions[pl];
-		v2 listener = positions[0];
-			
-
-		// Collision/hit/damage
-		f32 hit = hit_cools[pl];
-		ch = sound_push_channel(state, 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f, 200.0f * hit * hit, 2000.0f + 2000.0f * hit, 2.0f * hit * ((f32)rand() / RAND_MAX));
-		sound_spatialize_channel(ch, source, listener);
-	}
 
 	i32 mod_phase = 12;
 	i32 mod_half = mod_phase / 2;
