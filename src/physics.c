@@ -3,18 +3,18 @@
 // don't really work all that great either. The final result should feel like a
 // nice flawless game of ice hockey with a bit of friction. No stickies, please!
 
-void physics_resolve_velocities(GameState* game) {
+void physics_resolve_velocities(Session* session) {
 	f32 radius = 0.5f;
-	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
-		GamePlayer* player = &game->players[player_index];
+	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
+		Player* player = &session->players[player_index];
 
 		// Resolve against level, reducing checks to a 3x3 region around the player
 		for(i32 pos = 0; pos < 25; pos++) {
 			f32 x = player->position.x + (pos % 5) - 1.0f;
 			f32 y = player->position.y + (pos / 5) - 1.0f;
 
-			i32 cube_index = (i32)y * game->level.side_length + (i32)x;
-			if(game->level.tiles[cube_index] == 0) continue;
+			i32 cube_index = (i32)y * session->level.side_length + (i32)x;
+			if(session->level.tiles[cube_index] == 0) continue;
 
 			v2 relative_center = v2_sub(player->position, v2_new((i32)x, (i32)y));
 			v2 offset_from_corner = v2_sub(v2_abs(relative_center), v2_new(0.5f, 0.5f));
@@ -49,8 +49,8 @@ void physics_resolve_velocities(GameState* game) {
 
 		// Resolve against other players
 		// TODO: Nudge the rotational speeds on collision.
-		for(i32 other_index = player_index + 1; other_index < game->players_len; other_index++) {
-			GamePlayer* other = &game->players[other_index];
+		for(i32 other_index = player_index + 1; other_index < session->players_len; other_index++) {
+			Player* other = &session->players[other_index];
 			if(v2_distance(player->position, other->position) < radius * 2.0f) {
 				f32 mag = v2_magnitude(player->velocity) + v2_magnitude(other->velocity);
 				player_damage(player, mag * 0.01f);

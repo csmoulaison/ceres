@@ -340,7 +340,9 @@ i32 main(i32 argc, char** argv) {
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {
 			// TODO: Fix glitchy audio on quit
+			printf("sound samples start\n");
 			xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
+			printf("sound samples end\n");
 			//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
 		}
 

@@ -1,4 +1,4 @@
-void player_spawn(GamePlayer* player, GameLevel* level) {
+void player_spawn(Player* player, Level* level) {
 	u8 spawns_len = 0;
 	u8 team_spawns[MAX_LEVEL_SPAWNS];
 	for(i32 spawn_index = 0; spawn_index < level->spawns_len; spawn_index++) {
@@ -22,7 +22,7 @@ void player_spawn(GamePlayer* player, GameLevel* level) {
 	player->hit_cooldown = 0.0f;
 }
 
-void player_damage(GamePlayer* player, f32 damage) {
+void player_damage(Player* player, f32 damage) {
 	player->health -= damage;
 	player->hit_cooldown = damage * 5.0f;
 }

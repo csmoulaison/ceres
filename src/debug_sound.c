@@ -1,14 +1,14 @@
-void debug_draw_sound_channels(SoundState* state, RenderList* list, FontData* fonts, StackAllocator* ui_stack) {
+void debug_draw_sound_channels(Audio* audio, RenderList* list, FontData* fonts, StackAllocator* ui_stack) {
 	for(i32 channel_index = 0; channel_index < SOUND_MAX_CHANNELS; channel_index++) {
-		SoundChannel* channel = &state->channels[channel_index];
+		SoundChannel* channel = &audio->channels[channel_index];
 
 		v4 color = v4_new(0.0f, 1.0f, 0.0f, 1.0f);
-		if(channel_index >= state->active_channels_len) color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
+		if(channel_index >= audio->active_channels_len) color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
 		render_list_draw_box(list, v4_new(64.0f + 96.0f * channel_index, -128.0f, 64.0f, 64.0f), v2_new(0.0f, 1.0f), 2.0f, color);
 	}
 
 	for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
-		SoundData* sound = &state->sounds[sound_index];
+		SoundData* sound = &audio->sounds[sound_index];
 		v4 color = v4_new(0.0f, 1.0f, 0.0f, 1.0f);
 		if(!sound->channel_assigned) color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
 		if(!sound->active) color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);

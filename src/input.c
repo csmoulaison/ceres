@@ -12,8 +12,8 @@ bool input_button_released(InputButton button) {
 	return button & INPUT_RELEASED_BIT;
 }
 
-void input_init(InputState* input) {
-	memset(input, 0, sizeof(InputState));
+void input_init(Input* input) {
+	memset(input, 0, sizeof(Input));
 	for(i32 map_index = 0; map_index < INPUT_MAX_MAPS; map_index++) {
 		input->map_to_player[map_index] = -1;
 	}
@@ -27,11 +27,11 @@ void input_init(InputState* input) {
 	}
 }
 
-void input_attach_map(InputState* input, i8 map, u8 player) {
+void input_attach_map(Input* input, i8 map, u8 player) {
 	input->map_to_player[map] = player;
 }
 
-void input_poll_events(InputState* input, GameEvent* events_head) {
+void input_poll_events(Input* input, GameEvent* events_head) {
 	// Reset button pressed and released states
 	for(i32 player_index = 0; player_index < MAX_PLAYERS; player_index++) {
 		InputButton* buttons = input->players[player_index].buttons;

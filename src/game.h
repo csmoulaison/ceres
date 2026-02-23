@@ -5,117 +5,36 @@
 #include "generated/asset_handles.h"
 #include "renderer/render_list.h"
 #include "game_event.h"
-#include "input.c"
-#include "sound.c"
+#include "input.h"
+#include "audio.c"
 
-#define GAME_UI_MEMSIZE MEGABYTE
-#define GAME_EDITOR_TOOLS true
-#define GAME_MAX_LEVEL_SIDE_LENGTH 1024
-#define GAME_MAX_TEAMS 2
-#define GAME_MAX_PLAYER_VIEWS 2
+#define GAME_MODE_MEMSIZE MEGABYTE
+#define GAME_FRAME_MEMSIZE MEGABYTE
 
 typedef enum {
-	EDITOR_TOOL_CUBES,
-	EDITOR_TOOL_SPAWNS
-} LevelEditorTool;
+	GAME_MENU,
+	GAME_SESSION
+} GameModeType;
 
-#if GAME_EDITOR_TOOLS
+// TODO: Calculate memory needed for a given session by accounting for things
+// like level data, number of players, etc.
 typedef struct {
-	v3 camera_position;
-	u32 cursor_x;
-	u32 cursor_y;
-	u32 cursor_object;
-	LevelEditorTool tool;
-} LevelEditor;
-#endif
+	u8 memory[GAME_MODE_MEMSIZE];
+} GameModeMemory;
 
 typedef struct {
-	u8 team;
-	f32 health;
-	v2 position;
-	v2 velocity;
-	f32 direction;
-	f32 rotation_velocity;
-	f32 strafe_tilt;
-
-	f32 shoot_cooldown;
-	f32 hit_cooldown;
-	f32 thruster_cooldown;
-
-	SoundHandle sound_forward_thruster;
-	SoundHandle sound_rotation_thruster;
-	SoundHandle sound_thruster_cooldown;
-	SoundHandle sound_shoot;
-	SoundHandle sound_hit;
-} GamePlayer;
+	u8 memory[GAME_FRAME_MEMSIZE];
+} GameFrameMemory;
 
 typedef struct {
-	u8 player;
-	v2 camera_offset;
-	f32 visible_health;
-} GamePlayerView;
-
-typedef struct {
-	v3 position;
-	f32 pitch;
-	f32 yaw;
-} DebugCamera;
-
-typedef enum {
-	GAME_ACTIVE,
-#if GAME_EDITOR_TOOLS
-	GAME_LEVEL_EDITOR
-#endif
-} GameMode;
-
-typedef struct {
-	LevelSpawn spawns[MAX_LEVEL_SPAWNS];
-	u8 spawns_len;
-
-	u16 side_length;
-	u8 tiles[GAME_MAX_LEVEL_SIDE_LENGTH * GAME_MAX_LEVEL_SIDE_LENGTH];
-} GameLevel;
-
-typedef struct {
-	f32 opacity;
-	u8 mesh;
-	u8 texture;
-	v3 position;
-	v3 velocity;
-	v3 orientation;
-	v3 rotation_velocity;
-} GameDestructMesh;
-
-typedef struct {
-	GameMode mode;
-	GameLevel level;
-	InputState input;
-	SoundState sound;
-
-	i32 team_scores[GAME_MAX_TEAMS];
-	GamePlayer players[MAX_PLAYERS];
-	u8 players_len;
-
-	GamePlayerView player_views[GAME_MAX_PLAYER_VIEWS];
-	u8 player_views_len;
-
-	GameDestructMesh destruct_meshes[6];
-
+	Input input;
+	Audio audio;
 	FontData fonts[ASSET_NUM_FONTS];
-	u32 frame;
+	u32 frames_since_init;
 
-#if GAME_EDITOR_TOOLS
-	LevelEditor level_editor;
-#endif
-} GameState;
-
-typedef struct {
-	u8 ui_memory[GAME_UI_MEMSIZE];
-} GameTransient;
-
-typedef struct {
-	GameState state;
-	GameTransient transient;
+	GameModeType mode_type;
+	GameModeMemory mode;
+	GameFrameMemory frame;
 } GameMemory;
 
 typedef struct {

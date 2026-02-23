@@ -1,16 +1,16 @@
-v3 player_orientation(GamePlayer* player) {
+v3 player_orientation(Player* player) {
 	f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
 	return v3_new(-tilt, player->direction, 0.0f);
 }
 
-v2 player_direction_vector(GamePlayer* player) {
+v2 player_direction_vector(Player* player) {
 	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
 }
 
-void game_active_update(GameState* game, f32 dt) {
-	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
-		GamePlayer* player = &game->players[player_index];
-		InputPlayer* input = &game->input.players[player_index];
+void session_active_update(Session* session, GameOutput* output, Input* input, Audio* audio, f32 dt) {
+	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
+		Player* player = &session->players[player_index];
+		InputPlayer* player_input = &input->players[player_index];
 
 		v2 acceleration = v2_zero();
 		v2 direction_vector = player_direction_vector(player);
@@ -24,17 +24,17 @@ void game_active_update(GameState* game, f32 dt) {
 
 		player->shoot_cooldown -= dt * 10.0f;
 		if(player->shoot_cooldown < 0.0f) player->shoot_cooldown = 0.0f;
-		if(player->shoot_cooldown <= 0.0f && input_button_down(input->buttons[BUTTON_SHOOT])) {
+		if(player->shoot_cooldown <= 0.0f && input_button_down(player_input->buttons[BUTTON_SHOOT])) {
 			player->shoot_cooldown = 0.08f;
 			player->shoot_cooldown = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
 
 			v2 direction = player_direction_vector(player);
 			//player->velocity = v2_add(player->velocity, v2_scale(direction, -0.33f));
 
-			for(i32 other_index = 0; other_index < game->players_len; other_index++) {
+			for(i32 other_index = 0; other_index < session->players_len; other_index++) {
 				if(other_index == player_index) continue;
 
-				GamePlayer* other = &game->players[other_index];
+				Player* other = &session->players[other_index];
 				f32 t = v2_dot(direction, v2_sub(other->position, player->position));
 				if(t < 0.5f) continue;
 
@@ -51,28 +51,28 @@ void game_active_update(GameState* game, f32 dt) {
 
 		// Calculate ship rotational acceleration
 		f32 rotate_speed = 20.0f;
-		if(input_button_down(input->buttons[BUTTON_TURN_LEFT])) {
+		if(input_button_down(player_input->buttons[BUTTON_TURN_LEFT])) {
 			rot_acceleration += rotate_speed;
 		}
-		if(input_button_down(input->buttons[BUTTON_TURN_RIGHT])) {
+		if(input_button_down(player_input->buttons[BUTTON_TURN_RIGHT])) {
 			rot_acceleration -= rotate_speed;
 		}
 
 		// Forward/back thruster control
 		f32 forward_mod = 0.0f;
-		if(input_button_down(input->buttons[BUTTON_FORWARD])) {
+		if(input_button_down(player_input->buttons[BUTTON_FORWARD])) {
 			forward_mod += 32.0f;
 		}
-		if(input_button_down(input->buttons[BUTTON_BACK])) {
+		if(input_button_down(player_input->buttons[BUTTON_BACK])) {
 			forward_mod -= 16.0f;
 		}
 		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Side thruster control
-		if(input_button_down(input->buttons[BUTTON_STRAFE_LEFT])) {
+		if(input_button_down(player_input->buttons[BUTTON_STRAFE_LEFT])) {
 			strafe_mod -= 1.0f;
 		}
-		if(input_button_down(input->buttons[BUTTON_STRAFE_RIGHT])) {
+		if(input_button_down(player_input->buttons[BUTTON_STRAFE_RIGHT])) {
 			strafe_mod += 1.0f;
 		}
 
@@ -107,7 +107,7 @@ void game_active_update(GameState* game, f32 dt) {
 		player->position = v2_add(player->position, v2_add(accel_dt, velocity_dt));
 
 		// Resolve velocities
-		physics_resolve_velocities(game);
+		physics_resolve_velocities(session);
 		player->velocity = v2_add(player->velocity, v2_scale(acceleration, dt));
 
 		f32 ship_energy = v2_magnitude(player->velocity) + abs(player->rotation_velocity);
@@ -119,43 +119,43 @@ void game_active_update(GameState* game, f32 dt) {
 
 		f32 mag = v2_magnitude(player->velocity);
 		if(mag > 0.01f) {
-			sound_start(&game->sound, &player->sound_forward_thruster, mag * 5.0f, 2000.0f * mag, 7.144123f * mag, 6000.0f, 0.000f * mag);
+			audio_start_sound(audio, &player->sound_forward_thruster, mag * 5.0f, 2000.0f * mag, 7.144123f * mag, 6000.0f, 0.000f * mag);
 		} else {
-			sound_stop(&game->sound, &player->sound_forward_thruster);
+			audio_stop_sound(audio, &player->sound_forward_thruster);
 		}
 
 		f32 rot = fabs(player->rotation_velocity);
 		if(rot > 0.01f) {
-			sound_start(&game->sound, &player->sound_rotation_thruster, rot * 5.0f, 2000.0f * rot, 10.0f * rot, 6000.0f, 0.000f * rot);
+			audio_start_sound(audio, &player->sound_rotation_thruster, rot * 5.0f, 2000.0f * rot, 10.0f * rot, 6000.0f, 0.000f * rot);
 		} else {
-			sound_stop(&game->sound, &player->sound_rotation_thruster);
+			audio_stop_sound(audio, &player->sound_rotation_thruster);
 		}
 
 		f32 cool = player->thruster_cooldown;
 		if(cool > 0.01f) {
-			sound_start(&game->sound, &player->sound_thruster_cooldown, cool * 4.0f, 2000.0f * cool, 3.0f * cool, 2000.0f, 0.01f * cool);
+			audio_start_sound(audio, &player->sound_thruster_cooldown, cool * 4.0f, 2000.0f * cool, 3.0f * cool, 2000.0f, 0.01f * cool);
 		} else {
-			sound_stop(&game->sound, &player->sound_thruster_cooldown);
+			audio_stop_sound(audio, &player->sound_thruster_cooldown);
 		}
 
 		f32 shoot = player->shoot_cooldown;
 		if(shoot > 0.01f) {
-			sound_start(&game->sound, &player->sound_shoot, shoot * 1000.0f, 3200.0f * shoot * shoot, 1500.0f * shoot * shoot, 3000.0f + 2000.0f * shoot, 0.2f * shoot);
+			audio_start_sound(audio, &player->sound_shoot, shoot * 1000.0f, 3200.0f * shoot * shoot, 1500.0f * shoot * shoot, 3000.0f + 2000.0f * shoot, 0.2f * shoot);
 		} else {
-			sound_stop(&game->sound, &player->sound_shoot);
+			audio_stop_sound(audio, &player->sound_shoot);
 		}
 
 		f32 hit = player->hit_cooldown * 0.5f;
 		if(hit > 0.01f) {
-			sound_start(&game->sound, &player->sound_hit, hit * 500.0f, 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f, 200.0f * hit * hit, 2000.0f + 2000.0f * hit, 2.0f * hit * ((f32)rand() / RAND_MAX));
+			audio_start_sound(audio, &player->sound_hit, hit * 500.0f, 1000.0f * hit * hit * ((f32)rand() / RAND_MAX) * 2500.0f, 200.0f * hit * hit, 2000.0f + 2000.0f * hit, 2.0f * hit * ((f32)rand() / RAND_MAX));
 		} else {
-			sound_stop(&game->sound, &player->sound_hit);
+			audio_stop_sound(audio, &player->sound_hit);
 		}
 
 		if(player->health <= 0.0f) {
 			u8 destruct_mesh_ids[3] = { ASSET_MESH_SHIP_BODY, ASSET_MESH_SHIP_WING_L, ASSET_MESH_SHIP_WING_R };
 			for(i32 mesh_index = 0; mesh_index < 3; mesh_index++) {
-				GameDestructMesh* destruct_mesh = &game->destruct_meshes[mesh_index * player_index];
+				DestructMesh* destruct_mesh = &session->destruct_meshes[mesh_index * player_index];
 				destruct_mesh->opacity = 1.0f;
 				destruct_mesh->mesh = destruct_mesh_ids[mesh_index];
 				destruct_mesh->texture = ASSET_TEXTURE_SHIP;
@@ -170,15 +170,15 @@ void game_active_update(GameState* game, f32 dt) {
 				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
 			}
 
-			player_spawn(player, &game->level);
+			player_spawn(player, &session->level);
 
-			if(player->team == 0) game->team_scores[1] += 1;
-			if(player->team == 1) game->team_scores[0] += 1;
+			if(player->team == 0) session->team_scores[1] += 1;
+			if(player->team == 1) session->team_scores[0] += 1;
 		}
 	}
 
 	for(i32 mesh_index = 0; mesh_index < 6; mesh_index++) {
-		GameDestructMesh* mesh = &game->destruct_meshes[mesh_index];
+		DestructMesh* mesh = &session->destruct_meshes[mesh_index];
 		if(mesh->opacity <= 0.0f) continue;
 		mesh->velocity.y -= 10.0f * dt;
 		mesh->position = v3_add(mesh->position, v3_scale(mesh->velocity, dt));
@@ -186,9 +186,9 @@ void game_active_update(GameState* game, f32 dt) {
 		mesh->opacity -= dt;
 	}
 
-	if(input_button_pressed(game->input.players[0].buttons[BUTTON_DEBUG])) {
-		game->level_editor.cursor_x = (u32)game->players[0].position.x;
-		game->level_editor.cursor_y = (u32)game->players[0].position.y;
-		game->mode = GAME_LEVEL_EDITOR;
+	if(input_button_pressed(input->players[0].buttons[BUTTON_DEBUG])) {
+		session->level_editor.cursor_x = (u32)session->players[0].position.x;
+		session->level_editor.cursor_y = (u32)session->players[0].position.y;
+		session->mode = SESSION_LEVEL_EDITOR;
 	}
 }

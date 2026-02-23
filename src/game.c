@@ -4,24 +4,23 @@
 #include "game.h"
 #include "renderer/render_list.c"
 #include "ui_text.c"
-#include "player.c"
-#include "physics.c"
-#include "level.c"
-#include "game_active.c"
-#include "level_editor.c"
-#include "draw.c"
 #include "debug_sound.c"
+#include "input.c"
+#include "session.c"
 
 GAME_INIT(game_init) {
-	GameState* game = &memory->state;
-	memset(game, 0, sizeof(GameState));
-	sound_init(&game->sound);
-	input_init(&game->input);
+	memset(memory, 0, sizeof(GameMemory));
+
+	input_init(&memory->input);
+	audio_init(&memory->audio);
 	fast_random_init();
 
-	// Fonts
+	memory->mode_type = GAME_SESSION;
+	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
+	session_init((Session*)memory->mode.memory, &memory->input, level_asset);
+	
 	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
-		FontData* font = &game->fonts[font_index];
+		FontData* font = &memory->fonts[font_index];
 		FontAsset* f_asset = (FontAsset*)&assets->buffer[assets->font_buffer_offsets[font_index]];
 		TextureAsset* t_asset = (TextureAsset*)&assets->buffer[assets->texture_buffer_offsets[f_asset->texture_id]];
 
@@ -31,102 +30,40 @@ GAME_INIT(game_init) {
 		font->size = f_asset->buffer['O'].size[1];
 		memcpy(font->glyphs, f_asset->buffer, sizeof(FontGlyph) * f_asset->glyphs_len);
 	}
-
-	// Level
-	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
-	GameLevel* level = &game->level;
-	level->spawns_len = level_asset->spawns_len;
-	for(i32 spawn_index = 0; spawn_index < level->spawns_len; spawn_index++) {
-		level->spawns[spawn_index] = level_asset->spawns[spawn_index];
-	}
-
-	level->side_length = level_asset->side_length;
-	level->side_length = 64;
-	u16 side_length = level->side_length;
-	assert(side_length <= GAME_MAX_LEVEL_SIDE_LENGTH);
-	for(i32 tile_index = 0; tile_index < side_length * side_length; tile_index++) {
-		i32 x = tile_index % side_length;
-		i32 y = tile_index / side_length;
-		if(x < 2 || x > 61 || y < 2 || y > 61) {
-			level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
-		} else {
-			level->tiles[tile_index] = level_asset->buffer[tile_index];
-		}
-	}
-
-	// Players
-	game->players_len = 4;
-	game->players[0].team = 0;
-	game->players[1].team = 0;
-	game->players[2].team = 1;
-	game->players[3].team = 1;
-	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
-		GamePlayer* player = &game->players[player_index];
-		player_spawn(player, level);
-	}
-
-	// Views
-	// 
-	// NOW: Setting views[0].player to anything other than 0 breaks any input
-	// checks that are manually indexing into the 0th player input state.
-	game->player_views_len = 1;
-	game->player_views[0].player = 0; 
-	game->player_views[1].player = 2; 
-	for(i32 view_index = 0; view_index < game->player_views_len; view_index++) {
-		GamePlayerView* view = &game->player_views[view_index];
-
-		GamePlayer* player = &game->players[view->player];
-		view->camera_offset = player->position;
-		view->visible_health = 0.0f;
-
-		input_attach_map(&game->input, view_index, view->player);
-	}
-
-	// Editor
-#if GAME_EDITOR_TOOLS
-	game->level_editor.tool = EDITOR_TOOL_CUBES;
-#endif
 }
 
 GAME_UPDATE(game_update) {
-	GameState* game = &memory->state;
-	input_poll_events(&game->input, events_head);
-
-	if(input_button_down(game->input.players[0].buttons[BUTTON_QUIT])) {
+	input_poll_events(&memory->input, events_head);
+	if(input_button_down(memory->input.players[0].buttons[BUTTON_QUIT])) {
 		output->close_requested = true;
 	}
-
-	switch(game->mode) {
-		case GAME_ACTIVE: {
-			game_active_update(game, dt);
+	StackAllocator frame_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Frame");
+	switch(memory->mode_type) {
+		case GAME_MENU: {
+			//menu_update(
 		} break;
-#if GAME_EDITOR_TOOLS
-		case GAME_LEVEL_EDITOR: {
-			level_editor_update(game);
+		case GAME_SESSION: {
+			session_update((Session*)memory->mode.memory, output, &memory->input, &memory->audio, memory->fonts, &frame_stack, dt);
 		} break;
-#endif
 		default: break;
 	}
-
-	sound_update(&game->sound);
-
-	StackAllocator ui_stack = stack_init(memory->transient.ui_memory, GAME_UI_MEMSIZE, "UI");
-	draw_active_game(game, &output->render_list, &ui_stack, dt);
-	debug_draw_sound_channels(&game->sound, &output->render_list, game->fonts, &ui_stack);
-
-	game->frame++;
+	audio_update(&memory->audio);
+	debug_draw_sound_channels(&memory->audio, &output->render_list, memory->fonts, &frame_stack);
+	memory->frames_since_init++;
 }
 
+// NOW: Sound samples is causing the crash when player 2 shoots, but only when
+// only using 1 view. What?
+// 
+// There are also other segfaults happening, I think.
 GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
-	GameState* game = &memory->state;
-
 	// NOW: Figure out a good max amplitude for limiting
 	f32 global_shelf = 30000.0f;
 	f32 global_attenuation = 0.62f;
 
 	f32 channel_rates[SOUND_MAX_CHANNELS];
 	for(i32 channel_index = 0; channel_index < SOUND_MAX_CHANNELS; channel_index++) {
-		SoundChannel* channel = &game->sound.channels[channel_index];
+		SoundChannel* channel = &memory->audio.channels[channel_index];
 		channel->amplitude = fclamp(channel->amplitude, 0.0f, channel->amplitude);
 		channel->pan = fclamp(channel->pan, -1.0f, 1.0f);
 		channel->pan = (channel->pan + 1.0f) / 2.0f;
@@ -138,7 +75,7 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 		// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
 		channel_rates[channel_index] = 2.0f * M_PI * channel->actual_frequency / 48000;
 
-		if(channel_index >= game->sound.active_channels_len) {
+		if(channel_index >= memory->audio.active_channels_len) {
 			//channel->phase = 0.0f;
 			//channel->amplitude = 0.0f;
 			//channel->frequency = 0.0f;
@@ -148,8 +85,8 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	for(i32 sample_index = 0; sample_index < samples_count; sample_index++) {
 		buffer[sample_index * 2] = 0.0f;
 		buffer[sample_index * 2 + 1] = 0.0f;
-		for(i32 ch = 0; ch < game->sound.active_channels_len; ch++) {
-			SoundChannel* channel = &game->sound.channels[ch];
+		for(i32 ch = 0; ch < memory->audio.active_channels_len; ch++) {
+			SoundChannel* channel = &memory->audio.channels[ch];
 			channel->actual_frequency = lerp(channel->actual_frequency, channel->frequency, 0.01f);
 			channel->actual_amplitude = lerp(channel->actual_amplitude, channel->amplitude, 0.01f);
 

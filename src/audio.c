@@ -43,25 +43,25 @@ typedef struct {
 	v2 listener;
 	SoundChannel channels[SOUND_MAX_CHANNELS];
 	u8 active_channels_len;
-} SoundState;
+} Audio;
 
 typedef struct {
 	u16 handle;
 	u32 priority;
 } SortedSound;
 
-void sound_init(SoundState* state) {
+void audio_init(Audio* audio) {
 }
 
-void sound_start(SoundState* state, SoundHandle* handle, u32 priority, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
+void audio_start_sound(Audio* audio, SoundHandle* handle, u32 priority, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
 	SoundData* sound = NULL;
 	if(handle->assigned) { 
-		assert(state->sounds[handle->index].active);
-		//assert(state->sounds[handle->index].channel_assigned);
-		sound = &state->sounds[handle->index];
+		assert(audio->sounds[handle->index].active);
+		//assert(audio->sounds[handle->index].channel_assigned);
+		sound = &audio->sounds[handle->index];
 	} else {
 		for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
-			SoundData* slot = &state->sounds[sound_index];
+			SoundData* slot = &audio->sounds[sound_index];
 			if(!slot->active) {
 				sound = slot;
 				sound->active = true;
@@ -86,36 +86,15 @@ void sound_start(SoundState* state, SoundHandle* handle, u32 priority, f32 ampli
 	sound->settings.volatility = volatility;
 }
 
-void sound_stop(SoundState* state, SoundHandle* handle) {
+void audio_stop_sound(Audio* audio, SoundHandle* handle) {
 	if(handle->assigned) {
-		SoundData* sound = &state->sounds[handle->index];
+		SoundData* sound = &audio->sounds[handle->index];
 		memset(sound, 0, sizeof(SoundData));
 		memset(handle, 0, sizeof(SoundHandle));
 	}
 }
 
-//void sound_set_channel_state(SoundChannel* channel, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
-	//channel->amplitude = amplitude;
-	//channel->frequency = frequency;
-	//channel->shelf = shelf;
-	//channel->volatility = volatility;
-	//channel->pan = 0.5f;
-//}
-
 /*
-SoundChannel* sound_push_channel(SoundState* state, f32 amplitude, f32 frequency, f32 shelf, f32 volatility) {
-	SoundChannel* channel = &state->channels[state->active_channels_len - 1];
-	channel->pan = 0.5f;
-
-	channel->amplitude = amplitude;
-	channel->frequency = frequency;
-	channel->shelf = shelf;
-	channel->volatility = volatility;
-
-	state->active_channels_len++;
-	return channel;
-}
-
 void sound_spatialize_channel(SoundChannel* channel, v2 source_position, v2 listener_position) {
 	f32 distance = v2_distance(source_position, listener_position);
 	if(distance <= 0.1) {
@@ -131,14 +110,14 @@ void sound_spatialize_channel(SoundChannel* channel, v2 source_position, v2 list
 }
 */
 
-void sound_update(SoundState* state) {
+void audio_update(Audio* audio) {
 	SoundData* packed_sounds[SOUND_MAX_CHANNELS];
 	u8 packed_sounds_len = 0;
 	u32 priority_threshold = UINT32_MAX;
 	u8 priority_threshold_index;
 
 	for(i32 sound_index = 0; sound_index < SOUND_SPARSE_LEN; sound_index++) {
-		SoundData* sound = &state->sounds[sound_index];
+		SoundData* sound = &audio->sounds[sound_index];
 		if(!sound->active) continue;
 
 		if(packed_sounds_len < SOUND_MAX_CHANNELS) {
@@ -167,12 +146,12 @@ void sound_update(SoundState* state) {
 	}
 
 	SoundChannel cached_channels[SOUND_MAX_CHANNELS];
-	memcpy(cached_channels, state->channels, sizeof(SoundChannel) * SOUND_MAX_CHANNELS);
+	memcpy(cached_channels, audio->channels, sizeof(SoundChannel) * SOUND_MAX_CHANNELS);
 	bool channels_assigned[SOUND_MAX_CHANNELS] = {0};
 
-	state->active_channels_len = packed_sounds_len;
-	for(i32 channel_index = 0; channel_index < state->active_channels_len; channel_index++) {
-		SoundChannel* channel = &state->channels[channel_index];
+	audio->active_channels_len = packed_sounds_len;
+	for(i32 channel_index = 0; channel_index < audio->active_channels_len; channel_index++) {
+		SoundChannel* channel = &audio->channels[channel_index];
 		SoundData* sound = packed_sounds[channel_index];
 		if(sound->channel_assigned) {
 			SoundChannel* cached_channel = &cached_channels[sound->channel];
@@ -195,9 +174,9 @@ void sound_update(SoundState* state) {
 		channel->volatility = sound->settings.volatility;
 		channel->pan = 0.5f;
 	}
-	for(i32 channel_index = 0; channel_index < state->active_channels_len; channel_index++) {
+	for(i32 channel_index = 0; channel_index < audio->active_channels_len; channel_index++) {
 		if(!channels_assigned[channel_index]) {
-			SoundChannel* channel = &state->channels[channel_index];
+			SoundChannel* channel = &audio->channels[channel_index];
 			channel->amplitude = 0.0f;
 			channel->frequency = 0.0f;
 		}
@@ -211,16 +190,16 @@ void sound_update(SoundState* state) {
 
 	f32 frequencies[32] = { 1, 0, 2, 0, 1, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 0, 0, 1, 0, 2, 0, 2, 0, 1, 0, 2, 0, 2, 0, 1 };
 	f32 freq = frequencies[(frame / mod_half) % 16];
-	ch = sound_push_channel(state, 4000.0f - (frame % mod_half) * 100.0f * freq + primary_player_velocity * 2000.0f, freq * 100.0f, 4000.0f, 0.0f);
+	ch = sound_push_channel(audio, 4000.0f - (frame % mod_half) * 100.0f * freq + primary_player_velocity * 2000.0f, freq * 100.0f, 4000.0f, 0.0f);
 
-	ch = sound_push_channel(state, 5000.0f - (frame % mod_half) * 100.0f * freq + primary_player_velocity * 1000.0f, freq * 33.3f, 4000.0f, 0.0f);
+	ch = sound_push_channel(audio, 5000.0f - (frame % mod_half) * 100.0f * freq + primary_player_velocity * 1000.0f, freq * 33.3f, 4000.0f, 0.0f);
 
 	f32 fs4[16] = { 6, 1, 0, 4, 0, 0, 3, 0, 4, 0, 2, 1, 6, 1, 2, 1 };
 	f32 f4 = fs4[(frame / mod_phase) % 16];
-	ch = sound_push_channel(state, 100.0f + primary_player_velocity * 400.0f - (frame % mod_phase) * 4000.0f, f4 * ((f32)rand() / RAND_MAX) * 400.0f, 4000.0f + primary_player_velocity * 50.0f, 0.0f);
+	ch = sound_push_channel(audio, 100.0f + primary_player_velocity * 400.0f - (frame % mod_phase) * 4000.0f, f4 * ((f32)rand() / RAND_MAX) * 400.0f, 4000.0f + primary_player_velocity * 50.0f, 0.0f);
 
 	f32 fs3[16] = { 2, 1, 4, 1, 6, 1, 4, 1, 2, 3, 4, 1, 6, 3, 2, 3 };
 	f32 f3 = fs3[(frame / mod_phase) % 16];
-	ch = sound_push_channel(state, 2000.0f * f3 - (frame % mod_phase) * 8000.0f, f3 * ((f32)rand() / RAND_MAX) * 25.0f, 1000.0f + primary_player_velocity * 100.0f, f3 * (0.1f + primary_player_velocity * 0.02f - (frame % mod_phase) * 0.2f));
+	ch = sound_push_channel(audio, 2000.0f * f3 - (frame % mod_phase) * 8000.0f, f3 * ((f32)rand() / RAND_MAX) * 25.0f, 1000.0f + primary_player_velocity * 100.0f, f3 * (0.1f + primary_player_velocity * 0.02f - (frame % mod_phase) * 0.2f));
 	*/
 }

@@ -44,6 +44,6 @@ typedef struct {
 	InputKeyMapping key_mappings[INPUT_MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
 	i8 map_to_player[INPUT_MAX_MAPS];
-} InputState;
+} Input;
 
 #endif // input_h_INCLUDED

@@ -1,4 +1,4 @@
-void level_editor_serialize(GameLevel* level) {
+void level_editor_serialize(Level* level) {
 	FILE* file = fopen("../build/data/levels/level.lvl", "w");
 	assert(file != NULL);
 	fwrite(&level->side_length, sizeof(level->side_length), 1, file);
@@ -7,10 +7,10 @@ void level_editor_serialize(GameLevel* level) {
 	fwrite(level->tiles, sizeof(u8) * level->side_length * level->side_length, 1, file);
 }
 
-void level_editor_update(GameState* game) {
-	LevelEditor* editor = &game->level_editor;
-	GameLevel* level = &game->level;
-	InputButton* buttons = game->input.players[0].buttons;
+void level_editor_update(Session* session, Input* input) {
+	LevelEditor* editor = &session->level_editor;
+	Level* level = &session->level;
+	InputButton* buttons = input->players[0].buttons;
 
 	if(input_button_pressed(buttons[BUTTON_FORWARD])) {
 		editor->cursor_y++;
@@ -25,13 +25,13 @@ void level_editor_update(GameState* game) {
 		editor->cursor_x--;
 	}
 
-	u8* tile = &game->level.tiles[editor->cursor_y * game->level.side_length + editor->cursor_x];
+	u8* tile = &session->level.tiles[editor->cursor_y * session->level.side_length + editor->cursor_x];
 	editor->camera_position.x = lerp(editor->camera_position.x, (f32)editor->cursor_x, 0.20f);
 	editor->camera_position.y = lerp(editor->camera_position.y, *tile, 0.10f);
 	editor->camera_position.z = lerp(editor->camera_position.z, (f32)editor->cursor_y, 0.20f);
 
 	if(input_button_pressed(buttons[BUTTON_CLEAR])) {
-		for(i32 pos = 0; pos < game->level.side_length * game->level.side_length; pos++) {
+		for(i32 pos = 0; pos < session->level.side_length * session->level.side_length; pos++) {
 			level->tiles[pos] = 0;
 		}
 		level->spawns_len = 0;
@@ -44,7 +44,7 @@ void level_editor_update(GameState* game) {
 				*tile += 1;
 			}
 
-			if(input_button_pressed(game->input.players[1].buttons[BUTTON_SHOOT])) {
+			if(input_button_pressed(input->players[1].buttons[BUTTON_SHOOT])) {
 				if(*tile > 0) {
 					*tile -= 1;
 				}
@@ -87,14 +87,14 @@ void level_editor_update(GameState* game) {
 	}
 
 	if(input_button_pressed(buttons[BUTTON_DEBUG])) {
-		game->mode = GAME_ACTIVE;
-		level_editor_serialize(&game->level);
+		session->mode = SESSION_ACTIVE;
+		level_editor_serialize(&session->level);
 	}
 }
 
-void level_editor_draw(GameState* game, RenderList* list) {
-	LevelEditor* editor = &game->level_editor;
-	GameLevel* level = &game->level;
+void level_editor_draw(Session* session, RenderList* list, f32 dt) {
+	LevelEditor* editor = &session->level_editor;
+	Level* level = &session->level;
 	u8 cursor_tile = level->tiles[editor->cursor_y * level->side_length + editor->cursor_x];
 
 	v3 cam_pos = v3_new((f32)editor->camera_position.x, (f32)editor->camera_position.y + 8.0f, (f32)editor->camera_position.z - 4.0f);
@@ -120,12 +120,14 @@ void level_editor_draw(GameState* game, RenderList* list) {
 		} break;
 		default: { panic(); }
 	}
-	render_list_draw_model_colored(list, mesh, texture, mesh_pos, v3_zero(), v4_new(1.0f, 1.0f - bluegreen_attenuation, 1.0f - bluegreen_attenuation, sin((f32)game->frame / 4.0f)));
+	render_list_draw_model_colored(list, mesh, texture, mesh_pos, v3_zero(), v4_new(1.0f, 1.0f - bluegreen_attenuation, 1.0f - bluegreen_attenuation, sin(editor->cursor_animation * 12.0f)));
 
 	for(i32 sp = 0; sp < level->spawns_len; sp++) {
 		LevelSpawn* spawn = &level->spawns[sp];
 		v4 color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
 		if(spawn->team == 1) color = v4_new(0.0f, 0.5f, 0.5f, 1.0f);
-		render_list_draw_model_colored(list, mesh, texture, v3_new(spawn->x, 0.5f, spawn->y), v3_new(0.0f, (f32)game->frame / 10.0f, 0.0f), color);
+		render_list_draw_model_colored(list, mesh, texture, v3_new(spawn->x, 0.5f, spawn->y), v3_new(0.0f, editor->cursor_animation * 4.0f, 0.0f), color);
 	}
+
+	editor->cursor_animation += dt;
 }

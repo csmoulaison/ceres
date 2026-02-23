@@ -1,4 +1,4 @@
-void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stack, f32 dt) {
+void draw_active_session(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
 	render_list_init(list);
 
 	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
@@ -11,15 +11,15 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 
 	render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 4096);
 
-	i32 floor_length = game->level.side_length;
+	i32 floor_length = session->level.side_length;
 	i32 floor_instances = floor_length * floor_length;
 	render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);
 
-	for(i32 player_index = 0; player_index < game->players_len; player_index++) {
-		GamePlayer* player = &game->players[player_index];
+	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
+		Player* player = &session->players[player_index];
 		v3 pos = v3_new(player->position.x, 0.5f, player->position.y);
 		v3 rot = player_orientation(player);
 		u8 texture = ASSET_TEXTURE_SHIP;
@@ -49,23 +49,23 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 	// TODO: When this is put below cube rendering, the meshes are overwritten by
 	// cubes. Pretty important we figure out why, obviously.
 	for(i32 mesh_index = 0; mesh_index < 6; mesh_index++) {
-		GameDestructMesh* mesh = &game->destruct_meshes[mesh_index];
+		DestructMesh* mesh = &session->destruct_meshes[mesh_index];
 		if(mesh->opacity <= 0.0f) continue;
 		render_list_draw_model_colored(list, mesh->mesh, mesh->texture, mesh->position, mesh->orientation, v4_new(1.0f, 1.0f, 1.0f, mesh->opacity * mesh->opacity));
 	}
 
 	for(i32 tile_index = 0; tile_index < floor_instances; tile_index++) {
-		for(i32 height = 1; height <= game->level.tiles[tile_index]; height++) {
+		for(i32 height = 1; height <= session->level.tiles[tile_index]; height++) {
 			v3 cube_pos = v3_new(tile_index % floor_length, (f32)height - 1.0f, tile_index / floor_length);
 			render_list_draw_model_aligned(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, cube_pos);
 		}
 	}
 
-	switch(game->mode) {
-		case GAME_ACTIVE: {
-			for(i32 view_index = 0; view_index < game->player_views_len; view_index++) {
-				GamePlayerView* view = &game->player_views[view_index];
-				GamePlayer* player = &game->players[view->player];
+	switch(session->mode) {
+		case SESSION_ACTIVE: {
+			for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
+				PlayerView* view = &session->player_views[view_index];
+				Player* player = &session->players[view->player];
 
 				// Camera update
 				v2 direction_vector = player_direction_vector(player);
@@ -81,9 +81,9 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 				v3 cam_target = v3_new(view->camera_offset.x + player->position.x, 0.0f, view->camera_offset.y + player->position.y);
 				v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + player->team * 8.0f);
 				v4 screen_rect;
-				if(game->player_views_len == 1) {
+				if(session->player_views_len == 1) {
 					screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-				} else if(game->player_views_len == 2) {
+				} else if(session->player_views_len == 2) {
 					f32 gap = 0.0025f;
 					screen_rect = v4_new(0.5f * view_index + gap * view_index, 0.0f, 0.5f - gap * (1 - view_index), 1.0f);
 				} else {
@@ -106,11 +106,9 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 				}
 			}
 		} break;
-#if GAME_EDITOR_TOOLS
-		case GAME_LEVEL_EDITOR: {
-			level_editor_draw(game, list);
+		case SESSION_LEVEL_EDITOR: {
+			level_editor_draw(session, list, dt);
 		} break;
-#endif
 		default: break;
 	}
 
@@ -122,8 +120,8 @@ void draw_active_game(GameState* game, RenderList* list, StackAllocator* ui_stac
 		v2 screen_anchor = v2_new(0.5f, 1.0f);
 		v4 color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
 		char buf[16];
-		sprintf(buf, "%i", game->team_scores[team_index]);
-		ui_draw_text_line(list, game->fonts, ASSET_FONT_QUANTICO_LARGE, buf,
-			position, inner_anchor, screen_anchor, color, ui_stack);
+		sprintf(buf, "%i", session->team_scores[team_index]);
+		ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_LARGE, buf,
+			position, inner_anchor, screen_anchor, color, frame_stack);
 	}
 }
