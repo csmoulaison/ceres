@@ -48,6 +48,8 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 		}
 	}
 
+	// TODO: This is some logic we want to be more thoughtful about regarding
+	// placement.
 	if(session->mode != SESSION_LEVEL_EDITOR) {
 		for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
 			PlayerView* view = &session->player_views[view_index];
@@ -91,8 +93,6 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 				render_list_draw_box(list, health_bar_sub, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f - seg / segments, seg / segments, 0.0f, 0.8f));
 			}
 		}
-	} else {
-		level_editor_draw(session, list, dt);
 	} 
 
 	// Player scores

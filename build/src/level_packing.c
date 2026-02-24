@@ -24,7 +24,6 @@ void pack_level_asset(void* p_info, void* p_asset) {
 	fread(&asset->side_length, sizeof(asset->side_length), 1, file);
 	fread(&asset->spawns, sizeof(LevelSpawn) * MAX_LEVEL_SPAWNS, 1, file);
 	fread(&asset->spawns_len, sizeof(asset->spawns_len), 1, file);
-	fread(&asset->side_length, sizeof(asset->side_length), 1, file);
 	fread(asset->buffer, sizeof(u8) * asset->side_length * asset->side_length, 1, file);
 	fclose(file);
 }

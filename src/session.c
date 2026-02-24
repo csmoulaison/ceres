@@ -1,10 +1,10 @@
 #include "session.h"
 #include "font.h"
 #include "level.c"
-#include "level_editor.c"
 #include "player.c"
 #include "physics.c"
 #include "draw.c"
+#include "level_editor.c"
 #include "session_active.c"
 #include "session_pause.c"
 
@@ -17,6 +17,14 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	for(i32 spawn_index = 0; spawn_index < level->spawns_len; spawn_index++) {
 		level->spawns[spawn_index] = level_asset->spawns[spawn_index];
 	}
+	if(level->spawns_len == 0) {
+		printf("Level load: spawns_len is 0! Generating default spawns.\n");
+		level->spawns[0] = (LevelSpawn){ .x = 8, .y = 4, .team = 0 };
+		level->spawns[1] = (LevelSpawn){ .x = 4, .y = 8, .team = 0 };
+		level->spawns[2] = (LevelSpawn){ .x = 15, .y = 15, .team = 1 };
+		level->spawns[3] = (LevelSpawn){ .x = 20, .y = 20, .team = 1 };
+		level->spawns_len = 4;
+	};
 
 	level->side_length = level_asset->side_length;
 	level->side_length = 64;
@@ -90,7 +98,7 @@ void session_update(Session* session, GameOutput* output, Input* input, Audio* a
 			session_pause_update(session, output, input, audio, fonts, frame_stack, dt);
 		} break;
 		case SESSION_LEVEL_EDITOR: {
-			level_editor_update(session, input);
+			level_editor_update(session, output, input, fonts, frame_stack, dt);
 		} break;
 		default: break;
 	}

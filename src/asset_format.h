@@ -9,7 +9,7 @@
 #define MAX_FONT_ASSETS 12
 #define MAX_LEVEL_ASSETS 8
 
-#define MAX_LEVEL_SPAWNS 8
+#define MAX_LEVEL_SPAWNS 32
 
 #include "font.h"
 
