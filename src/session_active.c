@@ -167,7 +167,7 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 			if(player->team == 1) session->team_scores[0] += 1;
 
 			for(i32 team_index = 0; team_index < session->teams_len; team_index++) {
-				if(session->team_scores[team_index] >= 5) {
+				if(session->team_scores[team_index] >= 2) {
 					session->mode = SESSION_GAME_OVER;
 					break;
 				}
@@ -195,4 +195,5 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 	}
 
 	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
+	draw_player_views(session, &output->render_list, fonts, frame_stack, dt);
 }

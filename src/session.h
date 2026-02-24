@@ -82,6 +82,8 @@ typedef struct {
 	Level level;
 	i32 team_scores[MAX_TEAMS];
 
+	// TODO: Make this specifically a destroyed player struct which has 3 meshes
+	// and a sound source
 	DestructMesh destruct_meshes[32];
 	LevelEditor level_editor;
 
@@ -92,6 +94,7 @@ typedef struct {
 	u8 player_views_len;
 
 	PauseSelection pause_selection;
+	float game_over_rotation_position;
 } Session;
 
 #endif // session_h_INCLUDED

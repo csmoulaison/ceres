@@ -7,6 +7,26 @@
 #include "level_editor.c"
 #include "session_active.c"
 #include "session_pause.c"
+
+void session_reset(Session* session, Level* level) {
+	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
+		Player* player = &session->players[player_index];
+		player_spawn(player, session->players, session->players_len, level);
+	}
+
+	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
+		PlayerView* view = &session->player_views[view_index];
+		Player* player = &session->players[view->player];
+		view->camera_offset = player->position;
+		view->visible_health = 0.0f;
+	}
+
+	for(i32 team_index = 0; team_index < session->teams_len; team_index++) {
+		session->team_scores[team_index] = 0;
+	}
+	session->mode = SESSION_ACTIVE;
+}
+
 #include "session_game_over.c"
 
 void session_init(Session* session, Input* input, LevelAsset* level_asset) {
@@ -48,10 +68,6 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->players[1].team = 0;
 	session->players[2].team = 1;
 	session->players[3].team = 1;
-	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
-		Player* player = &session->players[player_index];
-		player_spawn(player, session->players, session->players_len, level);
-	}
 
 	// Views
 	// 
@@ -62,16 +78,13 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->player_views[1].player = 2; 
 	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
 		PlayerView* view = &session->player_views[view_index];
-
-		Player* player = &session->players[view->player];
-		view->camera_offset = player->position;
-		view->visible_health = 0.0f;
-
 		input_attach_map(input, view_index, view->player);
 	}
 
 	// Editor
 	session->level_editor.tool = EDITOR_TOOL_CUBES;
+
+	session_reset(session, level);
 }
 
 void session_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {

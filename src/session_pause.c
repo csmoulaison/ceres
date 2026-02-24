@@ -36,6 +36,7 @@ void session_pause_update(Session* session, GameOutput* output, Input* input, Au
 	}
 
 	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
+	draw_player_views(session, &output->render_list, fonts, frame_stack, dt);
 
 	f32 line_h = 64.0f;
 	f32 root_y = ((f32)NUM_PAUSE_SELECTIONS * line_h) / 2.0f;
