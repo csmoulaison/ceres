@@ -15,7 +15,7 @@ typedef struct {
 } RenderRect;
 
 typedef struct {
-	float projection[16];
+	f32 projection[16];
 	v3 position;
 	f32 padding;
 } RenderCameraUbo;

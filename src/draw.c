@@ -1,19 +1,6 @@
 void draw_active_session(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
-	render_list_init(list);
-
-	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
-	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 8);
-	render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
-
-	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_BODY, ASSET_TEXTURE_SHIP, 2);
-	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_L, ASSET_TEXTURE_SHIP, 2);
-	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_R, ASSET_TEXTURE_SHIP, 2);
-
-	render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 4096);
-
 	i32 floor_length = session->level.side_length;
 	i32 floor_instances = floor_length * floor_length;
-	render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
 
 	v3 clear_color = v3_new(0.0f, 0.0f, 0.0f);
 	render_list_set_clear_color(list, clear_color);

@@ -4,8 +4,9 @@
 #include "level_editor.c"
 #include "player.c"
 #include "physics.c"
-#include "session_active.c"
 #include "draw.c"
+#include "session_active.c"
+#include "session_pause.c"
 
 void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	memset(session, 0, sizeof(Session));
@@ -64,26 +65,33 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 }
 
 void session_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+	RenderList* list = &output->render_list;
+	render_list_init(list);
+
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 8);
+	render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);
+
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_BODY, ASSET_TEXTURE_SHIP, 2);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_L, ASSET_TEXTURE_SHIP, 2);
+	render_list_allocate_instance_type(list, ASSET_MESH_SHIP_WING_R, ASSET_TEXTURE_SHIP, 2);
+
+	render_list_allocate_instance_type(list, ASSET_MESH_CUBE, ASSET_TEXTURE_CRATE, 4096);
+
+	i32 floor_length = session->level.side_length;
+	i32 floor_instances = floor_length * floor_length;
+	render_list_allocate_instance_type(list, ASSET_MESH_FLOOR, ASSET_TEXTURE_FLOOR, floor_instances);
+
 	switch(session->mode) {
 		case SESSION_ACTIVE: {
-			session_active_update(session, output, input, audio, dt);
-			if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
-				session->mode = SESSION_PAUSE;
-			}
+			session_active_update(session, output, input, audio, fonts, frame_stack, dt);
 		} break;
 		case SESSION_PAUSE: {
-			if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
-				session->mode = SESSION_ACTIVE;
-			}
+			session_pause_update(session, output, input, audio, fonts, frame_stack, dt);
 		} break;
 		case SESSION_LEVEL_EDITOR: {
 			level_editor_update(session, input);
 		} break;
 		default: break;
-	}
-	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
-	if(session->mode == SESSION_PAUSE) {
-		ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_LARGE, "Game Paused",
-			v2_zero(), v2_new(0.5f, 0.5f), v2_new(0.5f, 0.5f), v4_new(0.0f, 1.0f, 0.0f, 0.5f), frame_stack);
 	}
 }

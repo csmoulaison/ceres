@@ -34,9 +34,6 @@ GAME_INIT(game_init) {
 
 GAME_UPDATE(game_update) {
 	input_poll_events(&memory->input, events_head);
-	//if(input_button_down(memory->input.players[0].buttons[BUTTON_QUIT])) {
-	//	output->close_requested = true;
-	//}
 	StackAllocator frame_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Frame");
 	switch(memory->mode_type) {
 		case GAME_MENU: {

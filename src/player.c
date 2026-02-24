@@ -1,3 +1,12 @@
+v3 player_orientation(Player* player) {
+	f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
+	return v3_new(-tilt, player->direction, 0.0f);
+}
+
+v2 player_direction_vector(Player* player) {
+	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
+}
+
 void player_spawn(Player* player, Player* players, u8 players_len, Level* level) {
 	u8 spawns_len = 0;
 	u8 eligible_spawns[MAX_LEVEL_SPAWNS];

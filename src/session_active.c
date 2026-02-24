@@ -1,13 +1,4 @@
-v3 player_orientation(Player* player) {
-	f32 tilt = player->strafe_tilt + fclamp(player->rotation_velocity, -90.0f, 90.0f) * 0.05f;
-	return v3_new(-tilt, player->direction, 0.0f);
-}
-
-v2 player_direction_vector(Player* player) {
-	return v2_normalize(v2_new(sin(player->direction), cos(player->direction)));
-}
-
-void session_active_update(Session* session, GameOutput* output, Input* input, Audio* audio, f32 dt) {
+void session_active_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
 		Player* player = &session->players[player_index];
 		InputPlayer* player_input = &input->players[player_index];
@@ -191,4 +182,10 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 		session->level_editor.cursor_y = (u32)session->players[0].position.y;
 		session->mode = SESSION_LEVEL_EDITOR;
 	}
+
+	if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
+		session->mode = SESSION_PAUSE;
+	}
+
+	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
 }

@@ -70,6 +70,12 @@ typedef enum {
 	SESSION_LEVEL_EDITOR
 } SessionMode;
 
+typedef enum {
+	PAUSE_SELECTION_RESUME,
+	PAUSE_SELECTION_QUIT,
+	NUM_PAUSE_SELECTIONS
+} PauseSelection;
+
 typedef struct {
 	SessionMode mode;
 	Level level;
@@ -82,6 +88,8 @@ typedef struct {
 	PlayerView player_views[MAX_PLAYER_VIEWS];
 	u8 players_len;
 	u8 player_views_len;
+
+	PauseSelection pause_selection;
 } Session;
 
 #endif // session_h_INCLUDED
