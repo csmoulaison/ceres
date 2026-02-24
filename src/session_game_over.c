@@ -1,0 +1,20 @@
+void session_game_over_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
+
+	ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_LARGE, "Game Over",
+		v2_new(0.0f, 16.0f), v2_new(0.5f, 0.0f), v2_new(0.5f, 0.5f), v4_new(1.0f, 0.0f, 0.0f, 0.5f), frame_stack);
+
+	i32 winning_team_score = 0;
+	i32 winning_team_index = 0;
+	for(i32 team_index = 0; team_index < session->teams_len; team_index++) {
+		if(session->team_scores[team_index] > winning_team_score) {
+			winning_team_score = session->team_scores[team_index];
+			winning_team_index = team_index;
+		}
+	}
+
+	char buffer[256];
+	sprintf(buffer, "Team %i wins with a score of %i\n", winning_team_index + 1, winning_team_score);
+	ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_REGULAR, buffer,
+		v2_new(0.0f, -16.0f), v2_new(0.5f, 1.0f), v2_new(0.5f, 0.5f), v4_new(0.0f, 1.0f, 0.0f, 0.5f), frame_stack);
+}

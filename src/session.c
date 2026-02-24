@@ -7,9 +7,11 @@
 #include "level_editor.c"
 #include "session_active.c"
 #include "session_pause.c"
+#include "session_game_over.c"
 
 void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	memset(session, 0, sizeof(Session));
+	session->teams_len = 2;
 
 	// Level
 	Level* level = &session->level;
@@ -96,6 +98,9 @@ void session_update(Session* session, GameOutput* output, Input* input, Audio* a
 		} break;
 		case SESSION_PAUSE: {
 			session_pause_update(session, output, input, audio, fonts, frame_stack, dt);
+		} break;
+		case SESSION_GAME_OVER: {
+			session_game_over_update(session, output, input, audio, fonts, frame_stack, dt);
 		} break;
 		case SESSION_LEVEL_EDITOR: {
 			level_editor_update(session, output, input, fonts, frame_stack, dt);

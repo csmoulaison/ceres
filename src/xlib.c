@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - Cleanup the structure.
 // - A game with lives and a game over screen, then restart
 // - Fiedler frames
 // - Designed competitive level
@@ -341,7 +340,7 @@ i32 main(i32 argc, char** argv) {
 		if(sound_samples_count > 0) {
 			// TODO: Fix glitchy audio on quit
 			xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
-			alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
+			//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
 		}
 
 		render_prepare_frame_data(renderer, platform, &game_output.render_list);

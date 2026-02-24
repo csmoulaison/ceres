@@ -96,7 +96,7 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 	} 
 
 	// Player scores
-	// TODO: This currently assumes two competing teams.
+	// TODO: This currently assumes exactly two competing teams.
 	for(i32 team_index = 0; team_index < 2; team_index++) {
 		v2 position = v2_new(-24.0f + team_index * 48.0f, -32.0f);
 		v2 inner_anchor = v2_new(1.0f * (1.0f - team_index), 1.0f);

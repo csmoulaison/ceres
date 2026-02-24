@@ -165,6 +165,13 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 
 			if(player->team == 0) session->team_scores[1] += 1;
 			if(player->team == 1) session->team_scores[0] += 1;
+
+			for(i32 team_index = 0; team_index < session->teams_len; team_index++) {
+				if(session->team_scores[team_index] >= 5) {
+					session->mode = SESSION_GAME_OVER;
+					break;
+				}
+			}
 		}
 	}
 

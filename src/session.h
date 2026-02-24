@@ -67,6 +67,7 @@ typedef struct {
 typedef enum {
 	SESSION_ACTIVE,
 	SESSION_PAUSE,
+	SESSION_GAME_OVER,
 	SESSION_LEVEL_EDITOR
 } SessionMode;
 
@@ -86,6 +87,7 @@ typedef struct {
 
 	Player players[MAX_PLAYERS];
 	PlayerView player_views[MAX_PLAYER_VIEWS];
+	u8 teams_len;
 	u8 players_len;
 	u8 player_views_len;
 
