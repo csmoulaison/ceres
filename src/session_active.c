@@ -170,7 +170,7 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 				destruct_mesh->rotation_velocity.z = (random_f32() * 2.0f - 1.0f) * 2.0f;
 			}
 
-			player_spawn(player, &session->level);
+			player_spawn(player, session->players, session->players_len, &session->level);
 
 			if(player->team == 0) session->team_scores[1] += 1;
 			if(player->team == 1) session->team_scores[0] += 1;

@@ -39,7 +39,7 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->players[3].team = 1;
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
 		Player* player = &session->players[player_index];
-		player_spawn(player, level);
+		player_spawn(player, session->players, session->players_len, level);
 	}
 
 	// Views
@@ -67,9 +67,14 @@ void session_update(Session* session, GameOutput* output, Input* input, Audio* a
 	switch(session->mode) {
 		case SESSION_ACTIVE: {
 			session_active_update(session, output, input, audio, dt);
+			if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
+				session->mode = SESSION_PAUSE;
+			}
 		} break;
 		case SESSION_PAUSE: {
-			//session_pause_update(session, output, input, audio, dt);
+			if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
+				session->mode = SESSION_ACTIVE;
+			}
 		} break;
 		case SESSION_LEVEL_EDITOR: {
 			level_editor_update(session, input);
@@ -77,4 +82,8 @@ void session_update(Session* session, GameOutput* output, Input* input, Audio* a
 		default: break;
 	}
 	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
+	if(session->mode == SESSION_PAUSE) {
+		ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_LARGE, "Game Paused",
+			v2_zero(), v2_new(0.5f, 0.5f), v2_new(0.5f, 0.5f), v4_new(0.0f, 1.0f, 0.0f, 0.5f), frame_stack);
+	}
 }

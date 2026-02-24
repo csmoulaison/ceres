@@ -39,6 +39,7 @@ void random_init() {
 }
 
 i32 random_i32(i32 max) {
+	assert(max != 0);
 	return rand() / (RAND_MAX / max);
 }
 

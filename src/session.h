@@ -4,6 +4,7 @@
 #define MAX_TEAMS 2
 #define MAX_PLAYER_VIEWS 2
 #define MAX_LEVEL_SIDE_LENGTH 1024
+#define MAX_DESTRUCT_MESHES MAX_PLAYERS * 3
 
 typedef struct {
 	u8 team;
@@ -74,7 +75,7 @@ typedef struct {
 	Level level;
 	i32 team_scores[MAX_TEAMS];
 
-	DestructMesh destruct_meshes[6];
+	DestructMesh destruct_meshes[32];
 	LevelEditor level_editor;
 
 	Player players[MAX_PLAYERS];

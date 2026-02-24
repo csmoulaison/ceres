@@ -47,6 +47,7 @@ void input_poll_events(Input* input, GameEvent* events_head) {
 			case GAME_EVENT_KEY_DOWN: {
 				for(i32 km = 0; km < input->key_mappings_len; km++) {
 					InputKeyMapping* mapping = &input->key_mappings[km];
+					if(input->map_to_player[mapping->map_index] == -1) continue;
 					if(mapping->key_id == *((u64*)event->data)) {
 						InputButton* button = &input->players[input->map_to_player[mapping->map_index]].buttons[mapping->button_type];
 						if((*button) & INPUT_DOWN_BIT) {
@@ -60,6 +61,7 @@ void input_poll_events(Input* input, GameEvent* events_head) {
 			case GAME_EVENT_KEY_UP: {
 				for(i32 km = 0; km < input->key_mappings_len; km++) {
 					InputKeyMapping* mapping = &input->key_mappings[km];
+					if(input->map_to_player[mapping->map_index] == -1) continue;
 					if(mapping->key_id == *((u64*)event->data)) {
 						InputButton* button = &input->players[input->map_to_player[mapping->map_index]].buttons[mapping->button_type];
 						if((*button) & INPUT_DOWN_BIT) {

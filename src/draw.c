@@ -61,56 +61,52 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 		}
 	}
 
-	switch(session->mode) {
-		case SESSION_ACTIVE: {
-			for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
-				PlayerView* view = &session->player_views[view_index];
-				Player* player = &session->players[view->player];
+	if(session->mode != SESSION_LEVEL_EDITOR) {
+		for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
+			PlayerView* view = &session->player_views[view_index];
+			Player* player = &session->players[view->player];
 
-				// Camera update
-				v2 direction_vector = player_direction_vector(player);
-				f32 camera_lookahead = 4.0f;
-				v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
+			// Camera update
+			v2 direction_vector = player_direction_vector(player);
+			f32 camera_lookahead = 4.0f;
+			v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
 
-				f32 camera_speed_mod = 2.0f;
-				v2 camera_target_delta = v2_sub(camera_target_offset, view->camera_offset);
-				camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
-				view->camera_offset = v2_add(view->camera_offset, camera_target_delta);
+			f32 camera_speed_mod = 2.0f;
+			v2 camera_target_delta = v2_sub(camera_target_offset, view->camera_offset);
+			camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
+			view->camera_offset = v2_add(view->camera_offset, camera_target_delta);
 
-				// Camera viewport
-				v3 cam_target = v3_new(view->camera_offset.x + player->position.x, 0.0f, view->camera_offset.y + player->position.y);
-				v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + player->team * 8.0f);
-				v4 screen_rect;
-				if(session->player_views_len == 1) {
-					screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-				} else if(session->player_views_len == 2) {
-					f32 gap = 0.0025f;
-					screen_rect = v4_new(0.5f * view_index + gap * view_index, 0.0f, 0.5f - gap * (1 - view_index), 1.0f);
-				} else {
-					panic();
-				}
-				render_list_add_camera(list, cam_pos, cam_target, screen_rect);
-
-				// Scores
-				view->visible_health = lerp(view->visible_health, player->health, 20.0f * dt);
-				v4 health_bar_root = v4_new(32.0f, 32.0f, 64.0f, 400.0f);
-				render_list_draw_box(list, health_bar_root, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 1.0f));
-				f32 segments = 40.0f;
-				for(i32 seg = 0; seg < (i32)(view->visible_health * segments); seg++) {
-					v4 health_bar_sub = health_bar_root;
-					health_bar_sub.x += 8.0f;
-					health_bar_sub.y += 8.0f + seg * ((health_bar_root.w - 8.0f) / segments);
-					health_bar_sub.z -= 16.0f;
-					health_bar_sub.w = health_bar_root.w / segments - 8.0f;
-					render_list_draw_box(list, health_bar_sub, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f - seg / segments, seg / segments, 0.0f, 1.0f));
-				}
+			// Camera viewport
+			v3 cam_target = v3_new(view->camera_offset.x + player->position.x, 0.0f, view->camera_offset.y + player->position.y);
+			v3 cam_pos = v3_new(cam_target.x, 8.0f, cam_target.z - 4.0f + player->team * 8.0f);
+			v4 screen_rect;
+			if(session->player_views_len == 1) {
+				screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
+			} else if(session->player_views_len == 2) {
+				f32 gap = 0.0025f;
+				screen_rect = v4_new(0.5f * view_index + gap * view_index, 0.0f, 0.5f - gap * (1 - view_index), 1.0f);
+			} else {
+				panic();
 			}
-		} break;
-		case SESSION_LEVEL_EDITOR: {
-			level_editor_draw(session, list, dt);
-		} break;
-		default: break;
-	}
+			render_list_add_camera(list, cam_pos, cam_target, screen_rect);
+
+			// Health
+			view->visible_health = lerp(view->visible_health, player->health, 20.0f * dt);
+			v4 health_bar_root = v4_new(32.0f, 32.0f, 64.0f, 400.0f);
+			render_list_draw_box(list, health_bar_root, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 0.4f + player->hit_cooldown));
+			f32 segments = 40.0f;
+			for(i32 seg = 0; seg < (i32)(view->visible_health * segments); seg++) {
+				v4 health_bar_sub = health_bar_root;
+				health_bar_sub.x += 8.0f;
+				health_bar_sub.y += 8.0f + seg * ((health_bar_root.w - 8.0f) / segments);
+				health_bar_sub.z -= 16.0f;
+				health_bar_sub.w = health_bar_root.w / segments - 8.0f;
+				render_list_draw_box(list, health_bar_sub, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f - seg / segments, seg / segments, 0.0f, 0.8f));
+			}
+		}
+	} else {
+		level_editor_draw(session, list, dt);
+	} 
 
 	// Player scores
 	// TODO: This currently assumes two competing teams.
@@ -118,7 +114,7 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 		v2 position = v2_new(-24.0f + team_index * 48.0f, -32.0f);
 		v2 inner_anchor = v2_new(1.0f * (1.0f - team_index), 1.0f);
 		v2 screen_anchor = v2_new(0.5f, 1.0f);
-		v4 color = v4_new(1.0f, 1.0f, 0.0f, 1.0f);
+		v4 color = v4_new(1.0f, 1.0f, 0.0f, 0.5f);
 		char buf[16];
 		sprintf(buf, "%i", session->team_scores[team_index]);
 		ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_LARGE, buf,

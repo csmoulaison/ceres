@@ -34,9 +34,9 @@ GAME_INIT(game_init) {
 
 GAME_UPDATE(game_update) {
 	input_poll_events(&memory->input, events_head);
-	if(input_button_down(memory->input.players[0].buttons[BUTTON_QUIT])) {
-		output->close_requested = true;
-	}
+	//if(input_button_down(memory->input.players[0].buttons[BUTTON_QUIT])) {
+	//	output->close_requested = true;
+	//}
 	StackAllocator frame_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Frame");
 	switch(memory->mode_type) {
 		case GAME_MENU: {
@@ -48,14 +48,10 @@ GAME_UPDATE(game_update) {
 		default: break;
 	}
 	audio_update(&memory->audio);
-	debug_draw_sound_channels(&memory->audio, &output->render_list, memory->fonts, &frame_stack);
+	//debug_draw_sound_channels(&memory->audio, &output->render_list, memory->fonts, &frame_stack);
 	memory->frames_since_init++;
 }
 
-// NOW: Sound samples is causing the crash when player 2 shoots, but only when
-// only using 1 view. What?
-// 
-// There are also other segfaults happening, I think.
 GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 	// NOW: Figure out a good max amplitude for limiting
 	f32 global_shelf = 30000.0f;
