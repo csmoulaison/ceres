@@ -7,6 +7,7 @@
 #include "level_editor.c"
 #include "session_active.c"
 #include "session_pause.c"
+#include "session_game_over.c"
 
 void session_reset(Session* session, Level* level) {
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
@@ -26,8 +27,6 @@ void session_reset(Session* session, Level* level) {
 	}
 	session->mode = SESSION_ACTIVE;
 }
-
-#include "session_game_over.c"
 
 void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	memset(session, 0, sizeof(Session));
@@ -55,11 +54,10 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	for(i32 tile_index = 0; tile_index < side_length * side_length; tile_index++) {
 		i32 x = tile_index % side_length;
 		i32 y = tile_index / side_length;
-		if(x < 2 || x > 61 || y < 2 || y > 61) {
-			level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
-		} else {
-			level->tiles[tile_index] = level_asset->buffer[tile_index];
-		}
+		level->tiles[tile_index] = level_asset->buffer[tile_index];
+		//if(x < 2 || x > 61 || y < 2 || y > 61) {
+		//	level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
+		//}
 	}
 
 	// Players
@@ -81,10 +79,10 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 		input_attach_map(input, view_index, view->player);
 	}
 
+	session_reset(session, level);
+
 	// Editor
 	session->level_editor.tool = EDITOR_TOOL_CUBES;
-
-	session_reset(session, level);
 }
 
 void session_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {

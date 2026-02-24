@@ -1,3 +1,5 @@
+void session_reset(Session* session, Level* level);
+
 void session_game_over_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
 	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
 

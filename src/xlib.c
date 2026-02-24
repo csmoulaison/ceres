@@ -5,9 +5,7 @@
 //   in from tunnnel?)
 // - Menu, so we can have two buttons, one for local and one for ...
 // - ... Networking
-// 
 // - Controller input in here somewhere
-// - Menu and session flow
 // 
 // - Whenever we start working on assets more in earnest, we may think about
 //   whether a more iterable asset pipeline is in order with regards to .blend
@@ -77,6 +75,16 @@ void push_game_event(Platform* platform, GameEventType type, void* data, u64 dat
 	platform->current_event = event;
 }
 
+double xlib_time_in_seconds()
+{
+	struct timespec time_current;
+	if(clock_gettime(CLOCK_REALTIME, &time_current)) {
+		panic();
+	}
+
+	//printf("TIME %f:%f\n", (double)time_current.tv_sec, (double)time_current.tv_nsec / 1'000'000'000.0f);
+	return (double)time_current.tv_sec + (double)time_current.tv_nsec / 1000000000.0f;
+}
 void xlib_reload_game_code(XlibMemory* xlib) {
 	struct stat game_lib_stat;
 	stat("shiptastic.so", &game_lib_stat);
@@ -282,6 +290,9 @@ i32 main(i32 argc, char** argv) {
 
 	free(init_memory);
 
+	double current_time = xlib_time_in_seconds();
+	double time_accumulator = 0.0f;
+	double frame_length = 0.005f;
 	platform->frames_since_init = 0;
 	while(!game_output.close_requested) {
 		xlib_reload_game_code(xlib);
@@ -290,50 +301,57 @@ i32 main(i32 argc, char** argv) {
 		platform->current_event = NULL;
 		StackAllocator event_stack = stack_init(platform->event_memory, GAME_EVENTS_MEMSIZE, "GameEvents");
 
-		while(XPending(xlib->display)) {
-			XEvent event;
-			XNextEvent(xlib->display, &event);
+		double new_time = xlib_time_in_seconds();
+		double frame_time = new_time - current_time;
+		if(frame_time > 0.25f) frame_time = 0.25f;
+		current_time = new_time;
+		time_accumulator += frame_time;
+		while(time_accumulator >= frame_length) {
+			while(XPending(xlib->display)) {
+				XEvent event;
+				XNextEvent(xlib->display, &event);
 
-			switch(event.type) {
-				case Expose:
-					break;
-				case ConfigureNotify: {
-					XWindowAttributes attributes;
-					XGetWindowAttributes(xlib->display, xlib->window, &attributes);
-					platform->window_width = attributes.width;
-					platform->window_height = attributes.height;
-					platform->viewport_update_requested = true;
-				} break;
-				case KeyPress: {
-					u64 keysym = XLookupKeysym(&(event.xkey), 0);
-					push_game_event(platform, GAME_EVENT_KEY_DOWN, &keysym, sizeof(u64), &event_stack);
-				} break;
-				case KeyRelease: {
-					// X11 natively repeats key events when the key is held down. We could turn
-					// that off, but it turns it off globally for the user's X11 session, which
-					// is unacceptable of course. Here we are ignoring them manually.
-					bool is_repeat_key = false;
-		            if (XPending(xlib->display)) {
-						XEvent next_event;
-		                XPeekEvent(xlib->display, &next_event);
-		                if (next_event.type == KeyPress && next_event.xkey.time == event.xkey.time 
-		                && next_event.xkey.keycode == event.xkey.keycode) {
-							XNextEvent(xlib->display, &next_event);
-							is_repeat_key = true;
-		                }
-		            }
-
-					if(!is_repeat_key) {
+				switch(event.type) {
+					case Expose:
+						break;
+					case ConfigureNotify: {
+						XWindowAttributes attributes;
+						XGetWindowAttributes(xlib->display, xlib->window, &attributes);
+						platform->window_width = attributes.width;
+						platform->window_height = attributes.height;
+						platform->viewport_update_requested = true;
+					} break;
+					case KeyPress: {
 						u64 keysym = XLookupKeysym(&(event.xkey), 0);
-						push_game_event(platform, GAME_EVENT_KEY_UP, &keysym, sizeof(u64), &event_stack);
-					}
-				} break;
-				default: break;
-			}
-		}
-		platform->current_event = platform->head_event;
+						push_game_event(platform, GAME_EVENT_KEY_DOWN, &keysym, sizeof(u64), &event_stack);
+					} break;
+					case KeyRelease: {
+						// X11 natively repeats key events when the key is held down. We could turn
+						// that off, but it turns it off globally for the user's X11 session, which
+						// is unacceptable of course. Here we are ignoring them manually.
+						bool is_repeat_key = false;
+			            if (XPending(xlib->display)) {
+							XEvent next_event;
+			                XPeekEvent(xlib->display, &next_event);
+			                if (next_event.type == KeyPress && next_event.xkey.time == event.xkey.time 
+			                && next_event.xkey.keycode == event.xkey.keycode) {
+								XNextEvent(xlib->display, &next_event);
+								is_repeat_key = true;
+			                }
+			            }
 
-		xlib->game_update(game, platform->current_event, &game_output, 0.016f);
+						if(!is_repeat_key) {
+							u64 keysym = XLookupKeysym(&(event.xkey), 0);
+							push_game_event(platform, GAME_EVENT_KEY_UP, &keysym, sizeof(u64), &event_stack);
+						}
+					} break;
+					default: break;
+				}
+			}
+			platform->current_event = platform->head_event;
+			xlib->game_update(game, platform->current_event, &game_output, frame_length);
+			time_accumulator -= frame_length;
+		}
 
 		i32 sound_samples_count = alsa_write_samples_count(alsa);
 		if(sound_samples_count > 0) {

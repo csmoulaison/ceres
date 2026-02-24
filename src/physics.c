@@ -31,13 +31,12 @@ void physics_resolve_velocities(Session* session) {
 			}
 
 			if(penetration < 0.0f) {
+				// TODO: Player damage should be based on both velocity and the angle of
+				// incidence instead of just velocity
 				f32 mag = v2_magnitude(player->velocity);
-				player_damage(player, mag * 0.01f);
-				// TODO: hit_cooldown should probably be modified as a result of a
-				// damage_player function.
-				//if(player->hit_cooldown < mag * 0.04f) {
-				//	player->hit_cooldown = mag * 0.04f;
-				//}
+				if(mag > 10.0f) {
+					player_damage(player, mag * 0.01f);
+				}
 
 				player->position = v2_add(player->position, v2_scale(v2_normalize(player->velocity), penetration * 1.2f));
 				player->velocity = v2_mult(player->velocity, contact_normal);

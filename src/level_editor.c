@@ -8,6 +8,7 @@ void level_editor_serialize(Level* level) {
 	fclose(file);
 }
 
+// TODO: Text for showing type, cursor position
 void level_editor_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
 	LevelEditor* editor = &session->level_editor;
 	Level* level = &session->level;
