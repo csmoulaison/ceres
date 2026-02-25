@@ -39,16 +39,19 @@ typedef struct {
 
 typedef struct {
 	bool close_requested;
-	RenderList render_list;
-} GameOutput;
+} FrameOutput;
 
 #define GAME_INIT(name) void name(GameMemory* memory, AssetMemory* assets)
 typedef GAME_INIT(GameInitFunction);
 GAME_INIT(game_init_stub) {}
 
-#define GAME_UPDATE(name) void name(GameMemory* memory, GameEvent* events_head, GameOutput* output, f32 dt)
+#define GAME_UPDATE(name) void name(GameMemory* memory, GameEvent* events_head, FrameOutput* output, f32 dt)
 typedef GAME_UPDATE(GameUpdateFunction);
 GAME_UPDATE(game_update_stub) {}
+
+#define GAME_GENERATE_RENDER_LIST(name) void name(GameMemory* memory, RenderList* list)
+typedef GAME_GENERATE_RENDER_LIST(GameGenerateRenderListFunction);
+GAME_GENERATE_RENDER_LIST(game_generate_render_list_stub) {}
 
 #define GAME_GENERATE_SOUND_SAMPLES(name) void name(GameMemory* memory, i16* buffer, i32 samples_count)
 typedef GAME_GENERATE_SOUND_SAMPLES(GameGenerateSoundSamplesFunction);

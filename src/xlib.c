@@ -1,5 +1,4 @@
 // NOW: < LIST: I think our order is as follows:
-// - Fiedler frames
 // - Designed competitive level
 // - Post death respawn animation (camera moves to spawn location, ship flies
 //   in from tunnnel?)
@@ -43,6 +42,7 @@ typedef struct {
 	GameInitFunction* game_init;
 	GameUpdateFunction* game_update;
 	GameGenerateSoundSamplesFunction* game_generate_sound_samples;
+	GameGenerateRenderListFunction* game_generate_render_list;
 } XlibMemory;
 
 typedef struct {
@@ -120,6 +120,8 @@ void xlib_reload_game_code(XlibMemory* xlib) {
 		xlib->game_update = dlsym(xlib->game_lib_handle, "game_update");
 		assert(dlerror() == NULL);
 		xlib->game_generate_sound_samples = dlsym(xlib->game_lib_handle, "game_generate_sound_samples");
+		assert(dlerror() == NULL);
+		xlib->game_generate_render_list = dlsym(xlib->game_lib_handle, "game_generate_render_list");
 		assert(dlerror() == NULL);
 	}
 }
@@ -286,7 +288,8 @@ i32 main(i32 argc, char** argv) {
 	xlib_reload_game_code(xlib);
 
 	xlib->game_init(game, assets);
-	GameOutput game_output = {};
+	FrameOutput frame_output = {};
+	RenderList render_list = {};
 
 	free(init_memory);
 
@@ -294,7 +297,7 @@ i32 main(i32 argc, char** argv) {
 	double time_accumulator = 0.0f;
 	double frame_length = 0.005f;
 	platform->frames_since_init = 0;
-	while(!game_output.close_requested) {
+	while(!frame_output.close_requested) {
 		xlib_reload_game_code(xlib);
 		
 		platform->head_event = NULL;
@@ -349,18 +352,20 @@ i32 main(i32 argc, char** argv) {
 				}
 			}
 			platform->current_event = platform->head_event;
-			xlib->game_update(game, platform->current_event, &game_output, frame_length);
+			xlib->game_update(game, platform->current_event, &frame_output, frame_length);
+
+			i32 sound_samples_count = alsa_write_samples_count(alsa);
+			if(sound_samples_count > 0) {
+				// TODO: Fix glitchy audio on quit
+				xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
+				//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
+			}
 			time_accumulator -= frame_length;
 		}
 
-		i32 sound_samples_count = alsa_write_samples_count(alsa);
-		if(sound_samples_count > 0) {
-			// TODO: Fix glitchy audio on quit
-			xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
-			//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
-		}
 
-		render_prepare_frame_data(renderer, platform, &game_output.render_list);
+		xlib->game_generate_render_list(game, &render_list);
+		render_prepare_frame_data(renderer, platform, &render_list);
 		gl_update(renderer, platform);
 
 		glXSwapBuffers(xlib->display, xlib->window);

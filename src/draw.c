@@ -1,17 +1,7 @@
-void draw_player_views(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+void draw_player_views(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
 	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
 		PlayerView* view = &session->player_views[view_index];
 		Player* player = &session->players[view->player];
-
-		// Camera update
-		v2 direction_vector = player_direction_vector(player);
-		f32 camera_lookahead = 4.0f;
-		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
-
-		f32 camera_speed_mod = 2.0f;
-		v2 camera_target_delta = v2_sub(camera_target_offset, view->camera_offset);
-		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
-		view->camera_offset = v2_add(view->camera_offset, camera_target_delta);
 
 		// Camera viewport
 		v3 cam_target = v3_new(view->camera_offset.x + player->position.x, 0.0f, view->camera_offset.y + player->position.y);
@@ -28,7 +18,6 @@ void draw_player_views(Session* session, RenderList* list, FontData* fonts, Stac
 		render_list_add_camera(list, cam_pos, cam_target, screen_rect);
 
 		// Health
-		view->visible_health = lerp(view->visible_health, player->health, 20.0f * dt);
 		v4 health_bar_root = v4_new(32.0f, 32.0f, 64.0f, 400.0f);
 		render_list_draw_box(list, health_bar_root, v2_new(view_index * 0.5f, 0.0f), 4.0f, v4_new(1.0f, 1.0f - player->hit_cooldown, 0.0f, 0.4f + player->hit_cooldown));
 		f32 segments = 40.0f;
@@ -52,11 +41,11 @@ void draw_player_views(Session* session, RenderList* list, FontData* fonts, Stac
 		char buf[16];
 		sprintf(buf, "%i", session->team_scores[team_index]);
 		ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_LARGE, buf,
-			position, inner_anchor, screen_anchor, color, frame_stack);
+			position, inner_anchor, screen_anchor, color, draw_stack);
 	}
 }
 
-void draw_active_session(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+void draw_active_session(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
 	i32 floor_length = session->level.side_length;
 	i32 floor_instances = floor_length * floor_length;
 

@@ -1,4 +1,4 @@
-void session_active_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+void session_active_update(Session* session, Input* input, Audio* audio, f32 dt) {
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
 		Player* player = &session->players[player_index];
 		InputPlayer* player_input = &input->players[player_index];
@@ -175,6 +175,21 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 		}
 	}
 
+	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
+		PlayerView* view = &session->player_views[view_index];
+		Player* player = &session->players[view->player];
+		view->visible_health = lerp(view->visible_health, player->health, 20.0f * dt);
+
+		v2 direction_vector = player_direction_vector(player);
+		f32 camera_lookahead = 4.0f;
+		v2 camera_target_offset = v2_scale(direction_vector, camera_lookahead);
+
+		f32 camera_speed_mod = 2.0f;
+		v2 camera_target_delta = v2_sub(camera_target_offset, view->camera_offset);
+		camera_target_delta = v2_scale(camera_target_delta, camera_speed_mod * dt);
+		view->camera_offset = v2_add(view->camera_offset, camera_target_delta);
+	}
+
 	for(i32 mesh_index = 0; mesh_index < 6; mesh_index++) {
 		DestructMesh* mesh = &session->destruct_meshes[mesh_index];
 		if(mesh->opacity <= 0.0f) continue;
@@ -193,7 +208,4 @@ void session_active_update(Session* session, GameOutput* output, Input* input, A
 	if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
 		session->mode = SESSION_PAUSE;
 	}
-
-	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
-	draw_player_views(session, &output->render_list, fonts, frame_stack, dt);
 }

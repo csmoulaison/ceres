@@ -85,8 +85,25 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->level_editor.tool = EDITOR_TOOL_CUBES;
 }
 
-void session_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
-	RenderList* list = &output->render_list;
+void session_update(Session* session, FrameOutput* output, Input* input, Audio* audio, f32 dt) {
+	switch(session->mode) {
+		case SESSION_ACTIVE: {
+			session_active_update(session, input, audio, dt);
+		} break;
+		case SESSION_PAUSE: {
+			session_pause_update(session, output, input, audio, dt);
+		} break;
+		case SESSION_GAME_OVER: {
+			session_game_over_update(session, input, audio, dt);
+		} break;
+		case SESSION_LEVEL_EDITOR: {
+			level_editor_update(session, input, dt);
+		} break;
+		default: break;
+	}
+}
+
+void session_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
 	render_list_init(list);
 
 	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
@@ -105,16 +122,21 @@ void session_update(Session* session, GameOutput* output, Input* input, Audio* a
 
 	switch(session->mode) {
 		case SESSION_ACTIVE: {
-			session_active_update(session, output, input, audio, fonts, frame_stack, dt);
+			draw_active_session(session, list, fonts, draw_stack);
+			draw_player_views(session, list, fonts, draw_stack);
 		} break;
 		case SESSION_PAUSE: {
-			session_pause_update(session, output, input, audio, fonts, frame_stack, dt);
+			draw_active_session(session, list, fonts, draw_stack);
+			draw_player_views(session, list, fonts, draw_stack);
+			draw_pause_menu(session, list, fonts, draw_stack);
 		} break;
 		case SESSION_GAME_OVER: {
-			session_game_over_update(session, output, input, audio, fonts, frame_stack, dt);
+			draw_active_session(session, list, fonts, draw_stack);
+			session_game_over_draw(session, list, fonts, draw_stack);
 		} break;
 		case SESSION_LEVEL_EDITOR: {
-			level_editor_update(session, output, input, fonts, frame_stack, dt);
+			draw_active_session(session, list, fonts, draw_stack);
+			level_editor_draw(session, list, fonts, draw_stack);
 		} break;
 		default: break;
 	}

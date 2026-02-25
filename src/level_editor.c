@@ -8,48 +8,7 @@ void level_editor_serialize(Level* level) {
 	fclose(file);
 }
 
-// TODO: Text for showing type, cursor position
-void level_editor_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
-	LevelEditor* editor = &session->level_editor;
-	Level* level = &session->level;
-	u8 cursor_tile = level->tiles[editor->cursor_y * level->side_length + editor->cursor_x];
-
-	v3 cam_pos = v3_new((f32)editor->camera_position.x, (f32)editor->camera_position.y + 8.0f, (f32)editor->camera_position.z - 4.0f);
-	v3 cam_target = v3_new((f32)editor->camera_position.x, (f32)editor->camera_position.y, (f32)editor->camera_position.z);
-	v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-	render_list_add_camera(list, cam_pos, cam_target, screen_rect);
-
-	v3 mesh_pos = v3_new(editor->cursor_x, cursor_tile, editor->cursor_y);
-	u8 mesh;
-	u8 texture;
-	f32 bluegreen_attenuation = 0.0f;
-	switch(editor->tool) {
-		case EDITOR_TOOL_CUBES: {
-			mesh = ASSET_MESH_CUBE;
-			texture = ASSET_TEXTURE_CRATE;
-		} break;
-		case EDITOR_TOOL_SPAWNS: {
-			mesh = ASSET_MESH_SHIP;
-			texture = ASSET_TEXTURE_SHIP;
-			if(cursor_tile != 0) {
-				bluegreen_attenuation = 1.0f;
-			}
-		} break;
-		default: { panic(); }
-	}
-	render_list_draw_model_colored(list, mesh, texture, mesh_pos, v3_zero(), v4_new(1.0f, 1.0f - bluegreen_attenuation, 1.0f - bluegreen_attenuation, sin(editor->cursor_animation * 12.0f)));
-
-	for(i32 sp = 0; sp < level->spawns_len; sp++) {
-		LevelSpawn* spawn = &level->spawns[sp];
-		v4 color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
-		if(spawn->team == 1) color = v4_new(0.0f, 0.5f, 0.5f, 1.0f);
-		render_list_draw_model_colored(list, mesh, texture, v3_new(spawn->x, 0.5f, spawn->y), v3_new(0.0f, editor->cursor_animation * 4.0f, 0.0f), color);
-	}
-
-	editor->cursor_animation += dt;
-}
-
-void level_editor_update(Session* session, GameOutput* output, Input* input, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
+void level_editor_update(Session* session, Input* input, f32 dt) {
 	LevelEditor* editor = &session->level_editor;
 	Level* level = &session->level;
 	InputButton* buttons = input->players[0].buttons;
@@ -123,6 +82,8 @@ void level_editor_update(Session* session, GameOutput* output, Input* input, Fon
 		} break;
 		default: { panic(); }
 	}
+	editor->cursor_animation += dt;
+
 	if(input_button_pressed(buttons[BUTTON_SWITCH])) {
 		editor->tool++;
 		if(editor->tool > 1) editor->tool = 0;
@@ -133,6 +94,43 @@ void level_editor_update(Session* session, GameOutput* output, Input* input, Fon
 		level_editor_serialize(&session->level);
 	}
 
-	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
-	level_editor_draw(session, &output->render_list, fonts, frame_stack, dt);
+}
+
+// TODO: Text for showing type, cursor position
+void level_editor_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
+	LevelEditor* editor = &session->level_editor;
+	Level* level = &session->level;
+	u8 cursor_tile = level->tiles[editor->cursor_y * level->side_length + editor->cursor_x];
+
+	v3 cam_pos = v3_new((f32)editor->camera_position.x, (f32)editor->camera_position.y + 8.0f, (f32)editor->camera_position.z - 4.0f);
+	v3 cam_target = v3_new((f32)editor->camera_position.x, (f32)editor->camera_position.y, (f32)editor->camera_position.z);
+	v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
+	render_list_add_camera(list, cam_pos, cam_target, screen_rect);
+
+	v3 mesh_pos = v3_new(editor->cursor_x, cursor_tile, editor->cursor_y);
+	u8 mesh;
+	u8 texture;
+	f32 bluegreen_attenuation = 0.0f;
+	switch(editor->tool) {
+		case EDITOR_TOOL_CUBES: {
+			mesh = ASSET_MESH_CUBE;
+			texture = ASSET_TEXTURE_CRATE;
+		} break;
+		case EDITOR_TOOL_SPAWNS: {
+			mesh = ASSET_MESH_SHIP;
+			texture = ASSET_TEXTURE_SHIP;
+			if(cursor_tile != 0) {
+				bluegreen_attenuation = 1.0f;
+			}
+		} break;
+		default: { panic(); }
+	}
+	render_list_draw_model_colored(list, mesh, texture, mesh_pos, v3_zero(), v4_new(1.0f, 1.0f - bluegreen_attenuation, 1.0f - bluegreen_attenuation, sin(editor->cursor_animation * 12.0f)));
+
+	for(i32 sp = 0; sp < level->spawns_len; sp++) {
+		LevelSpawn* spawn = &level->spawns[sp];
+		v4 color = v4_new(1.0f, 0.0f, 0.0f, 1.0f);
+		if(spawn->team == 1) color = v4_new(0.0f, 0.5f, 0.5f, 1.0f);
+		render_list_draw_model_colored(list, mesh, texture, v3_new(spawn->x, 0.5f, spawn->y), v3_new(0.0f, editor->cursor_animation * 4.0f, 0.0f), color);
+	}
 }

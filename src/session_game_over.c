@@ -1,10 +1,16 @@
 void session_reset(Session* session, Level* level);
 
-void session_game_over_update(Session* session, GameOutput* output, Input* input, Audio* audio, FontData* fonts, StackAllocator* frame_stack, f32 dt) {
-	draw_active_session(session, &output->render_list, fonts, frame_stack, dt);
+void session_game_over_update(Session* session, Input* input, Audio* audio, f32 dt) {
+	session->game_over_rotation_position += dt;
 
-	ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_LARGE, "Game Over",
-		v2_new(0.0f, 16.0f), v2_new(0.5f, 0.0f), v2_new(0.5f, 0.5f), v4_new(1.0f, 0.0f, 0.0f, 0.5f), frame_stack);
+	if(input_button_pressed(input->players[0].buttons[BUTTON_SHOOT])) {
+		session_reset(session, &session->level);
+	}
+}
+
+void session_game_over_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
+	ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_LARGE, "Game Over",
+		v2_new(0.0f, 16.0f), v2_new(0.5f, 0.0f), v2_new(0.5f, 0.5f), v4_new(1.0f, 0.0f, 0.0f, 0.5f), draw_stack);
 
 	i32 winning_team_score = 0;
 	i32 winning_team_index = 0;
@@ -17,17 +23,12 @@ void session_game_over_update(Session* session, GameOutput* output, Input* input
 
 	char buffer[256];
 	sprintf(buffer, "Team %i wins with a score of %i\n", winning_team_index + 1, winning_team_score);
-	ui_draw_text_line(&output->render_list, fonts, ASSET_FONT_QUANTICO_REGULAR, buffer,
-		v2_new(0.0f, -16.0f), v2_new(0.5f, 1.0f), v2_new(0.5f, 0.5f), v4_new(0.0f, 1.0f, 0.0f, 0.5f), frame_stack);
+	ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_REGULAR, buffer,
+		v2_new(0.0f, -16.0f), v2_new(0.5f, 1.0f), v2_new(0.5f, 0.5f), v4_new(0.0f, 1.0f, 0.0f, 0.5f), draw_stack);
 
-	if(input_button_pressed(input->players[0].buttons[BUTTON_SHOOT])) {
-		session_reset(session, &session->level);
-	}
-
-	session->game_over_rotation_position += dt;
 	v2 cam_target = v2_new((f32)session->level.side_length / 2.0f, (f32)session->level.side_length / 2.0f);
 	v2 cam_pos = v2_normalize(v2_new(sin(session->game_over_rotation_position), cos(session->game_over_rotation_position)));
 	cam_pos = v2_add(cam_target, v2_scale(cam_pos, 10.0f));
 	v4 screen_rect = v4_new(0.0f, 0.0f, 1.0f, 1.0f);
-	render_list_add_camera(&output->render_list, v3_new(cam_pos.x, 6.66f, cam_pos.y), v3_new(cam_target.x, 0.0f, cam_target.y), screen_rect);
+	render_list_add_camera(list, v3_new(cam_pos.x, 6.66f, cam_pos.y), v3_new(cam_target.x, 0.0f, cam_target.y), screen_rect);
 }

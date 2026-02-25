@@ -34,19 +34,31 @@ GAME_INIT(game_init) {
 
 GAME_UPDATE(game_update) {
 	input_poll_events(&memory->input, events_head);
-	StackAllocator frame_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Frame");
 	switch(memory->mode_type) {
 		case GAME_MENU: {
 			//menu_update(
 		} break;
 		case GAME_SESSION: {
-			session_update((Session*)memory->mode.memory, output, &memory->input, &memory->audio, memory->fonts, &frame_stack, dt);
+			session_update((Session*)memory->mode.memory, output, &memory->input, &memory->audio, dt);
 		} break;
 		default: break;
 	}
 	audio_update(&memory->audio);
-	//debug_draw_sound_channels(&memory->audio, &output->render_list, memory->fonts, &frame_stack);
 	memory->frames_since_init++;
+}
+
+GAME_GENERATE_RENDER_LIST(game_generate_render_list) {
+	StackAllocator draw_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Draw");
+	switch(memory->mode_type) {
+		case GAME_MENU: {
+			//menu_draw(
+		} break;
+		case GAME_SESSION: {
+			session_draw((Session*)memory->mode.memory, list, memory->fonts, &draw_stack);
+		} break;
+		default: break;
+	}
+	//debug_draw_sound_channels(&memory->audio, list, memory->fonts, &draw_stack);
 }
 
 GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
