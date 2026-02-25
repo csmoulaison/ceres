@@ -9,6 +9,7 @@
 typedef struct {
 	u8 team;
 	f32 health;
+
 	v2 position;
 	v2 velocity;
 	f32 direction;

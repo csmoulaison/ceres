@@ -34,6 +34,45 @@ void render_list_init(RenderList* list) {
 	}
 }
 
+// NOW: Interpolation is quite choppy, less so when camera isn't moving. It
+// doesn't appear when the frame time is in sync with the monitor.
+void render_list_interpolated(RenderList* previous, RenderList* current, RenderList* res, f64 t) {
+	*res = *current;
+
+	res->cameras_len = previous->cameras_len;
+	res->instances_len = previous->instances_len;
+	res->instance_index_offset = previous->instance_index_offset;
+	res->rects_len = previous->rects_len;
+	for(i32 type_index = 0; type_index < RENDER_LIST_MAX_INSTANCE_TYPES; type_index++) {
+		res->instance_types[type_index].instances_len = previous->instance_types[type_index].instances_len;
+	}
+	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
+		res->glyph_list_lens[font_index] = previous->glyph_list_lens[font_index];
+		res->glyph_list_textures[font_index] = previous->glyph_list_textures[font_index];
+	}
+
+	for(i32 cam_index = 0; cam_index < res->cameras_len; cam_index++) {
+		RenderListCamera* prev_cam = &previous->cameras[cam_index];
+		RenderListCamera* cur_cam = &current->cameras[cam_index];
+		RenderListCamera* res_cam = &res->cameras[cam_index];
+		res_cam->position = v3_lerp(prev_cam->position, cur_cam->position, t);
+		//res_cam->position = v3_new(40.0f, 5.0f, 40.0f);
+		res_cam->target = v3_lerp(prev_cam->target, cur_cam->target, t);
+		//res_cam->target = v3_new(32.0f, 0.0f, 32.0f);
+		res_cam->screen_rect = v4_lerp(prev_cam->screen_rect, cur_cam->screen_rect, t);
+	}
+
+	for(i32 inst_index = 0; inst_index < res->instances_len; inst_index++) {
+		RenderListInstanceData* prev_inst = &previous->instances[inst_index];
+		RenderListInstanceData* cur_inst = &current->instances[inst_index];
+		RenderListInstanceData* res_inst = &res->instances[inst_index];
+		res_inst->position = v3_lerp(prev_inst->position, cur_inst->position, t);
+		res_inst->rotation = v3_lerp(prev_inst->rotation, cur_inst->rotation, t);
+		res_inst->scale = v3_lerp(prev_inst->scale, cur_inst->scale, t);
+		res_inst->color = v4_lerp(prev_inst->color, cur_inst->color, t);
+	}
+}
+
 void render_list_set_clear_color(RenderList* list, v3 clear_color) {
 	list->clear_color = clear_color;
 }
@@ -84,49 +123,37 @@ RenderListInstanceData* render_list_push_instance(RenderList* list, u8 model, u8
 
 void render_list_draw_model(RenderList* list, u8 model, u8 texture, v3 position, v3 orientation) {
 	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
-	m4_translation(position, instance->transform);
-	f32 rotation[16];
-	m4_rotation(
-		orientation.x, 
-		orientation.y, 
-		orientation.z, 
-		rotation);
-	m4_mul(instance->transform, rotation, instance->transform);
+	instance->position = position;
+	instance->rotation = orientation;
+	instance->scale = v3_identity();
 }
 
 void render_list_draw_model_aligned(RenderList* list, u8 model, u8 texture, v3 position) {
 	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
-	m4_translation(position, instance->transform);
+	instance->position = position;
+	instance->rotation = v3_zero();
+	instance->scale = v3_identity();
 }
 
 void render_list_draw_model_colored(RenderList* list, u8 model, u8 texture, v3 position, v3 orientation, v4 color) {
 	RenderListInstanceData* instance = render_list_push_instance(list, model, texture);
+	instance->position = position;
+	instance->rotation = orientation;
+	instance->scale = v3_identity();
 	instance->color = color;
-	m4_translation(position, instance->transform);
-	f32 rotation[16];
-	m4_rotation(
-		orientation.x, 
-		orientation.y, 
-		orientation.z, 
-		rotation);
-	m4_mul(instance->transform, rotation, instance->transform);
 }
 
 void render_list_draw_laser(RenderList* list, v3 start, v3 end, f32 stroke) {
 	RenderListInstanceData* instance = render_list_push_instance(list, ASSET_MESH_CYLINDER, 0);
+	instance->position = start;
 	instance->color = v4_new(2.0f, 0.0f, 0.0f, 1.0f);
+
 	v3 line_delta = v3_sub(end, start);
-	m4_scale(v3_new(v3_magnitude(line_delta), stroke, stroke), instance->transform);
+	instance->scale = v3_new(v3_magnitude(line_delta), stroke, stroke);
 
 	f32 rotation[16];
 	v3 line_norm = v3_normalize(line_delta);
-	m4_rotation(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f, rotation);
-
-	f32 translation[16];
-	m4_translation(start, translation);
-
-	m4_mul(rotation, instance->transform, instance->transform);
-	m4_mul(translation, instance->transform, instance->transform);
+	instance->rotation = v3_new(0.0f, atan2(-line_norm.z, line_norm.x), 0.0f);
 }
 
 void render_list_draw_glyph(RenderList* list, FontData* fonts, FontAssetHandle font_handle, char c, v2 position, v2 screen_anchor, v4 color) {

@@ -37,7 +37,9 @@ typedef struct {
 } RenderListCamera;
 
 typedef struct {
-	f32 transform[16];
+	v3 position;
+	v3 rotation;
+	v3 scale;
 	v4 color;
 } RenderListInstanceData;
 
@@ -69,7 +71,7 @@ typedef struct {
 	u32 cameras_len;
 
 	RenderListInstanceData instances[RENDER_LIST_MAX_INSTANCES];
-	u32 instances_len;
+	u32 instances_len; // THIS IS UNUSED DUDE!!
 	u32 instance_index_offset;
 
 	RenderListInstanceType instance_types[RENDER_LIST_MAX_INSTANCE_TYPES];

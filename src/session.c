@@ -79,10 +79,10 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 		input_attach_map(input, view_index, view->player);
 	}
 
-	session_reset(session, level);
-
 	// Editor
 	session->level_editor.tool = EDITOR_TOOL_CUBES;
+
+	session_reset(session, level);
 }
 
 void session_update(Session* session, FrameOutput* output, Input* input, Audio* audio, f32 dt) {

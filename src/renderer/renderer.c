@@ -22,7 +22,8 @@ typedef struct {
 
 typedef struct {
 	f32 transform[16];
-} RenderModelTransform;
+	v4 color;
+} RenderModelInstance;
 
 void render_push_command(RenderMemory* renderer, RenderCommandType type, void* data, StackAllocator* frame_stack) {
 	u64 data_size;
@@ -299,7 +300,30 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
 
 	// Model ssbos
-	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)list->instances);
+	RenderModelInstance* model_ssbo = (RenderModelInstance*)stack_alloc(&frame_stack, sizeof(RenderModelInstance) * RENDER_LIST_MAX_INSTANCES);
+	for(i32 type_index = 0; type_index < list->instance_types_len; type_index++) {
+		RenderListInstanceType* type = &list->instance_types[type_index];
+		u32 offset = type->instance_index_offset;
+		u32 len = type->instances_len;
+		for(i32 inst_index = 0; inst_index < len; inst_index++) {
+			RenderListInstanceData* list_instance = &list->instances[offset + inst_index];
+			RenderModelInstance* render_instance = &model_ssbo[offset + inst_index];
+			render_instance->color = list_instance->color;
+
+			m4_scale(list_instance->scale, render_instance->transform);
+			f32 rotation[16];
+			m4_rotation(
+				list_instance->rotation.x, 
+				list_instance->rotation.y, 
+				list_instance->rotation.z, 
+				rotation);
+			f32 translation[16];
+			m4_translation(list_instance->position, translation);
+			m4_mul(rotation, render_instance->transform, render_instance->transform);
+			m4_mul(translation, render_instance->transform, render_instance->transform);
+		}
+	}
+	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)model_ssbo);
 
 	// Text ssbo
 	// NOW: Only allocate amount of glyphs needed, I would imagine!
@@ -374,9 +398,9 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 
 			RenderCommandBufferSsboData buffer_ssbo_data_model = { 
 				.ssbo = RENDER_SSBO_MODEL, 
-				.size = sizeof(RenderListInstanceData) * type->instances_len, 
+				.size = sizeof(RenderModelInstance) * type->instances_len, 
 				.host_buffer_index = model_host_buffer, 
-				.host_buffer_offset = sizeof(RenderListInstanceData) * type->instance_index_offset
+				.host_buffer_offset = sizeof(RenderModelInstance) * type->instance_index_offset
 			};
 			render_push_command(renderer, RENDER_COMMAND_BUFFER_SSBO_DATA, &buffer_ssbo_data_model, &frame_stack);
 

@@ -43,8 +43,9 @@ static inline v2 v2_sub(v2 a, v2 b);
 static inline v2 v2_mult(v2 a, v2 b);
 static inline v2 v2_div(v2 a, v2 b);
 static inline v2 v2_abs(v2 a);
-static inline v2 v2_max(v2 a, v2 b);
 static inline v2 v2_min(v2 a, v2 b);
+static inline v2 v2_max(v2 a, v2 b);
+static inline v2 v2_lerp(v2 a, v2 b, f32 t);
 static inline f32 v2_distance_squared(v2 a, v2 b);
 static inline f32 v2_distance(v2 a, v2 b);
 static inline f32 v2_dot(v2 a, v2 b);
@@ -60,6 +61,7 @@ static inline f32 v3_magnitude(v3 v);
 static inline v3 v3_scale(v3 v, f32 s);
 static inline v3 v3_normalize(v3 v);
 static inline v3 v3_cross(v3 a, v3 b);
+static inline v3 v3_lerp(v3 a, v3 b, f32 t);
 static inline f32 v3_distance_squared(v3 a, v3 b);
 static inline f32 v3_distance(v3 a, v3 b);
 static inline f32 v3_dot(v3 a, v3 b);
@@ -67,6 +69,7 @@ static inline f32 v3_dot(v3 a, v3 b);
 static inline v4 v4_new(f32 x, f32 y, f32 z, f32 w);
 static inline v4 v4_zero();
 static inline v4 v4_identity();
+static inline v4 v4_lerp(v4 a, v4 b, f32 t);
 static inline void v4_copy(f32* dst, v4 v);
 // Radians
 static inline f32 radians_from_degrees(f32 degrees);
@@ -177,6 +180,10 @@ static inline v2 v2_max(v2 a, v2 b) {
 	return v2_new(f32_max(a.x, b.x), f32_max(a.y, b.y));
 }
 
+static inline v2 v2_lerp(v2 a, v2 b, f32 t) {
+	return v2_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t));
+}
+
 static inline f32 v2_distance_squared(v2 a, v2 b) {
 	f32 dx = a.x - b.x;
 	f32 dy = a.y - b.y;
@@ -245,6 +252,10 @@ static inline v3 v3_cross(v3 a, v3 b) {
 	);
 }
 
+static inline v3 v3_lerp(v3 a, v3 b, f32 t) {
+	return v3_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t));
+}
+
 static inline f32 v3_dot(v3 a, v3 b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
@@ -270,6 +281,10 @@ static inline v4 v4_zero() {
 
 static inline v4 v4_identity() {
 	return v4_new(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+static inline v4 v4_lerp(v4 a, v4 b, f32 t) {
+	return v4_new(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t), lerp(a.w, b.w, t));
 }
 
 static inline void v4_copy(f32* dst, v4 v) {

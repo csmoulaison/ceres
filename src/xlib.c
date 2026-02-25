@@ -28,6 +28,7 @@
 #include "asset_loader.c"
 #include "renderer/renderer.c"
 #include "renderer/opengl/opengl.c"
+#include "renderer/render_list.c"
 #include "game.h"
 
 #include <GL/glx.h>
@@ -43,6 +44,10 @@ typedef struct {
 	GameUpdateFunction* game_update;
 	GameGenerateSoundSamplesFunction* game_generate_sound_samples;
 	GameGenerateRenderListFunction* game_generate_render_list;
+
+	RenderList render_lists[2];
+	RenderList interpolated_render_list;
+	u8 current_render_list;
 } XlibMemory;
 
 typedef struct {
@@ -75,15 +80,15 @@ void push_game_event(Platform* platform, GameEventType type, void* data, u64 dat
 	platform->current_event = event;
 }
 
-double xlib_time_in_seconds()
+f64 xlib_time_in_seconds()
 {
 	struct timespec time_current;
 	if(clock_gettime(CLOCK_REALTIME, &time_current)) {
 		panic();
 	}
 
-	//printf("TIME %f:%f\n", (double)time_current.tv_sec, (double)time_current.tv_nsec / 1'000'000'000.0f);
-	return (double)time_current.tv_sec + (double)time_current.tv_nsec / 1000000000.0f;
+	//printf("TIME %f:%f\n", (f64)time_current.tv_sec, (f64)time_current.tv_nsec / 1'000'000'000.0f);
+	return (f64)time_current.tv_sec + (f64)time_current.tv_nsec / 1000000000.0f;
 }
 void xlib_reload_game_code(XlibMemory* xlib) {
 	struct stat game_lib_stat;
@@ -289,26 +294,25 @@ i32 main(i32 argc, char** argv) {
 
 	xlib->game_init(game, assets);
 	FrameOutput frame_output = {};
-	RenderList render_list = {};
 
 	free(init_memory);
 
-	double current_time = xlib_time_in_seconds();
-	double time_accumulator = 0.0f;
-	double frame_length = 0.005f;
+	f64 current_time = xlib_time_in_seconds();
+	f64 time_accumulator = 0.0f;
+	f64 frame_length = 0.009f;
 	platform->frames_since_init = 0;
 	while(!frame_output.close_requested) {
+		f64 new_time = xlib_time_in_seconds();
+		f64 frame_time = new_time - current_time;
+		if(frame_time > 0.25f) frame_time = 0.25f;
+		current_time = new_time;
+		time_accumulator += frame_time;
+
 		xlib_reload_game_code(xlib);
 		
 		platform->head_event = NULL;
 		platform->current_event = NULL;
 		StackAllocator event_stack = stack_init(platform->event_memory, GAME_EVENTS_MEMSIZE, "GameEvents");
-
-		double new_time = xlib_time_in_seconds();
-		double frame_time = new_time - current_time;
-		if(frame_time > 0.25f) frame_time = 0.25f;
-		current_time = new_time;
-		time_accumulator += frame_time;
 		while(time_accumulator >= frame_length) {
 			while(XPending(xlib->display)) {
 				XEvent event;
@@ -354,18 +358,27 @@ i32 main(i32 argc, char** argv) {
 			platform->current_event = platform->head_event;
 			xlib->game_update(game, platform->current_event, &frame_output, frame_length);
 
+			xlib->game_generate_render_list(game, &xlib->render_lists[xlib->current_render_list]);
+			xlib->current_render_list ^= 1;
+
 			i32 sound_samples_count = alsa_write_samples_count(alsa);
 			if(sound_samples_count > 0) {
 				// TODO: Fix glitchy audio on quit
 				xlib->game_generate_sound_samples(game, alsa->write_buffer, sound_samples_count);
-				//alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
+				alsa_write_samples(alsa, alsa->write_buffer, sound_samples_count);
 			}
 			time_accumulator -= frame_length;
 		}
 
-
-		xlib->game_generate_render_list(game, &render_list);
-		render_prepare_frame_data(renderer, platform, &render_list);
+		// NOW: Interpolation is fucked. Setting it to anything other than in perfect
+		// step with the monitor framerate (100fps on my desktop) makes it either
+		// choppy or ghosty when faster or slower than the framerate respectively.
+		render_list_interpolated(
+			&xlib->render_lists[xlib->current_render_list], 
+			&xlib->render_lists[xlib->current_render_list ^ 1],
+			&xlib->interpolated_render_list,
+			time_accumulator / frame_length);
+		render_prepare_frame_data(renderer, platform, &xlib->interpolated_render_list);
 		gl_update(renderer, platform);
 
 		glXSwapBuffers(xlib->display, xlib->window);
