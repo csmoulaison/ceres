@@ -21,7 +21,6 @@ changes made to the render layer.
 
 void render_list_init(RenderList* list) {
 	list->cameras_len = 0;
-	list->instances_len = 0;
 	list->instance_index_offset = 0;
 	list->instance_types_len = 0;
 	list->rects_len = 0;
@@ -40,7 +39,6 @@ void render_list_interpolated(RenderList* previous, RenderList* current, RenderL
 	*res = *current;
 
 	res->cameras_len = previous->cameras_len;
-	res->instances_len = previous->instances_len;
 	res->instance_index_offset = previous->instance_index_offset;
 	res->instance_types_len = previous->instance_types_len;
 	res->rects_len = previous->rects_len;
@@ -96,9 +94,7 @@ void render_list_add_camera(RenderList* list, v3 position, v3 target, v4 screen_
 
 // NOW: Check if matching type has already been allocated.
 void render_list_allocate_instance_type(RenderList* list, u8 model, u8 texture, i32 count) {
-	assert(list->instances_len + count < RENDER_LIST_MAX_INSTANCES);
 	assert(list->instance_types_len < RENDER_LIST_MAX_INSTANCE_TYPES);
-	strict_assert(list->instances_len < 65535);
 	strict_assert(list->instance_types_len < 255);
 
 	RenderListInstanceType* type = &list->instance_types[list->instance_types_len];

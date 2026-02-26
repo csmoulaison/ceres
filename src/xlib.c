@@ -357,7 +357,6 @@ i32 main(i32 argc, char** argv) {
 			}
 			platform->current_event = platform->head_event;
 			xlib->game_update(game, platform->current_event, &frame_output, frame_length);
-
 			xlib->game_generate_render_list(game, &xlib->render_lists[xlib->current_render_list]);
 			xlib->current_render_list ^= 1;
 
