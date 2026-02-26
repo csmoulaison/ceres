@@ -1,0 +1,19 @@
+INTRODUCTION: Any time I encounter a bug that should be learned from, I write a
+report here. These are in reverse chronological order, so add to the top when
+starting a report.
+
+02.25.2026: RENDER LIST INSTANCES... AGAIN
+	I ran into a similar bug recently where I forgot about an implementation detail
+related to the render lists, which is the way instances are stored: instances
+are pre-allocated a certain amount of space on each frame, which initializes 
+offsets into a buffer. Instances of each type are then added to the buffer 
+at a position relative to their type's offset. 
+	The problem is, an unused variable from a previous implementation entitled 
+instances_len still existed in the RenderList struct, and so naturally I used 
+that to iterate the instances for interpolating between RenderLists as part of
+implementing Glenn Fiedler's fixed timestep approach. Of course, this didn't 
+properly interpolate the instances as it didn't skip to the appropriate parts of
+the buffer to find the instances it needed to interpolate.
+	LESSON: I should be more aggressive about making sure that refactors don't
+leave unused state around that has any possibility of misleading myself in the
+future. For now, I am removing the offending variable.

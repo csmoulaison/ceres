@@ -300,6 +300,10 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	u8 camera_host_buffer = render_push_host_buffer(renderer, (u8*)camera_ubos);
 
 	// Model ssbos
+	// 
+	// TODO: Quaternions for rotation because sometimes we have weird erroneous
+	// rotations for lasers which I assume have to do with interpolating their
+	// rotation without Quaternions.
 	RenderModelInstance* model_ssbo = (RenderModelInstance*)stack_alloc(&frame_stack, sizeof(RenderModelInstance) * RENDER_LIST_MAX_INSTANCES);
 	for(i32 type_index = 0; type_index < list->instance_types_len; type_index++) {
 		RenderListInstanceType* type = &list->instance_types[type_index];

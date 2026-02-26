@@ -42,6 +42,7 @@ void render_list_interpolated(RenderList* previous, RenderList* current, RenderL
 	res->cameras_len = previous->cameras_len;
 	res->instances_len = previous->instances_len;
 	res->instance_index_offset = previous->instance_index_offset;
+	res->instance_types_len = previous->instance_types_len;
 	res->rects_len = previous->rects_len;
 	for(i32 type_index = 0; type_index < RENDER_LIST_MAX_INSTANCE_TYPES; type_index++) {
 		res->instance_types[type_index].instances_len = previous->instance_types[type_index].instances_len;
@@ -59,17 +60,24 @@ void render_list_interpolated(RenderList* previous, RenderList* current, RenderL
 		//res_cam->position = v3_new(40.0f, 5.0f, 40.0f);
 		res_cam->target = v3_lerp(prev_cam->target, cur_cam->target, t);
 		//res_cam->target = v3_new(32.0f, 0.0f, 32.0f);
+		//res_cam->position = cur_cam->position;
+		//res_cam->target = cur_cam->target;
 		res_cam->screen_rect = v4_lerp(prev_cam->screen_rect, cur_cam->screen_rect, t);
 	}
 
-	for(i32 inst_index = 0; inst_index < res->instances_len; inst_index++) {
-		RenderListInstanceData* prev_inst = &previous->instances[inst_index];
-		RenderListInstanceData* cur_inst = &current->instances[inst_index];
-		RenderListInstanceData* res_inst = &res->instances[inst_index];
-		res_inst->position = v3_lerp(prev_inst->position, cur_inst->position, t);
-		res_inst->rotation = v3_lerp(prev_inst->rotation, cur_inst->rotation, t);
-		res_inst->scale = v3_lerp(prev_inst->scale, cur_inst->scale, t);
-		res_inst->color = v4_lerp(prev_inst->color, cur_inst->color, t);
+	for(i32 type_index = 0; type_index < res->instance_types_len; type_index++) {
+		RenderListInstanceType* type = &res->instance_types[type_index];
+		u32 offset = type->instance_index_offset;
+		u32 len = type->instances_len;
+		for(i32 inst_index = 0; inst_index < len; inst_index++) {
+			RenderListInstanceData* prev_inst = &previous->instances[offset + inst_index];
+			RenderListInstanceData* cur_inst = &current->instances[offset + inst_index];
+			RenderListInstanceData* res_inst = &res->instances[offset + inst_index];
+			res_inst->position = v3_lerp(prev_inst->position, cur_inst->position, t);
+			res_inst->rotation = v3_lerp(prev_inst->rotation, cur_inst->rotation, t);
+			res_inst->scale = v3_lerp(prev_inst->scale, cur_inst->scale, t);
+			res_inst->color = v4_lerp(prev_inst->color, cur_inst->color, t);
+		}
 	}
 }
 

@@ -299,7 +299,7 @@ i32 main(i32 argc, char** argv) {
 
 	f64 current_time = xlib_time_in_seconds();
 	f64 time_accumulator = 0.0f;
-	f64 frame_length = 0.009f;
+	f64 frame_length = 1.0f / 133.0f;
 	platform->frames_since_init = 0;
 	while(!frame_output.close_requested) {
 		f64 new_time = xlib_time_in_seconds();
@@ -370,9 +370,6 @@ i32 main(i32 argc, char** argv) {
 			time_accumulator -= frame_length;
 		}
 
-		// NOW: Interpolation is fucked. Setting it to anything other than in perfect
-		// step with the monitor framerate (100fps on my desktop) makes it either
-		// choppy or ghosty when faster or slower than the framerate respectively.
 		render_list_interpolated(
 			&xlib->render_lists[xlib->current_render_list], 
 			&xlib->render_lists[xlib->current_render_list ^ 1],
