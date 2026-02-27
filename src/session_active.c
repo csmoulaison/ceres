@@ -21,9 +21,7 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		Player* player = &session->players[player_index];
 		PlayerInput* player_input = &player->input;
 
-		v2 acceleration = v2_zero();
 		v2 direction_vector = player_direction_vector(player);
-		f32 rot_acceleration = 0.0f;
 
 		// Shooting
 		if(player->hit_cooldown > 0.0f) {
@@ -57,37 +55,17 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 			}
 		}
 
+		// Calculate acceleration vector
+		v2 acceleration = v2_zero();
+
 		// Calculate ship rotational acceleration
 		f32 rotate_speed = 20.0f;
-		rot_acceleration = -player_input->turn_axis * rotate_speed;
-		//if(input_button_down(player_input->buttons[BUTTON_TURN_LEFT])) {
-		//	rot_acceleration += rotate_speed;
-		//}
-		//if(input_button_down(player_input->buttons[BUTTON_TURN_RIGHT])) {
-		//	rot_acceleration -= rotate_speed;
-		//}
+		f32 rot_acceleration = -player_input->turn_axis * rotate_speed;
 
-		// Forward/back thruster control
-		//f32 forward_mod = 0.0f;
-		//if(input_button_down(player_input->buttons[BUTTON_FORWARD])) {
-		//	forward_mod += 32.0f;
-		//}
-		//if(input_button_down(player_input->buttons[BUTTON_BACK])) {
-		//	forward_mod -= 16.0f;
-		//}
 		f32 forward_mod = 0.0f;
 		if(player_input->forward_axis > 0.0f) forward_mod += 32.0f;
 		if(player_input->forward_axis < 0.0f) forward_mod -= 16.0f;
 		acceleration = v2_scale(direction_vector, forward_mod);
-
-		// Side thruster control
-		f32 strafe_mod = player_input->strafe_axis;;
-		//if(input_button_down(player_input->buttons[BUTTON_STRAFE_LEFT])) {
-		//	strafe_mod -= 1.0f;
-		//}
-		//if(input_button_down(player_input->buttons[BUTTON_STRAFE_RIGHT])) {
-		//	strafe_mod += 1.0f;
-		//}
 
 		// Rotational damping
 		f32 rot_damping = 1.2f;
@@ -100,6 +78,7 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		// Calculate ship acceleration
 
 		// Side thruster control
+		f32 strafe_mod = player_input->strafe_axis;;
 		v2 side_vector = v2_new(-direction_vector.y, direction_vector.x);
 		f32 strafe_speed = 32.0f;
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));

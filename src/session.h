@@ -114,6 +114,7 @@ typedef struct {
 
 	PauseMenu pause_menu;
 	float game_over_rotation_position;
+	bool quit_requested;
 } Session;
 
 #endif // session_h_INCLUDED

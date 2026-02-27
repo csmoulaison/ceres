@@ -36,7 +36,7 @@ void session_pause_update(Session* session, FrameOutput* output, Input* input, A
 				session->mode = SESSION_ACTIVE;
 			} break;
 			case PAUSE_SELECTION_QUIT: {
-				output->close_requested = true;
+				session->quit_requested = true;
 			} break;
 			default: { panic(); };
 		}

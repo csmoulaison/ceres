@@ -17,9 +17,7 @@ GAME_INIT(game_init) {
 	fast_random_init();
 
 	memory->mode_type = GAME_MENU;
-	memory->mode_type = GAME_SESSION;
-	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
-	session_init((Session*)memory->mode.memory, &memory->input, level_asset);
+	main_menu_init((MainMenu*)memory->mode.memory);
 	
 	for(i32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
 		FontData* font = &memory->fonts[font_index];
@@ -46,7 +44,12 @@ GAME_UPDATE(game_update) {
 			}
 		} break;
 		case GAME_SESSION: {
-			session_update((Session*)memory->mode.memory, output, &memory->input, &memory->audio, dt);
+			Session* session = (Session*)memory->mode.memory;
+			session_update(session, output, &memory->input, &memory->audio, dt);
+			if(session->quit_requested) {
+				main_menu_init((MainMenu*)memory->mode.memory);
+				memory->mode_type = GAME_MENU;
+			}
 		} break;
 		default: break;
 	}

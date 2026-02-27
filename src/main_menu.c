@@ -17,6 +17,10 @@ typedef struct {
 	bool input_select;
 } MainMenu;
 
+void main_menu_init(MainMenu* menu) {
+	memset(menu, 0, sizeof(MainMenu));
+}
+
 // TODO: Factor this and pause menu into generic menu stuff. Just a shared
 // function for selection index wrapping and stuff would work.
 void main_menu_update(MainMenu* menu, FrameOutput* output, Input* input, Audio* audio, f32 dt) {
@@ -65,4 +69,5 @@ void draw_main_menu(MainMenu* menu, RenderList* list, FontData* fonts, StackAllo
 		ui_draw_text_line(list, fonts, ASSET_FONT_QUANTICO_LARGE, menu_selection_strings[selection_index],
 			v2_new(0.0f, root_y - line_h * selection_index), v2_new(0.5f, 0.5f), v2_new(0.5f, 0.5f), color, draw_stack);
 	}
+	list->clear_color = v3_new(0.0f, 0.0f, 0.0f);
 }
