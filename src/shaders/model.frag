@@ -32,6 +32,7 @@ void main()
 	vec4 f_color = vec4(result, 1.0f) * texture(tex, tex_uv);
 	vec4 color_4 = vec4(color.xyz, 1.0f);
     frag_color = mix(f_color, color_4, color.w);
+    frag_color = mix(frag_color, vec4(0.05f, 0.05f, 0.05f, 1.0f), clamp(frag_pos.y - 5.0f, 0.0f, 1.0f));
     // vec4(normal * vec3(0.8f, 0.0f, 0.8f), 0.0f);
     //frag_color = vec4(result, 1.0f);
 	//frag_color = vec4(1.0f);

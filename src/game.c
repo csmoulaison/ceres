@@ -6,6 +6,7 @@
 #include "ui_text.c"
 #include "debug_sound.c"
 #include "input.c"
+#include "main_menu.c"
 #include "session.c"
 
 GAME_INIT(game_init) {
@@ -15,6 +16,7 @@ GAME_INIT(game_init) {
 	audio_init(&memory->audio);
 	fast_random_init();
 
+	memory->mode_type = GAME_MENU;
 	memory->mode_type = GAME_SESSION;
 	LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
 	session_init((Session*)memory->mode.memory, &memory->input, level_asset);
@@ -36,7 +38,12 @@ GAME_UPDATE(game_update) {
 	input_poll_events(&memory->input, events_head);
 	switch(memory->mode_type) {
 		case GAME_MENU: {
-			//menu_update(
+			main_menu_update((MainMenu*)memory->mode.memory, output, &memory->input, &memory->audio, dt);
+			if(((MainMenu*)memory->mode.memory)->start_session) {
+				memory->mode_type = GAME_SESSION;
+				LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
+				session_init((Session*)memory->mode.memory, &memory->input, level_asset);
+			}
 		} break;
 		case GAME_SESSION: {
 			session_update((Session*)memory->mode.memory, output, &memory->input, &memory->audio, dt);
@@ -48,10 +55,11 @@ GAME_UPDATE(game_update) {
 }
 
 GAME_GENERATE_RENDER_LIST(game_generate_render_list) {
+	render_list_init(list);
 	StackAllocator draw_stack = stack_init(memory->frame.memory, GAME_FRAME_MEMSIZE, "Draw");
 	switch(memory->mode_type) {
 		case GAME_MENU: {
-			//menu_draw(
+			draw_main_menu((MainMenu*)memory->mode.memory, list, memory->fonts, &draw_stack);
 		} break;
 		case GAME_SESSION: {
 			session_draw((Session*)memory->mode.memory, list, memory->fonts, &draw_stack);

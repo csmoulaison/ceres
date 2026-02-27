@@ -3,7 +3,7 @@ void session_reset(Session* session, Level* level);
 void session_game_over_update(Session* session, Input* input, Audio* audio, f32 dt) {
 	session->game_over_rotation_position += dt;
 
-	if(input_button_pressed(input->players[0].buttons[BUTTON_SHOOT])) {
+	if(input_button_pressed(input->devices[0].buttons[BUTTON_SHOOT])) {
 		session_reset(session, &session->level);
 	}
 }

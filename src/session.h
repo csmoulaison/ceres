@@ -7,6 +7,13 @@
 #define MAX_DESTRUCT_MESHES MAX_PLAYERS * 3
 
 typedef struct {
+	f32 forward_axis;
+	f32 turn_axis;
+	f32 strafe_axis;
+	bool shoot;
+} PlayerInput;
+
+typedef struct {
 	u8 team;
 	f32 health;
 
@@ -25,10 +32,13 @@ typedef struct {
 	SoundHandle sound_thruster_cooldown;
 	SoundHandle sound_shoot;
 	SoundHandle sound_hit;
+
+	PlayerInput input;
 } Player;
 
 typedef struct {
 	u8 player;
+	u8 input_device;
 	v2 camera_offset;
 	f32 visible_health;
 } PlayerView;
@@ -38,7 +48,7 @@ typedef struct {
 	u8 spawns_len;
 
 	u16 side_length;
-	u8 tiles[MAX_LEVEL_SIDE_LENGTH * MAX_LEVEL_SIDE_LENGTH];
+	u8 tiles[MAX_LEVEL_SIDE_LENGTH * MAX_LEVEL_SIDE_LENGTH]; 
 } Level;
 
 typedef enum {
@@ -79,6 +89,14 @@ typedef enum {
 } PauseSelection;
 
 typedef struct {
+	PauseSelection selection;
+	bool input_up;
+	bool input_down;
+	bool input_select;
+	bool input_resume;
+} PauseMenu;
+
+typedef struct {
 	SessionMode mode;
 	Level level;
 	i32 team_scores[MAX_TEAMS];
@@ -94,7 +112,7 @@ typedef struct {
 	u8 players_len;
 	u8 player_views_len;
 
-	PauseSelection pause_selection;
+	PauseMenu pause_menu;
 	float game_over_rotation_position;
 } Session;
 

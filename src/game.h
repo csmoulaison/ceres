@@ -46,7 +46,7 @@ typedef struct {
 typedef GAME_INIT(GameInitFunction);
 GAME_INIT(game_init_stub) {}
 
-#define GAME_UPDATE(name) void name(GameMemory* memory, GameEvent* events_head, FrameOutput* output, f32 dt)
+#define GAME_UPDATE(name) void name(GameMemory* memory, GameEvent* events_head, FrameOutput* output, AssetMemory* assets, f32 dt)
 typedef GAME_UPDATE(GameUpdateFunction);
 GAME_UPDATE(game_update_stub) {}
 

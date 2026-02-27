@@ -55,9 +55,10 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 		i32 x = tile_index % side_length;
 		i32 y = tile_index / side_length;
 		level->tiles[tile_index] = level_asset->buffer[tile_index];
-		//if(x < 2 || x > 61 || y < 2 || y > 61) {
-		//	level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
-		//}
+		if(x < 2 || x > 61 || y < 2 || y > 61) {
+			//level->tiles[tile_index] = 1 + rand() / (RAND_MAX / 3);
+			level->tiles[tile_index] = 6;
+		}
 	}
 
 	// Players
@@ -71,12 +72,12 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	// 
 	// NOW: Setting views[0].player to anything other than 0 breaks any input
 	// checks that are manually indexing into the 0th player input state.
-	session->player_views_len = 1;
+	session->player_views_len = 2;
 	session->player_views[0].player = 0; 
 	session->player_views[1].player = 2; 
 	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
 		PlayerView* view = &session->player_views[view_index];
-		input_attach_map(input, view_index, view->player);
+		view->input_device = view_index;
 	}
 
 	// Editor
@@ -104,8 +105,6 @@ void session_update(Session* session, FrameOutput* output, Input* input, Audio* 
 }
 
 void session_draw(Session* session, RenderList* list, FontData* fonts, StackAllocator* draw_stack) {
-	render_list_init(list);
-
 	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP, 8);
 	render_list_allocate_instance_type(list, ASSET_MESH_SHIP, ASSET_TEXTURE_SHIP_2, 8);
 	render_list_allocate_instance_type(list, ASSET_MESH_CYLINDER, 0, 64);

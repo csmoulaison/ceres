@@ -5,6 +5,7 @@
 
 #define CONFIG_DEFAULT_INPUT_FILENAME "data/def_input.conf"
 
+#define INPUT_MAX_DEVICES 8
 #define INPUT_MAX_MAPS 2
 #define INPUT_MAX_KEY_MAPPINGS NUM_BUTTONS * INPUT_MAX_MAPS
 
@@ -37,13 +38,12 @@ typedef struct {
 
 typedef struct {
 	InputButton buttons[NUM_BUTTONS];
-} InputPlayer;
+} InputDevice;
 
 typedef struct {
-	InputPlayer players[MAX_PLAYERS];
+	InputDevice devices[INPUT_MAX_DEVICES];
 	InputKeyMapping key_mappings[INPUT_MAX_KEY_MAPPINGS];
 	u32 key_mappings_len;
-	i8 map_to_player[INPUT_MAX_MAPS];
 } Input;
 
 #endif // input_h_INCLUDED

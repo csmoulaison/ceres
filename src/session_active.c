@@ -1,12 +1,29 @@
 void session_active_update(Session* session, Input* input, Audio* audio, f32 dt) {
+	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {
+		PlayerView* view = &session->player_views[view_index];
+		PlayerInput* player_input = &session->players[view->player].input;
+		InputDevice* device = &input->devices[view->input_device];
+		//memset(player_input, 0, sizeof(PlayerInput));
+		player_input->forward_axis = 0.0f;
+		player_input->turn_axis = 0.0f;
+		player_input->strafe_axis = 0.0f;
+		player_input->shoot = 0.0f;
+		if(input_button_down(device->buttons[BUTTON_FORWARD])) player_input->forward_axis += 1.0f;
+		if(input_button_down(device->buttons[BUTTON_BACK])) player_input->forward_axis -= 1.0f;
+		if(input_button_down(device->buttons[BUTTON_TURN_LEFT])) player_input->turn_axis -= 1.0f;
+		if(input_button_down(device->buttons[BUTTON_TURN_RIGHT])) player_input->turn_axis += 1.0f;
+		if(input_button_down(device->buttons[BUTTON_STRAFE_LEFT])) player_input->strafe_axis -= 1.0f;
+		if(input_button_down(device->buttons[BUTTON_STRAFE_RIGHT])) player_input->strafe_axis += 1.0f;
+		if(input_button_down(device->buttons[BUTTON_SHOOT])) player_input->shoot = true;
+	}
+
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {
 		Player* player = &session->players[player_index];
-		InputPlayer* player_input = &input->players[player_index];
+		PlayerInput* player_input = &player->input;
 
 		v2 acceleration = v2_zero();
 		v2 direction_vector = player_direction_vector(player);
 		f32 rot_acceleration = 0.0f;
-		f32 strafe_mod = 0.0f;
 
 		// Shooting
 		if(player->hit_cooldown > 0.0f) {
@@ -15,7 +32,7 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 
 		player->shoot_cooldown -= dt * 10.0f;
 		if(player->shoot_cooldown < 0.0f) player->shoot_cooldown = 0.0f;
-		if(player->shoot_cooldown <= 0.0f && input_button_down(player_input->buttons[BUTTON_SHOOT])) {
+		if(player->shoot_cooldown <= 0.0f && player_input->shoot) {
 			player->shoot_cooldown = 0.08f;
 			player->shoot_cooldown = 0.99f + ((f32)rand() / RAND_MAX) * 0.01f;
 
@@ -42,30 +59,35 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 
 		// Calculate ship rotational acceleration
 		f32 rotate_speed = 20.0f;
-		if(input_button_down(player_input->buttons[BUTTON_TURN_LEFT])) {
-			rot_acceleration += rotate_speed;
-		}
-		if(input_button_down(player_input->buttons[BUTTON_TURN_RIGHT])) {
-			rot_acceleration -= rotate_speed;
-		}
+		rot_acceleration = -player_input->turn_axis * rotate_speed;
+		//if(input_button_down(player_input->buttons[BUTTON_TURN_LEFT])) {
+		//	rot_acceleration += rotate_speed;
+		//}
+		//if(input_button_down(player_input->buttons[BUTTON_TURN_RIGHT])) {
+		//	rot_acceleration -= rotate_speed;
+		//}
 
 		// Forward/back thruster control
+		//f32 forward_mod = 0.0f;
+		//if(input_button_down(player_input->buttons[BUTTON_FORWARD])) {
+		//	forward_mod += 32.0f;
+		//}
+		//if(input_button_down(player_input->buttons[BUTTON_BACK])) {
+		//	forward_mod -= 16.0f;
+		//}
 		f32 forward_mod = 0.0f;
-		if(input_button_down(player_input->buttons[BUTTON_FORWARD])) {
-			forward_mod += 32.0f;
-		}
-		if(input_button_down(player_input->buttons[BUTTON_BACK])) {
-			forward_mod -= 16.0f;
-		}
+		if(player_input->forward_axis > 0.0f) forward_mod += 32.0f;
+		if(player_input->forward_axis < 0.0f) forward_mod -= 16.0f;
 		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Side thruster control
-		if(input_button_down(player_input->buttons[BUTTON_STRAFE_LEFT])) {
-			strafe_mod -= 1.0f;
-		}
-		if(input_button_down(player_input->buttons[BUTTON_STRAFE_RIGHT])) {
-			strafe_mod += 1.0f;
-		}
+		f32 strafe_mod = player_input->strafe_axis;;
+		//if(input_button_down(player_input->buttons[BUTTON_STRAFE_LEFT])) {
+		//	strafe_mod -= 1.0f;
+		//}
+		//if(input_button_down(player_input->buttons[BUTTON_STRAFE_RIGHT])) {
+		//	strafe_mod += 1.0f;
+		//}
 
 		// Rotational damping
 		f32 rot_damping = 1.2f;
@@ -199,13 +221,13 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		mesh->opacity -= dt;
 	}
 
-	if(input_button_pressed(input->players[0].buttons[BUTTON_DEBUG])) {
+	if(input_button_pressed(input->devices[0].buttons[BUTTON_DEBUG])) {
 		session->level_editor.cursor_x = (u32)session->players[0].position.x;
 		session->level_editor.cursor_y = (u32)session->players[0].position.y;
 		session->mode = SESSION_LEVEL_EDITOR;
 	}
 
-	if(input_button_pressed(input->players[0].buttons[BUTTON_QUIT])) {
+	if(input_button_pressed(input->devices[0].buttons[BUTTON_QUIT])) {
 		session->mode = SESSION_PAUSE;
 	}
 }

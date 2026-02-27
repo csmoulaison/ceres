@@ -49,7 +49,7 @@ void draw_active_session(Session* session, RenderList* list, FontData* fonts, St
 	i32 floor_length = session->level.side_length;
 	i32 floor_instances = floor_length * floor_length;
 
-	v3 clear_color = v3_new(0.2f, 0.8f, 0.7f);
+	v3 clear_color = v3_new(0.05f, 0.05f, 0.05f);
 	render_list_set_clear_color(list, clear_color);
 
 	for(i32 player_index = 0; player_index < session->players_len; player_index++) {

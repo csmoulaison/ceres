@@ -11,7 +11,7 @@ void level_editor_serialize(Level* level) {
 void level_editor_update(Session* session, Input* input, f32 dt) {
 	LevelEditor* editor = &session->level_editor;
 	Level* level = &session->level;
-	InputButton* buttons = input->players[0].buttons;
+	InputButton* buttons = input->devices[0].buttons;
 
 	if(input_button_pressed(buttons[BUTTON_FORWARD])) {
 		editor->cursor_y++;
@@ -45,7 +45,7 @@ void level_editor_update(Session* session, Input* input, f32 dt) {
 				*tile += 1;
 			}
 
-			if(input_button_pressed(input->players[1].buttons[BUTTON_SHOOT])) {
+			if(input_button_pressed(buttons[BUTTON_QUIT])) {
 				if(*tile > 0) {
 					*tile -= 1;
 				}
