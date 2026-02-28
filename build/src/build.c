@@ -53,14 +53,14 @@ i32 main(i32 argc, char** argv) {
 
 	print_header("Compiling platform layer...");
 	//-fsanitize=address -fno-omit-frame-pointer 
-	system_call("gcc -std=c99 -Wall -Wno-unused -Werror -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/shiptastic -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes -lasound");
+	system_call("gcc -std=c99 -Wall -Wno-unused -Werror -g ../src/xlib.c ../extern/GL/gl3w.c -o ../bin/ceres -I ../extern/ -I ../src/ -lX11 -lX11-xcb -lGL -lm -lxcb -lXfixes -lasound");
 
 game_only:
 	print_header("Compiling game layer...");
-	system_call("gcc -std=c99 -Wall -Werror -Wno-unused -g -c -fPIC -o intermediate/shiptastic.o ../src/game.c -I ../src/");
-	system_call("gcc -std=c99 -Wall -Werror -Wno-unused -g -shared intermediate/shiptastic.o -o ../bin/shiptastic_tmp.so -I ../extern/ -I ../src/ -lm");
-	system_call("mv ../bin/shiptastic_tmp.so ../bin/shiptastic.so");
-	system_call_ignore_result("rm ../bin/shiptastic_*");
+	system_call("gcc -std=c99 -Wall -Werror -Wno-unused -g -c -fPIC -o intermediate/ceres.o ../src/game.c -I ../src/");
+	system_call("gcc -std=c99 -Wall -Werror -Wno-unused -g -shared intermediate/ceres.o -o ../bin/ceres_tmp.so -I ../extern/ -I ../src/ -lm");
+	system_call("mv ../bin/ceres_tmp.so ../bin/ceres.so");
+	system_call_ignore_result("rm ../bin/ceres_*");
 
 	print_header("\033[32mProgram compilation succeeded!");
 	return system_call_result;

@@ -91,7 +91,7 @@ f64 xlib_time_in_seconds()
 }
 void xlib_reload_game_code(XlibMemory* xlib) {
 	struct stat game_lib_stat;
-	stat("shiptastic.so", &game_lib_stat);
+	stat("ceres.so", &game_lib_stat);
 
 	u64 actual_last_modified = game_lib_stat.st_mtim.tv_sec;
 	if(actual_last_modified > xlib->game_lib_last_modified) {
@@ -103,13 +103,13 @@ void xlib_reload_game_code(XlibMemory* xlib) {
 		char copy_fname[256];
 		time_t t;
 		time(&t);
-		sprintf(copy_fname, "./shiptastic_%li.so", t);
+		sprintf(copy_fname, "./ceres_%li.so", t);
 		//struct tm* tm;
 		//tm = localtime(&t);
 		//strftime(cpy_fname, sizeof(cpy_fname), "", tm);
 
 		char cmd[2048];
-		sprintf(cmd, "cp shiptastic.so %s", copy_fname);
+		sprintf(cmd, "cp ceres.so %s", copy_fname);
 		system(cmd);
 
 		xlib->game_lib_handle = dlopen(copy_fname, RTLD_NOW);
