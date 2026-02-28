@@ -33,8 +33,6 @@ void render_list_init(RenderList* list) {
 	}
 }
 
-// NOW: Interpolation is quite choppy, less so when camera isn't moving. It
-// doesn't appear when the frame time is in sync with the monitor.
 void render_list_interpolated(RenderList* previous, RenderList* current, RenderList* res, f64 t) {
 	*res = *current;
 

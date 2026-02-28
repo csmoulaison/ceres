@@ -90,9 +90,6 @@ typedef struct {
 	+ sizeof(FontAsset) * MAX_FONT_ASSETS
 */
 
-// NOW: This didn't allocate enough memory with the above memsize. The second
-// loaded mesh was junk data during render initialization, so it wasn't really
-// even close.
 #define ASSET_BUFFER_MEMSIZE MEGABYTE * 64
 
 #endif // asset_format_h_INCLUDED

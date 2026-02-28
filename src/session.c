@@ -69,9 +69,6 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->players[3].team = 1;
 
 	// Views
-	// 
-	// NOW: Setting views[0].player to anything other than 0 breaks any input
-	// checks that are manually indexing into the 0th player input state.
 	session->player_views_len = 2;
 	session->player_views[0].player = 0; 
 	session->player_views[1].player = 2; 

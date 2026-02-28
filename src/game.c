@@ -73,7 +73,7 @@ GAME_GENERATE_RENDER_LIST(game_generate_render_list) {
 }
 
 GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
-	// NOW: Figure out a good max amplitude for limiting
+	// TODO: Figure out a good max amplitude for limiting
 	f32 global_shelf = 30000.0f;
 	f32 global_attenuation = 0.62f;
 
@@ -88,7 +88,7 @@ GAME_GENERATE_SOUND_SAMPLES(game_generate_sound_samples) {
 			channel->phase -= 2.0f * M_PI;
 		}
 
-		// NOW: Remove hardcoded sample rate by driving alsa and this from config.h
+		// TODO: Remove hardcoded sample rate by driving alsa and this from config.h
 		channel_rates[channel_index] = 2.0f * M_PI * channel->actual_frequency / 48000;
 
 		if(channel_index >= memory->audio.active_channels_len) {
