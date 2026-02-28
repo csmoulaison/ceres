@@ -4,6 +4,7 @@
 #include "game.h"
 #include "renderer/render_list.c"
 #include "ui_text.c"
+#include "menu.c"
 #include "debug_sound.c"
 #include "input.c"
 #include "main_menu.c"

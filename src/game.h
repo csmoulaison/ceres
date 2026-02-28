@@ -7,7 +7,6 @@
 #include "game_event.h"
 #include "input.h"
 #include "audio.c"
-#include "dynamic_state.c"
 
 #define GAME_MODE_MEMSIZE MEGABYTE
 #define GAME_FRAME_MEMSIZE MEGABYTE
