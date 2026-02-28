@@ -37,11 +37,12 @@ GAME_UPDATE(game_update) {
 	input_poll_events(&memory->input, events_head);
 	switch(memory->mode_type) {
 		case GAME_MENU: {
-			main_menu_update((MainMenu*)memory->mode.memory, output, &memory->input, &memory->audio, dt);
+			MainMenu* menu = (MainMenu*)memory->mode.memory;
+			main_menu_update(menu, output, &memory->input, &memory->audio, dt);
 			if(((MainMenu*)memory->mode.memory)->start_session) {
 				memory->mode_type = GAME_SESSION;
 				LevelAsset* level_asset = (LevelAsset*)&assets->buffer[assets->level_buffer_offsets[0]];
-				session_init((Session*)memory->mode.memory, &memory->input, level_asset);
+				session_init((Session*)memory->mode.memory, &memory->input, level_asset, menu->session_settings.player_count);
 			}
 		} break;
 		case GAME_SESSION: {

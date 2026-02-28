@@ -71,8 +71,8 @@ void gl_init(RenderMemory* renderer, RenderInitMemory* init) {
 	glDepthFunc(GL_LESS);
 	//glDisable(GL_CULL_FACE);
 	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	StackAllocator buffer_stack = stack_init(gl->buffer, GL_BUFFER_MEMSIZE, "GlBuffer");
 	gl->programs = (GlProgram*)stack_alloc(&buffer_stack, sizeof(GlProgram) * init->programs_len);

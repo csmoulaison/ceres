@@ -28,7 +28,7 @@ void session_reset(Session* session, Level* level) {
 	session->mode = SESSION_ACTIVE;
 }
 
-void session_init(Session* session, Input* input, LevelAsset* level_asset) {
+void session_init(Session* session, Input* input, LevelAsset* level_asset, u8 player_count) {
 	memset(session, 0, sizeof(Session));
 	session->teams_len = 2;
 
@@ -69,7 +69,7 @@ void session_init(Session* session, Input* input, LevelAsset* level_asset) {
 	session->players[3].team = 1;
 
 	// Views
-	session->player_views_len = 2;
+	session->player_views_len = player_count;
 	session->player_views[0].player = 0; 
 	session->player_views[1].player = 2; 
 	for(i32 view_index = 0; view_index < session->player_views_len; view_index++) {

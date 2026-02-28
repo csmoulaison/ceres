@@ -2,8 +2,7 @@
 // - Designed competitive level
 // - Post death respawn animation (camera moves to spawn location, ship flies
 //   in from tunnnel?)
-// - Menu, so we can have two buttons, one for local and one for ...
-// - ... Networking
+// - Networking
 // - Controller input in here somewhere
 // 
 // - Whenever we start working on assets more in earnest, we may think about
@@ -132,6 +131,9 @@ void xlib_reload_game_code(XlibMemory* xlib) {
 }
 
 i32 main(i32 argc, char** argv) {
+	i64 core_count = sysconf(_SC_NPROCESSORS_ONLN);
+	printf("core count: %li\n", core_count);
+	
 	InitMemory* init_memory = (InitMemory*)calloc(1, sizeof(InitMemory));
 	RenderInitMemory* render_init_memory = &init_memory->render;
 
