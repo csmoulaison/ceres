@@ -14,7 +14,6 @@
 #include "font.h"
 
 typedef struct {
-	// NOW: counts not needed eh if we are putting those in the thing.
 	u64 mesh_buffer_offsets[MAX_MESH_ASSETS];
 	u64 texture_buffer_offsets[MAX_TEXTURE_ASSETS];
 	u64 render_program_buffer_offsets[MAX_RENDER_PROGRAM_ASSETS];

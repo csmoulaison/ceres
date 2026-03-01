@@ -29,6 +29,7 @@
 #include "renderer/opengl/opengl.c"
 #include "renderer/render_list.c"
 #include "game.h"
+#include "network/posix_sockets.c"
 
 #include <GL/glx.h>
 typedef GLXContext(*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
@@ -137,8 +138,10 @@ i32 main(i32 argc, char** argv) {
 	InitMemory* init_memory = (InitMemory*)calloc(1, sizeof(InitMemory));
 	RenderInitMemory* render_init_memory = &init_memory->render;
 
-	// NOW: after we are running again, put all this stuff into init functions for
+	// TODO: after we are running again, put all this stuff into init functions for
 	// each memory domain.
+	// 
+	// Update: I'm not totally sure why I thought ^ this would be helpful. Damn.
 	GlobalMemory* global_memory = (GlobalMemory*)calloc(1, sizeof(GlobalMemory) + ASSET_BUFFER_MEMSIZE);
 	Platform* platform = &global_memory->platform;
 	XlibMemory* xlib = &global_memory->xlib;

@@ -330,7 +330,7 @@ void render_prepare_frame_data(RenderMemory* renderer, Platform* platform, Rende
 	u8 model_host_buffer = render_push_host_buffer(renderer, (u8*)model_ssbo);
 
 	// Text ssbo
-	// NOW: Only allocate amount of glyphs needed, I would imagine!
+	// TODO: Only allocate amount of glyphs needed, I would imagine!
 	RenderGlyph* text_ssbo = (RenderGlyph*)stack_alloc(&frame_stack, sizeof(RenderGlyph) * ASSET_NUM_FONTS * RENDER_LIST_MAX_GLYPHS_PER_FONT);
 	for(u32 font_index = 0; font_index < ASSET_NUM_FONTS; font_index++) {
 		for(u32 glyph_index = 0; glyph_index < list->glyph_list_lens[font_index]; glyph_index++) {

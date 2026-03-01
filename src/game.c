@@ -3,6 +3,8 @@
 
 #include "game.h"
 #include "renderer/render_list.c"
+#include "network/network.h"
+
 #include "ui_text.c"
 #include "menu.c"
 #include "debug_sound.c"
