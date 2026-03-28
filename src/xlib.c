@@ -1,5 +1,6 @@
 // NOW: < LIST: I think our order is as follows:
-// - Designed competitive level
+// - Designed competitive level: we really need to redesign the level format
+//   for this. It would be good to do that before anything else, I think.
 // - Post death respawn animation (camera moves to spawn location, ship flies
 //   in from tunnnel?)
 // - Networking
