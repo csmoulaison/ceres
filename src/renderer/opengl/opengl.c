@@ -122,9 +122,9 @@ void gl_init(RenderMemory* renderer, RenderInitMemory* init) {
 		}
 		glBufferData(GL_ARRAY_BUFFER, sizeof(f32) * mesh_data->vertices_len * vertex_size, mesh_data->vertex_data, GL_STATIC_DRAW);
 
-		glGenBuffers(1, &mesh->ebo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
+		//glGenBuffers(1, &mesh->ebo);
+		//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ebo);
+		//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * mesh_data->indices_len, mesh_data->indices, GL_STATIC_DRAW);
 		mesh->vertices_len = mesh_data->vertices_len;
 		mesh->indices_len = mesh_data->indices_len;
 		//mesh->flat_shading = mesh_data->flat_shading;

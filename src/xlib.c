@@ -6,9 +6,9 @@
 // - Networking
 // - Controller input in here somewhere
 // 
-// - Whenever we start working on assets more in earnest, we may think about
-//   whether a more iterable asset pipeline is in order with regards to .blend
-//   files and similar things.
+// Whenever we start working on assets more in earnest, we may think about
+// whether a more iterable asset pipeline is in order with regards to .blend
+// files and similar things.
 
 // This is to get ctim in the stat struct while still compiling with c99
 #define _POSIX_C_SOURCE 200809L

@@ -59,16 +59,16 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		v2 acceleration = v2_zero();
 
 		// Calculate ship rotational acceleration
-		f32 rotate_speed = 20.0f;
+		f32 rotate_speed = 50.0f;
 		f32 rot_acceleration = -player_input->turn_axis * rotate_speed;
 
 		f32 forward_mod = 0.0f;
-		if(player_input->forward_axis > 0.0f) forward_mod += 32.0f;
-		if(player_input->forward_axis < 0.0f) forward_mod -= 16.0f;
+		if(player_input->forward_axis > 0.0f) forward_mod += 85.0f;
+		if(player_input->forward_axis < 0.0f) forward_mod -= 45.0f;
 		acceleration = v2_scale(direction_vector, forward_mod);
 
 		// Rotational damping
-		f32 rot_damping = 1.2f;
+		f32 rot_damping = 7.0f;
 		rot_acceleration += player->rotation_velocity * -rot_damping;
 
 		// Apply rotational acceleration
@@ -80,7 +80,7 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		// Side thruster control
 		f32 strafe_mod = player_input->strafe_axis;;
 		v2 side_vector = v2_new(-direction_vector.y, direction_vector.x);
-		f32 strafe_speed = 32.0f;
+		f32 strafe_speed = 75.0f;
 		acceleration = v2_add(acceleration, v2_scale(side_vector, strafe_mod * strafe_speed));
 
 		// TODO: Make strafing tilt curve based off of the same equations as motion 
@@ -88,7 +88,7 @@ void session_active_update(Session* session, Input* input, Audio* audio, f32 dt)
 		player->strafe_tilt = lerp(player->strafe_tilt, strafe_tilt_target, dt * 6.0f);
 
 		// Damp acceleration
-		f32 damping = 1.4f;
+		f32 damping = 5.0f;
 		acceleration = v2_add(acceleration, v2_scale(player->velocity, -damping));
 
 		// Apply acceleration to position
