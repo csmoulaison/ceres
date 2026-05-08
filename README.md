@@ -1,0 +1,17 @@
+# Ceres
+This game was created as a learning project, and is still a work-in-progress. It is written in C99 using Xlib for windowing, OpenGL for rendering, and ALSA for outputting audio. I pursued a more data oriented style - as opposed to the imperative code of earlier projects - and have ended up with more a mixture of the two than I intended.
+
+## Memory management scheme
+The code allocated all program memory up front, separating them into a number of domain specific sandboxes such as platform, rendering, and game data. Memory with a finite lifetime is most often sub-allocated from these using a stack allocator which is freed at the end of the frame. This has been very nice and will be my go-to approach for memory management for the time being.
+
+## Build system and hot-reloadable game code
+The game is separated into a platform layer - allocating all the memory and initializing Xlib, OpenGL, and ALSA - and a game layer which is compiled separately and dynamically linked at runtime. This allows the game layer to be reloaded while the game is running as long as the game memory layout hasn't changed. Both of these are built with a UNITY build system, which means as one translation unit each, obviating the need for header files. This has its share of complications, and has the potential to lengthen compilation time as the project scales, but I don't see myself getting to that point on this game. The hot reloading has greatly improved iteration speed for lots of tasks, and any Handmade Hero fans will recognize the inspiration for it.
+
+## Asset pipeline
+I've put a good amount of work into doing as much pre-processing of data and assets as I can, and built a separate program which packs assets into a single file to be loaded at runtime, including textures, meshes, fonts, and level data. All the assets are listed out in a single text file (build/data/assets.manifest) and this is what the pre-processing step uses to build the asset pack file. This is one of the aspects of the project I'm most proud of, but I think it should be greatly simplified and genericized more than it is now to ease the process of adding and changing asset types.
+
+## Render system
+Trying to separate the grimy details of graphics APIs and game specific rendering logic, I created a multi-layer rendering system which is over-engineered in hindsight. The game populates a render list which is sent to the renderer front-end, which populates a command list which is sent to the back-end. This seemed like an organic separation of concerns reflective of the problem space, but this abstraction hasn't really paid off, and has only led to lots of redundant boilerplate code. I plan to collapse the renderer front and back ends and only create abstractions in that space if they become motivated by, for example, supporting multiple graphics APIs.
+
+## Live synthesized audio system
+The most performance intensive part of the code ended up being the live synthesis of audio. The system has a finite number of channels, and a number of properties (amplitude, frequency, noise, etc) are set for them every frame based on the game state. When profiling this code, I found it was taking up more than half of the total frame time. By implementing faster RNG, removing branching code, and computing certain values per-frame instead of per-sample, I brought the time down from ~4ms to ~1ms. I plan to try out SIMD and possibly dedicating multiple threads to the system to see how much performance I can achieve.
